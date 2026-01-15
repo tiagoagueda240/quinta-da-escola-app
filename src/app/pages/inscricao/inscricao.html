@@ -1,0 +1,245 @@
+<div class="main-wrapper">
+  
+  <div class="hero-section">
+    <div class="hero-content">
+      <h1>Verão 2026</h1>
+      <p class="subtitle">Quinta da Escola</p>
+    </div>
+  </div>
+
+  <div class="form-container">
+    <form [formGroup]="inscricaoForm" (ngSubmit)="onSubmit()">
+
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>calendar_today</mat-icon>
+            Escolha do Turno
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Tipo Cliente</mat-label>
+              <mat-select formControlName="tipoCliente">
+                <mat-option value="individual">Individual</mat-option>
+                <mat-option value="instituicao">Instituição</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width" *ngIf="inscricaoForm.get('tipoCliente')?.value === 'instituicao'">
+              <mat-label>Nome da Instituição</mat-label>
+              <input matInput formControlName="nomeInstituicao">
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Selecione o Turno</mat-label>
+            <mat-select formControlName="turnoEscolhido">
+              <mat-option *ngFor="let turno of turnos" [value]="turno">
+                {{ turno }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card formGroupName="participante">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>face</mat-icon>
+            Participante
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nome Completo</mat-label>
+            <input matInput formControlName="nomeCompleto">
+          </mat-form-field>
+
+          <div class="row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Data de Nascimento</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="dataNascimento">
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>NIF</mat-label>
+              <input matInput formControlName="nif">
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Morada</mat-label>
+            <input matInput formControlName="morada">
+          </mat-form-field>
+
+          <div class="row">
+             <mat-form-field appearance="outline" class="half-width">
+               <mat-label>CC / Documento</mat-label>
+               <input matInput formControlName="cc">
+             </mat-form-field>
+             <mat-form-field appearance="outline" class="half-width">
+               <mat-label>Sistema de Saúde</mat-label>
+               <input matInput formControlName="sistemaSaude">
+             </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card formGroupName="saude">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>favorite_border</mat-icon>
+            Saúde & Cuidados
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="checkbox-group">
+            <mat-checkbox formControlName="temAlergiaAlimentar">Possui alergias alimentares?</mat-checkbox>
+          </div>
+          
+          <mat-form-field *ngIf="inscricaoForm.get('saude.temAlergiaAlimentar')?.value" appearance="outline" class="full-width">
+            <mat-label>Quais?</mat-label>
+            <textarea matInput formControlName="detalheAlergiaAlimentar" rows="2"></textarea>
+          </mat-form-field>
+
+          <div class="checkbox-group">
+            <mat-checkbox formControlName="temOutrasAlergias">Possui outras alergias?</mat-checkbox>
+          </div>
+          
+          <mat-form-field *ngIf="inscricaoForm.get('saude.temOutrasAlergias')?.value" appearance="outline" class="full-width">
+            <mat-label>Quais?</mat-label>
+            <textarea matInput formControlName="detalheOutrasAlergias" rows="2"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width" style="margin-top: 20px;">
+            <mat-label>Toma medicação regular?</mat-label>
+            <mat-select formControlName="tomaMedicacao">
+               <mat-option value="nao">Não</mat-option>
+               <mat-option value="sim">Sim</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field *ngIf="inscricaoForm.get('saude.tomaMedicacao')?.value === 'sim'" appearance="outline" class="full-width">
+             <mat-label>Qual medicação e horário?</mat-label>
+             <textarea matInput formControlName="detalheMedicacao" rows="2"></textarea>
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card formGroupName="ee">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>smartphone</mat-icon>
+            Encarregado de Educação
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nome Completo</mat-label>
+            <input matInput formControlName="nome">
+          </mat-form-field>
+          <div class="row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Email</mat-label>
+              <input matInput formControlName="email">
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Telemóvel</mat-label>
+              <input matInput formControlName="telefone">
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Contacto de Emergência</mat-label>
+            <input matInput formControlName="contactoEmergencia">
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>directions_bus</mat-icon>
+            Logística
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Transporte</mat-label>
+            <mat-select formControlName="transporte">
+              <mat-option *ngFor="let opcao of opcoesTransporte" [value]="opcao.valor">
+                {{ opcao.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="checkbox-group">
+             <mat-checkbox formControlName="autorizaFotoVideo">Autorizo captação de imagem nas atividades</mat-checkbox>
+          </div>
+          <div class="checkbox-group">
+             <mat-checkbox formControlName="politicaPrivacidade">Aceito a política de privacidade</mat-checkbox>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="footer-action">
+        <div class="price-tag">
+          <span>Total a Pagar</span>
+          <strong>{{ valorTotal }}€</strong>
+        </div>
+        
+        <button mat-raised-button type="submit" [disabled]="!inscricaoForm.valid || isSubmitting">
+          <span *ngIf="!isSubmitting">GARANTIR VAGA</span>
+          <span *ngIf="isSubmitting">A ENVIAR...</span>
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div class="success-overlay" *ngIf="mostrarSucesso">
+  
+  <div class="success-content">
+    
+    <div class="checkmark-wrapper">
+      <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+        <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+        <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+      </svg>
+      <div class="confetti"></div>
+      <div class="confetti"></div>
+      <div class="confetti"></div>
+      <div class="confetti"></div>
+      <div class="confetti"></div>
+    </div>
+
+    <h1>Inscrição Confirmada!</h1>
+    <p class="subtitle">A vaga está reservada. Agora só falta o pagamento.</p>
+
+    <div class="payment-card">
+      <div class="pay-row">
+        <span>Valor Total:</span>
+        <span class="price">{{ valorTotal }}€</span>
+      </div>
+      <div class="divider"></div>
+      <div class="iban-box">
+        <small>IBAN para transferência</small>
+        <div class="iban-number">PT50 0000 0000 0000 0000 0000 0</div>
+        <small class="note">Por favor, envia o comprovativo para <strong>quintadaescola@email.com</strong> com o nome da criança.</small>
+      </div>
+    </div>
+
+    <div class="success-actions">
+      <button mat-flat-button color="primary" class="btn-big" (click)="novaInscricao()">
+        <mat-icon>person_add</mat-icon> Inscrever Irmão/Amigo
+      </button>
+      <br>
+      <a href="/" class="link-home">Voltar ao início</a>
+    </div>
+  </div>
+
+</div>

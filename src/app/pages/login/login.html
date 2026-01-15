@@ -1,0 +1,47 @@
+<div class="login-wrapper">
+  
+  <div class="login-card">
+    
+    <div class="card-header">
+      <div class="brand-logo">
+        <mat-icon>forest</mat-icon>
+      </div>
+      <h1>Bem-vindo</h1>
+      <p>Gestão de Inscrições</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="entrar()">
+      
+      <mat-form-field appearance="outline" class="premium-input">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" placeholder="admin@quintadaescola.com">
+        <mat-icon matSuffix>email</mat-icon>
+        <mat-error *ngIf="loginForm.get('email')?.hasError('email')">Email inválido</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="premium-input">
+        <mat-label>Password</mat-label>
+        <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password">
+        <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword" type="button">
+          <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <div class="error-notification" *ngIf="erro">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ erro }}</span>
+      </div>
+
+      <button mat-flat-button class="btn-primary" type="submit" [disabled]="loginForm.invalid || isLoading">
+        <span *ngIf="!isLoading">INICIAR SESSÃO</span>
+        <div *ngIf="isLoading" class="loader"></div>
+      </button>
+
+    </form>
+
+    <div class="card-footer">
+      <p>© Quinta da Escola</p>
+    </div>
+
+  </div>
+</div>
