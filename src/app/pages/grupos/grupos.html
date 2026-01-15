@@ -1,0 +1,157 @@
+<div class="grupos-layout">
+
+  <header class="control-header mat-elevation-z2">
+    <div class="header-left">
+      <h2><mat-icon>dashboard</mat-icon> Gestão Logística</h2>
+    </div>
+
+    <div class="header-center">
+      <mat-form-field appearance="outline" class="turno-select">
+        <mat-label>Selecione o Turno</mat-label>
+        <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
+          <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="header-right">
+      <button mat-raised-button color="primary" [disabled]="!turnoSelecionado" (click)="guardarAlteracoes()">
+        <mat-icon>save</mat-icon> Guardar Tudo
+      </button>
+    </div>
+  </header>
+
+  <div class="empty-state" *ngIf="!turnoSelecionado">
+    <mat-icon>touch_app</mat-icon>
+    <h3>Selecione um turno acima para começar</h3>
+  </div>
+
+  <div class="workspace" *ngIf="turnoSelecionado">
+    
+    <mat-tab-group animationDuration="0ms" class="custom-tabs" (selectedTabChange)="trocarAba($event.index)">
+      
+      <mat-tab label="🛌 Camaratas (Dormidas)">
+        <div class="toolbar">
+          
+          <div class="step-group">
+            <span class="step-label">Passo 1: Definir Monitores</span>
+            <div class="input-row">
+              
+              <mat-form-field appearance="outline" class="tiny-input" style="width:120px">
+                <mat-label>Monitores (M)</mat-label>
+                <input matInput type="number" [(ngModel)]="qtdQuartosM" min="1">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="tiny-input" style="width:120px">
+                <mat-label>Monitoras (F)</mat-label>
+                <input matInput type="number" [(ngModel)]="qtdQuartosF" min="1">
+              </mat-form-field>
+
+              <button mat-stroked-button (click)="inicializarQuartos()">Criar Estrutura</button>
+            </div>
+          </div>
+
+          <div class="divider-vertical"></div>
+
+          <div class="step-group">
+            <span class="step-label">Passo 2: Distribuir</span>
+            <button mat-flat-button color="accent" (click)="distribuirNasCamaratas()" [disabled]="colunasCamaratas.length === 0">
+              <mat-icon>balance</mat-icon> Equilibrar (M/F)
+            </button>
+          </div>
+
+        </div>
+      </mat-tab>
+
+      <mat-tab label="🏃 Grupos Atividade">
+        <div class="toolbar">
+          <div class="step-group">
+            <span class="step-label">Passo Único</span>
+            <div class="input-row">
+              <mat-form-field appearance="outline" class="tiny-input">
+                <mat-label>Qtd. Grupos</mat-label>
+                <input matInput type="number" [(ngModel)]="qtdGruposAtiv">
+              </mat-form-field>
+              <button mat-flat-button color="accent" (click)="gerarGruposAtividade()">
+                <mat-icon>shuffle</mat-icon> Gerar Mistos
+              </button>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+
+    <div class="board-container" cdkDropListGroup>
+
+      <div class="sidebar-unassigned mat-elevation-z4">
+        <div class="dock-header">
+          <span>Por Atribuir ({{ modoVisualizacao === 'camarata' ? 'Cama' : 'Grupo' }})</span>
+          <span class="badge">{{ poolVisual.length }}</span>
+        </div>
+        
+        <div class="dock-list"
+             cdkDropList
+             [cdkDropListData]="poolVisual"
+             (cdkDropListDropped)="drop($event)">
+          
+          <div class="student-chip" *ngFor="let item of poolVisual" cdkDrag>
+            <div class="avatar" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'">
+              {{ item.participante.nomeCompleto.charAt(0) }}
+            </div>
+            <div class="info">
+              <span class="name">{{ item.participante.nomeCompleto }}</span>
+              <span class="age">{{ getIdade(item) }} anos</span>
+            </div>
+          </div>
+          <div class="empty-msg" *ngIf="poolVisual.length === 0">Todos atribuídos!</div>
+        </div>
+      </div>
+
+      <div class="columns-area">
+        <div class="group-column mat-elevation-z2" *ngFor="let col of colunasAtivas" 
+             [class.is-male]="col.genero === 'M'"
+             [class.is-female]="col.genero === 'F'"
+             [class.is-mixed]="col.genero === 'Misto'">
+          
+          <div class="col-header">
+            <input [(ngModel)]="col.titulo" class="title-input">
+            
+            <div class="col-meta">
+              <input [(ngModel)]="col.monitor" placeholder="Nome Monitor..." class="monitor-input">
+              
+              <div class="cap-control" matTooltip="Capacidade Máxima">
+                <mat-icon style="font-size:14px; width:14px; height:14px">people</mat-icon>
+                <input type="number" [(ngModel)]="col.capacidade" class="cap-input">
+              </div>
+            </div>
+
+            <div class="capacity-bar">
+               <div class="fill" 
+                    [style.width.%]="(col.lista.length / col.capacidade) * 100"
+                    [class.full]="col.lista.length >= col.capacidade">
+               </div>
+            </div>
+            <div class="count-text">{{ col.lista.length }} / {{ col.capacidade }}</div>
+          </div>
+
+          <div class="col-list"
+               cdkDropList
+               [cdkDropListData]="col.lista"
+               (cdkDropListDropped)="drop($event)">
+            
+            <div class="student-card" *ngFor="let item of col.lista" cdkDrag>
+              <div class="card-row">
+                <span class="s-name">{{ item.participante.nomeCompleto }}</span>
+                <span class="s-age">{{ getIdade(item) }}</span>
+              </div>
+              <div class="gender-stripe" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

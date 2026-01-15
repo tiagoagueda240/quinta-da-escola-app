@@ -230,8 +230,127 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   sair() { this.authService.logout(); }
 
-  async gerarDadosTeste() {
-    // ... Código igual ao anterior ...
+async gerarDadosTeste() {
+    if (!confirm('Tem a certeza? Isto vai adicionar entre 50 a 70 novas inscrições de teste à base de dados.')) return;
+
+    this.mostrarNotificacao('A gerar dados... Por favor aguarde.', 'success');
+
+    // 1. DADOS BASE PARA ALEATORIEDADE
+    const nomesRapazes = ['Santiago', 'Francisco', 'João', 'Afonso', 'Rodrigo', 'Martim', 'Tomás', 'Duarte', 'Miguel', 'Gabriel', 'Lourenço', 'Gonçalo', 'Pedro', 'Tiago', 'Diogo', 'Rafael', 'Gustavo', 'Lucas', 'Simão', 'Salvador'];
+    const nomesRaparigas = ['Maria', 'Leonor', 'Matilde', 'Beatriz', 'Carolina', 'Sofia', 'Alice', 'Mariana', 'Ana', 'Benedita', 'Francisca', 'Margarida', 'Inês', 'Clara', 'Lara', 'Laura', 'Madalena', 'Joana', 'Diana', 'Luísa'];
+    const apelidos = ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Oliveira', 'Costa', 'Rodrigues', 'Martins', 'Jesus', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes', 'Lopes', 'Marques', 'Alves', 'Almeida', 'Ribeiro', 'Pinto', 'Carvalho', 'Teixeira', 'Moreira', 'Correia', 'Mendes', 'Nunes'];
+    
+    const alergiasLista = ['Glúten', 'Lactose', 'Amendoim', 'Marisco', 'Ovo', 'Frutos Secos', 'Picada de Inseto'];
+    const medicacoesLista = ['Bomba Asma SOS', 'Antihistamínico', 'Insulina', 'Ritalina', 'Brufen SOS', 'Paracetamol SOS'];
+    
+    const transportesOpcoes = [
+      { label: 'Não (Entregue pelos pais)', valor: 0 },
+      { label: 'Lisboa - Quinta da Escola (+20€)', valor: 20 },
+      { label: 'Quinta da Escola - Lisboa (+20€)', valor: 20 },
+      { label: 'Lisboa - Quinta - Lisboa (+40€)', valor: 40 }
+    ];
+
+    // 2. DEFINIR QUANTIDADE (50 a 70)
+    const quantidade = Math.floor(Math.random() * (70 - 50 + 1)) + 50;
+    console.log(`A gerar ${quantidade} inscrições...`);
+
+    let contador = 0;
+
+    for (let i = 0; i < quantidade; i++) {
+      
+      // A. GÉNERO E NOME
+      const genero: 'M' | 'F' = Math.random() > 0.5 ? 'M' : 'F';
+      const primeiroNome = genero === 'M' 
+        ? nomesRapazes[Math.floor(Math.random() * nomesRapazes.length)]
+        : nomesRaparigas[Math.floor(Math.random() * nomesRaparigas.length)];
+      
+      const apelido1 = apelidos[Math.floor(Math.random() * apelidos.length)];
+      const apelido2 = apelidos[Math.floor(Math.random() * apelidos.length)];
+      const nomeCompleto = `${primeiroNome} ${apelido1} ${apelido2}`;
+
+      // B. IDADE (8 a 17 anos em relação a 2026)
+      const idade = Math.floor(Math.random() * (17 - 8 + 1)) + 8;
+      const anoNasc = 2026 - idade;
+      const mesNasc = Math.floor(Math.random() * 12);
+      const diaNasc = Math.floor(Math.random() * 28) + 1;
+      const dataNascimento = new Date(anoNasc, mesNasc, diaNasc);
+
+      // C. SAÚDE (Probabilidade: 20% Alergia, 15% Medicação)
+      const temAlergia = Math.random() < 0.2;
+      const detalheAlergia = temAlergia ? alergiasLista[Math.floor(Math.random() * alergiasLista.length)] : '';
+      
+      const tomaMed = Math.random() < 0.15;
+      const detalheMed = tomaMed ? medicacoesLista[Math.floor(Math.random() * medicacoesLista.length)] : '';
+
+      // D. TRANSPORTE (Probabilidade: 40% pede transporte)
+      const querTransporte = Math.random() < 0.4;
+      const transpSelecionado = querTransporte 
+        ? transportesOpcoes[Math.floor(Math.random() * 3) + 1] // Escolhe um dos pagos (índice 1, 2 ou 3)
+        : transportesOpcoes[0]; // Não
+
+      // E. DADOS DIVERSOS
+      const turno = this.listaTurnos[Math.floor(Math.random() * this.listaTurnos.length)];
+      const estadoPag: 'pago' | 'pendente' = Math.random() > 0.4 ? 'pago' : 'pendente'; // 60% pagos
+      const valorTotal = 395 + transpSelecionado.valor;
+
+      // F. CRIAR OBJETO
+      const novaInscricao: any = {
+        dataCriacao: new Date(),
+        tipoCliente: 'individual',
+        nomeInstituicao: '',
+        turnoEscolhido: turno,
+        
+        valorBase: 395,
+        valorTotal: valorTotal,
+        estadoPagamento: estadoPag,
+        
+        transporte: transpSelecionado.label,
+        autorizaFotoVideo: Math.random() > 0.1, // 90% autoriza
+        politicaPrivacidade: true,
+
+        participante: {
+          nomeCompleto: nomeCompleto,
+          dataNascimento: dataNascimento,
+          genero: genero, // <--- CAMPO IMPORTANTE PARA AS CAMARATAS
+          nif: '2' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0'),
+          cc: '1' + Math.floor(Math.random() * 10000000).toString().padStart(7, '0'),
+          morada: 'Rua de Teste, Nº ' + Math.floor(Math.random() * 100),
+          sistemaSaude: Math.random() > 0.7 ? 'ADSE' : 'SNS'
+        },
+
+        saude: {
+          temAlergiaAlimentar: temAlergia,
+          detalheAlergiaAlimentar: detalheAlergia,
+          temOutrasAlergias: false,
+          detalheOutrasAlergias: '',
+          tomaMedicacao: tomaMed ? 'sim' : 'nao',
+          detalheMedicacao: detalheMed
+        },
+
+        ee: {
+          nome: `EE de ${primeiroNome}`,
+          email: `pai.${primeiroNome.toLowerCase()}@teste.com`,
+          telefone: '91' + Math.floor(Math.random() * 10000000).toString().padStart(7, '0'),
+          contactoEmergencia: '96' + Math.floor(Math.random() * 10000000).toString().padStart(7, '0')
+        },
+        
+        // Campos de Logística vazios para testar a distribuição
+        camarata: '',
+        monitorCamarata: '',
+        grupo: '',
+        monitorGrupo: ''
+      };
+
+      try {
+        await this.inscricaoService.addInscricao(novaInscricao);
+        contador++;
+      } catch (error) {
+        console.error('Erro ao criar registo teste:', error);
+      }
+    }
+
+    this.mostrarNotificacao(`Concluído! ${contador} inscrições geradas com sucesso.`, 'success');
+    this.carregarDados(); // Atualiza a tabela
   }
 
 
@@ -345,12 +464,11 @@ gerarPDFTransporte(turnoSelecionado: string) {
       const linhasIda = listaIda.map(item => [
         item.participante.nomeCompleto,
         item.ee.telefone,
-        item.transporte.includes('(+40€)') ? 'Ida e Volta' : 'Só Ida',
         '' // <--- Deixamos vazio para desenhar o quadrado depois
       ]);
 
       autoTable(doc, {
-        head: [['Criança', 'Telefone EE', 'Modalidade', 'Check']],
+        head: [['Criança', 'Telefone EE', 'Check']],
         body: linhasIda,
         startY: currentY,
         theme: 'striped',
@@ -394,12 +512,11 @@ gerarPDFTransporte(turnoSelecionado: string) {
       const linhasVolta = listaVolta.map(item => [
         item.participante.nomeCompleto,
         item.ee.telefone,
-        item.transporte.includes('(+40€)') ? 'Ida e Volta' : 'Só Volta',
         '' // <--- Vazio
       ]);
 
       autoTable(doc, {
-        head: [['Criança', 'Telefone EE', 'Modalidade', 'Check']],
+        head: [['Criança', 'Telefone', 'Check']],
         body: linhasVolta,
         startY: currentY,
         theme: 'striped',

@@ -66,6 +66,17 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Género</mat-label>
+              <mat-select formControlName="genero">
+                <mat-option value="M">Masculino</mat-option>
+                <mat-option value="F">Feminino</mat-option>
+              </mat-select>
+              <mat-error *ngIf="inscricaoForm.get('participante.genero')?.hasError('required')">
+                Obrigatório para logística de quartos
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
               <mat-label>NIF</mat-label>
               <input matInput formControlName="nif">
             </mat-form-field>

@@ -5,6 +5,7 @@ import { InscricaoComponent } from './pages/inscricao/inscricao';
 import { AdminComponent } from './pages/admin/admin';
 import { LoginComponent } from './pages/login/login';
 import { CheckinComponent } from './pages/checkin/checkin';
+import { GruposComponent } from './pages/grupos/grupos';
 
 // Guardas de Segurança
 const redirectUnauthorizedToLogin = () => redirectUnauthorizedTo(['login']);
@@ -34,4 +35,5 @@ export const routes: Routes = [
   },
 
   { path: 'checkin', component: CheckinComponent, ...canActivate(redirectUnauthorizedToLogin)  }, 
+  { path: 'grupos', component: GruposComponent, ...canActivate(redirectUnauthorizedToLogin) }, 
 ];

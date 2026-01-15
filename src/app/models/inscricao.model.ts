@@ -11,6 +11,7 @@ export interface Inscricao {
   // 2. Dados do Participante
   participante: {
     nomeCompleto: string;
+    genero: 'M' | 'F';
     dataNascimento: Date;
     naturalidade: string;
     morada: string;
@@ -53,4 +54,11 @@ export interface Inscricao {
     dinheiroBolso?: number; // Novo: Dinheiro entregue
     notasCheckin?: string;  // Novo: Notas (ex: "Avó vem buscar")
   };
+
+  // --- CAMPOS DE LOGÍSTICA (NOVOS) ---
+  camarata?: string;        // Ex: "Quarto 1 (M)"
+  monitorCamarata?: string; // Ex: "Monitor João"
+  
+  grupo?: string;           // Ex: "Grupo Amarelo"
+  monitorGrupo?: string;    // Ex: "Monitora Ana"
 }

@@ -99,6 +99,7 @@ export class InscricaoComponent implements OnInit {
 
       participante: this.fb.group({
         nomeCompleto: ['', Validators.required],
+        genero: ['', Validators.required],
         dataNascimento: ['', Validators.required],
         nif: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]], 
         morada: ['', Validators.required],
