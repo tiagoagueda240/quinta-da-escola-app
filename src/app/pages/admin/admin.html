@@ -7,19 +7,15 @@
     </div>
     
     <div class="actions-area" style="display: flex; gap: 10px;">
-      
       <button mat-stroked-button (click)="verificarTurnoParaTransporte()" style="color: #444; border-color: #ccc;">
         <mat-icon style="color: #1976d2;">directions_bus</mat-icon> Lista Transportes
       </button>
-
       <button mat-stroked-button (click)="verificarTurnoParaCozinha()" style="color: #444; border-color: #ccc;">
         <mat-icon style="color: #d32f2f;">restaurant</mat-icon> Lista Restrições
       </button>
-
       <button mat-flat-button color="primary" (click)="gerarDadosTeste()">
         <mat-icon>science</mat-icon> Gerar Dados
       </button>
-
       <button mat-stroked-button color="warn" (click)="sair()">
         <mat-icon>logout</mat-icon> Sair
       </button>
@@ -29,16 +25,10 @@
   <div class="selection-bar" *ngIf="selection.hasValue()">
     <div class="selection-count">{{ selection.selected.length }} selecionado(s)</div>
     <div class="selection-actions">
-      <button mat-button class="btn-action success" (click)="marcarSelecionadosComo('pago')">
-        <mat-icon>check_circle</mat-icon> Pagos
-      </button>
-      <button mat-button class="btn-action warn" (click)="marcarSelecionadosComo('pendente')">
-        <mat-icon>pending</mat-icon> Pendentes
-      </button>
+      <button mat-button class="btn-action success" (click)="marcarSelecionadosComo('pago')"><mat-icon>check_circle</mat-icon> Pagos</button>
+      <button mat-button class="btn-action warn" (click)="marcarSelecionadosComo('pendente')"><mat-icon>pending</mat-icon> Pendentes</button>
       <div class="divider"></div>
-      <button mat-button class="btn-action danger" (click)="apagarSelecionados()">
-        <mat-icon>delete</mat-icon> Apagar
-      </button>
+      <button mat-button class="btn-action danger" (click)="apagarSelecionados()"><mat-icon>delete</mat-icon> Apagar</button>
     </div>
   </div>
 
@@ -72,20 +62,32 @@
       </div>
     </div>
 
-    <div class="top-grid">
+<div class="top-grid">
       <div class="stats-container">
+        
         <div class="stat-card-premium">
           <div class="icon-box blue"><mat-icon>groups</mat-icon></div>
           <div><span class="label">Total Inscritos</span><div class="value">{{ totalInscritos }}</div></div>
         </div>
+        
         <div class="stat-card-premium">
           <div class="icon-box orange"><mat-icon>pending_actions</mat-icon></div>
           <div><span class="label">Pendentes</span><div class="value">{{ pendentes }}</div></div>
         </div>
+        
         <div class="stat-card-premium">
-          <div class="icon-box green"><mat-icon>payments</mat-icon></div>
-          <div><span class="label">Receita Est.</span><div class="value">{{ receitaPrevista }}€</div></div>
+          <div class="icon-box teal"><mat-icon>wc</mat-icon></div>
+          
+          <div>
+            <span class="label">Rácio M / F</span>
+            <div class="value" style="display: flex; gap: 8px; align-items: baseline; font-size: 1.2rem;">
+               <span style="color: #1976d2; font-weight: 700;">{{ totalRapazes }} M</span>
+               <span style="color: #e0e0e0; font-weight: 300;">|</span>
+               <span style="color: #d81b60; font-weight: 700;">{{ totalRaparigas }} F</span>
+            </div>
+          </div>
         </div>
+
       </div>
 
       <div class="occupancy-widget mat-elevation-z2">

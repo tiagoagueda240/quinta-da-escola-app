@@ -76,6 +76,7 @@
   grid-template-columns: 1.8fr 1.2fr;
   gap: 25px;
   margin-bottom: 30px;
+  
 }
 
 .stats-container {
@@ -94,11 +95,15 @@
 .icon-box {
   width: 50px; height: 50px; border-radius: 14px;
   display: flex; justify-content: center; align-items: center; flex-shrink: 0;
+  
+  mat-icon { font-size: 26px; width: 26px; height: 26px; color: white; }
+  
+  &.blue { background: linear-gradient(135deg, #42a5f5, #1976d2); }
+  &.orange { background: linear-gradient(135deg, #ffa726, #f57c00); }
+  
+  /* NOVA COR PARA O ÍCONE DE GÉNERO */
+  &.teal { background: linear-gradient(135deg, #26a69a, #00897b); }
 }
-.icon-box mat-icon { font-size: 26px; width: 26px; height: 26px; color: white; }
-.icon-box.blue { background: linear-gradient(135deg, #42a5f5, #1976d2); }
-.icon-box.orange { background: linear-gradient(135deg, #ffa726, #f57c00); }
-.icon-box.green { background: linear-gradient(135deg, #66bb6a, #2e7d32); }
 
 .stat-card-premium .label { font-size: 0.75rem; color: #888; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
 .stat-card-premium .value { font-size: 1.5rem; font-weight: 700; color: #2c3e50; font-family: 'Montserrat', sans-serif; margin-top: 2px; }

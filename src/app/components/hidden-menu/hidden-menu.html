@@ -1,0 +1,25 @@
+<div class="fab-container">
+  <button class="fab-main" (click)="toggleMenu()" [class.active]="isOpen" aria-label="Abrir Menu">
+    <mat-icon class="fab-icon">{{ isOpen ? 'close' : 'add' }}</mat-icon>
+  </button>
+
+  <div class="menu" [class.active]="isOpen">
+
+    <div class="menu-item" (click)="navegar('/grupos')" title="Gestão de Grupos">
+      <mat-icon class="text-indigo-600">groups</mat-icon>
+    </div>
+
+    <div class="menu-item" (click)="navegar('/checkin')" title="Check-in Entrada">
+      <mat-icon class="text-indigo-600">how_to_reg</mat-icon>
+    </div>
+
+    <div class="menu-item" (click)="navegar('/admin')" title="Painel Geral">
+      <mat-icon class="text-indigo-600">dashboard</mat-icon>
+    </div>
+
+        <div class="menu-item" (click)="logout()" title="Sair da Conta">
+      <mat-icon class="text-red-500">logout</mat-icon>
+    </div>
+
+  </div>
+</div>

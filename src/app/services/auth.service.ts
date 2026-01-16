@@ -1,36 +1,37 @@
 import { Injectable, inject } from '@angular/core';
-import { Auth, signInWithEmailAndPassword, signOut, user, User } from '@angular/fire/auth';
+import { Auth, authState, signInWithEmailAndPassword, signOut } from '@angular/fire/auth';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  // Injeta o Auth corretamente
-  private auth: Auth = inject(Auth);
+  private auth = inject(Auth);
   private router = inject(Router);
-  
-  // O truque: user$ deve ser um Observable derivado do auth injetado
-  readonly user$: Observable<User | null> = user(this.auth);
 
-  constructor() {}
+  // --- A CORREÇÃO MÁGICA ---
+  // Em vez de usar BehaviorSubject manual, usamos o estado real do Firebase.
+  // Se existir um 'user', retorna true. Se for null, retorna false.
+  public isLoggedIn$: Observable<boolean> = authState(this.auth).pipe(
+    map(user => !!user)
+  );
 
-  // Login
-  login(email: string, pass: string) {
-    return signInWithEmailAndPassword(this.auth, email, pass)
-      .then(() => {
-        this.router.navigate(['/admin']);
-      })
-      .catch(erro => {
-        throw erro;
-      });
+  // Login real com Firebase
+  async login(email: string, pass: string) {
+    try {
+      await signInWithEmailAndPassword(this.auth, email, pass);
+      this.router.navigate(['/admin']);
+    } catch (error) {
+      console.error('Erro no login:', error);
+      alert('Email ou password errados');
+    }
   }
 
-  // Logout
-  logout() {
-    return signOut(this.auth).then(() => {
-      this.router.navigate(['/login']);
-    });
+  // Logout real
+  async logout() {
+    await signOut(this.auth);
+    this.router.navigate(['/login']);
   }
 }
