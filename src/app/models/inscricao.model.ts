@@ -1,11 +1,10 @@
 
 export interface Inscricao {
-  id?: string; // Gerado automaticamente pelo Firebase
+  id?: string; 
   dataCriacao: Date;
   
-  // 1. Dados Iniciais
   tipoCliente: 'individual' | 'instituicao';
-  nomeInstituicao?: string; // Só preenchido se tipoCliente for instituicao
+  nomeInstituicao?: string; 
   turnoEscolhido: string;   // Ex: "2º Turno - 6 a 12 Julho"
 
   // 2. Dados do Participante
@@ -17,48 +16,43 @@ export interface Inscricao {
     morada: string;
     codigoPostal: string;
     localidade: string;
-    cc: string;             // Cartão de Cidadão
+    cc: string;             
     sistemaSaude: string;
-    nif: string;            // Nº Contribuinte
+    nif: string;            
   };
 
-  // 3. Saúde e Alergias
   saude: {
     temAlergiaAlimentar: boolean;
-    detalheAlergiaAlimentar?: string; // Só se temAlergiaAlimentar for true
+    detalheAlergiaAlimentar?: string; 
     temOutrasAlergias: boolean;
     detalheOutrasAlergias?: string;
     tomaMedicacao: boolean;
-    detalheMedicacao?: string;        // Ex: "Sim", guarda qual e a frequência
+    detalheMedicacao?: string;       
   };
 
-  // 4. Encarregado de Educação
   ee: {
     nome: string;
     email: string;
-    telefone: string; // Ex: +351 ...
-    contactoEmergencia?: string; // Outros telefones úteis
+    telefone: string; 
+    contactoEmergencia?: string; 
   };
 
-  // 5. Autorizações e Logística
-  autorizaFotoVideo: boolean; // Sim/Não
-  transporte: string;         // Ex: "Não", "Lisboa -> Quinta", etc.
+  autorizaFotoVideo: boolean; 
+  transporte: string;         
   
-  // 6. Financeiro
-  valorTotal: number;         // Ex: 370 (calculado dinamicamente)
-  estadoPagamento: 'pendente' | 'pago'; // Para a tua gestão interna
+  valorTotal: number;        
+  estadoPagamento: 'pendente' | 'pago'; 
 
   checkin?: {
     status: 'dentro' | 'fora';
-    dataEntrada: Date; // Mudámos de horaUltimoRegisto para dataEntrada
-    dinheiroBolso?: number; // Novo: Dinheiro entregue
-    notasCheckin?: string;  // Novo: Notas (ex: "Avó vem buscar")
+    dataEntrada: Date; 
+    dinheiroBolso?: number; 
+    notasCheckin?: string;  
   };
 
-  // --- CAMPOS DE LOGÍSTICA (NOVOS) ---
-  camarata?: string;        // Ex: "Quarto 1 (M)"
-  monitorCamarata?: string; // Ex: "Monitor João"
+  camarata?: string;        
+  monitorCamarata?: string;
   
-  grupo?: string;           // Ex: "Grupo Amarelo"
-  monitorGrupo?: string;    // Ex: "Monitora Ana"
+  grupo?: string;           
+  monitorGrupo?: string;   
 }

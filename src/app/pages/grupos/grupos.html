@@ -1,186 +1,137 @@
 <div class="grupos-layout">
+    <header class="control-header mat-elevation-z2">
+        <div class="header-left">
+            <h2><mat-icon>dashboard</mat-icon> Logística do Turno</h2>
+        </div>
 
-  <header class="control-header mat-elevation-z2">
-    <div class="header-left">
-      <h2><mat-icon>dashboard</mat-icon> Logística</h2>
-    </div>
+        <div class="header-center">
+            <mat-form-field appearance="outline" class="turno-select">
+                <mat-label>Selecione o Turno</mat-label>
+                <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
+                    <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+                </mat-select>
+            </mat-form-field>
 
-    <div class="header-center">
-      <mat-form-field appearance="outline" class="turno-select">
-        <mat-label>Selecione o Turno</mat-label>
-        <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
-          <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <div class="search-box" *ngIf="turnoSelecionado">
-        <mat-icon>search</mat-icon>
-        <input type="text" placeholder="Procurar criança..." [(ngModel)]="termoPesquisa">
-      </div>
-    </div>
-
-    <div class="header-right" style="display:flex; gap:10px">
-      <button mat-stroked-button [disabled]="!turnoSelecionado" (click)="abrirDialogEquipa()">
-        <mat-icon>group_add</mat-icon> Gerir Equipa
-      </button>
-      <button mat-stroked-button color="primary" [disabled]="!turnoSelecionado" (click)="abrirDialogImpressao()">
-        <mat-icon>print</mat-icon> Fichas
-      </button>
-      <button mat-raised-button color="primary" [disabled]="!turnoSelecionado" (click)="guardarAlteracoes()">
-        <mat-icon>save</mat-icon> Guardar
-      </button>
-    </div>
-  </header>
-
-  <div class="empty-state" *ngIf="!turnoSelecionado">
-    <mat-icon>touch_app</mat-icon>
-    <h3>Selecione um turno acima para começar</h3>
-  </div>
-
-  <div class="workspace" *ngIf="turnoSelecionado">
-    
-    <mat-tab-group animationDuration="0ms" class="custom-tabs" (selectedTabChange)="trocarAba($event.index)">
-      
-      <mat-tab label="🛌 Camaratas">
-        <div class="toolbar">
-          <div class="step-group">
-            <span class="step-label">Passo 1: Estrutura</span>
-            <div class="input-row">
-              <mat-form-field appearance="outline" class="tiny-input" style="width:110px"><mat-label>Monitores (M)</mat-label><input matInput type="number" [(ngModel)]="qtdQuartosM" min="1"></mat-form-field>
-              <mat-form-field appearance="outline" class="tiny-input" style="width:110px"><mat-label>Monitoras (F)</mat-label><input matInput type="number" [(ngModel)]="qtdQuartosF" min="1"></mat-form-field>
-              <button mat-stroked-button (click)="inicializarQuartos()">Criar</button>
+            <div class="search-box" *ngIf="turnoSelecionado">
+                <mat-icon>search</mat-icon>
+                <input type="text" placeholder="Localizar criança..." [(ngModel)]="termoPesquisa">
             </div>
-          </div>
-          <div class="divider-vertical"></div>
-          <div class="step-group">
-            <span class="step-label">Passo 2: Distribuir</span>
-            <button mat-flat-button color="accent" (click)="distribuirNasCamaratas()" [disabled]="colunasCamaratas.length === 0">
-              <mat-icon>balance</mat-icon> Auto-Equilibrar
+        </div>
+
+        <div class="header-right">
+            <button mat-stroked-button [disabled]="!turnoSelecionado" (click)="abrirDialogEquipa()"
+                matTooltip="Gerir monitores deste turno">
+                <mat-icon>group_add</mat-icon> Equipa ({{ equipaMonitores.length }})
             </button>
-          </div>
+            <button mat-raised-button color="primary" [disabled]="!turnoSelecionado" (click)="guardarAlteracoes()">
+                <mat-icon>save</mat-icon> Guardar Tudo
+            </button>
         </div>
-      </mat-tab>
+    </header>
 
-      <mat-tab label="🏃 Grupos Atividade">
-        <div class="toolbar">
-          <div class="step-group">
-            <span class="step-label">Passo Único</span>
-            <div class="input-row">
-              <mat-form-field appearance="outline" class="tiny-input"><mat-label>Qtd. Grupos</mat-label><input matInput type="number" [(ngModel)]="qtdGruposAtiv"></mat-form-field>
-              <button mat-flat-button color="accent" (click)="gerarGruposAtividade()">
-                <mat-icon>shuffle</mat-icon> Gerar Mistos
-              </button>
-            </div>
-          </div>
-        </div>
-      </mat-tab>
-    </mat-tab-group>
-
-    <div class="board-container" cdkDropListGroup>
-
-      <div class="sidebar-unassigned mat-elevation-z4">
-        <div class="dock-header">
-          <span>Por Atribuir</span>
-          <span class="badge">{{ poolVisual.length }}</span>
-        </div>
-        <div class="dock-list" cdkDropList [cdkDropListData]="poolVisual" (cdkDropListDropped)="drop($event)">
-          <div class="student-chip" *ngFor="let item of poolVisual" cdkDrag [class.highlight]="eResultadoPesquisa(item)">
-            <div class="avatar" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'">{{ item.participante.nomeCompleto.charAt(0) }}</div>
-            <div class="info">
-              <span class="name">{{ item.participante.nomeCompleto }}</span>
-              <div class="badges">
-                <span class="age">{{ getIdade(item) }}a</span>
-                <mat-icon *ngIf="temAlergia(item)" class="alert-icon" matTooltip="Alergia!">warning</mat-icon>
-                <mat-icon *ngIf="temMedicacao(item)" class="med-icon" matTooltip="Medicação!">medication</mat-icon>
-              </div>
-            </div>
-          </div>
-          <div class="empty-msg" *ngIf="poolVisual.length === 0">Todos atribuídos!</div>
-        </div>
-      </div>
-
-      <div class="columns-area">
-        <div class="group-column mat-elevation-z2" *ngFor="let col of colunasAtivas" 
-             [class.is-male]="col.genero === 'M'" [class.is-female]="col.genero === 'F'" [class.is-mixed]="col.genero === 'Misto'">
-          
-          <div class="col-header">
-            <div class="header-top">
-                <input [(ngModel)]="col.titulo" class="title-input">
-                <button class="print-btn" (click)="imprimirFichaMonitor(col.monitor)" matTooltip="Imprimir Ficha"><mat-icon>print</mat-icon></button>
-            </div>
-            
-            <div class="col-meta">
-              
-              <mat-select [(ngModel)]="col.monitor" placeholder="Selecionar Monitor" class="monitor-select">
-                <mat-option [value]="''">-- Ninguém --</mat-option>
-                <mat-option *ngFor="let m of equipaMonitores" [value]="m" [disabled]="!isMonitorDisponivel(m, col)">
-                  {{ m }}
-                  <span *ngIf="!isMonitorDisponivel(m, col)" style="font-size:0.75em; opacity:0.7"> (Ocupado)</span>
-                </mat-option>
-              </mat-select>
-
-              <div class="cap-control" matTooltip="Capacidade">
-                <mat-icon style="font-size:14px; width:14px; height:14px">people</mat-icon>
-                <input type="number" [(ngModel)]="col.capacidade" class="cap-input">
-              </div>
-            </div>
-            <div class="capacity-bar"><div class="fill" [style.width.%]="(col.lista.length / col.capacidade) * 100" [class.full]="col.lista.length >= col.capacidade"></div></div>
-            <div class="count-text">{{ col.lista.length }} / {{ col.capacidade }}</div>
-          </div>
-
-          <div class="col-list" cdkDropList [cdkDropListData]="col.lista" (cdkDropListDropped)="drop($event)">
-            <div class="student-card" *ngFor="let item of col.lista" cdkDrag [class.highlight]="eResultadoPesquisa(item)">
-              <div class="card-row">
-                <span class="s-name">{{ item.participante.nomeCompleto }}</span>
-                <div class="icons-row">
-                    <mat-icon *ngIf="temAlergia(item)" class="alert-icon tiny">warning</mat-icon>
-                    <mat-icon *ngIf="temMedicacao(item)" class="med-icon tiny">medication</mat-icon>
-                    <span class="s-age">{{ getIdade(item) }}</span>
-                </div>
-              </div>
-              <div class="gender-stripe" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'"></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
+    <div class="empty-state" *ngIf="!turnoSelecionado">
+        <mat-icon>event_available</mat-icon>
+        <h3>Selecione um turno para começar a organização</h3>
     </div>
-  </div>
+
+    <div class="workspace" *ngIf="turnoSelecionado">
+        <mat-tab-group (selectedTabChange)="trocarAba($event.index)">
+            <mat-tab label="🛌 Camaratas">
+                <div class="toolbar">
+                    <mat-form-field appearance="outline" class="tiny-input"><mat-label>Masculinos</mat-label><input
+                            matInput type="number" [(ngModel)]="qtdQuartosM"></mat-form-field>
+                    <mat-form-field appearance="outline" class="tiny-input"><mat-label>Femininos</mat-label><input
+                            matInput type="number" [(ngModel)]="qtdQuartosF"></mat-form-field>
+                    <button mat-stroked-button (click)="inicializarQuartos()">Criar Estrutura</button>
+                    <div class="divider"></div>
+                    <button mat-flat-button color="accent" (click)="distribuirNasCamaratas()">Auto-Distribuir</button>
+                </div>
+            </mat-tab>
+            <mat-tab label="🏃 Atividades">
+                <div class="toolbar">
+                    <mat-form-field appearance="outline" class="tiny-input"><mat-label>Grupos</mat-label><input matInput
+                            type="number" [(ngModel)]="qtdGruposAtiv"></mat-form-field>
+                    <button mat-flat-button color="accent" (click)="gerarGruposAtividade()">Gerar Grupos</button>
+                </div>
+            </mat-tab>
+        </mat-tab-group>
+
+        <div class="board-container" cdkDropListGroup>
+            <div class="sidebar-unassigned">
+                <div class="dock-header">Por Atribuir <span>{{ poolVisual.length }}</span></div>
+                <div class="dock-list" cdkDropList [cdkDropListData]="poolVisual" (cdkDropListDropped)="drop($event)">
+                    <div class="student-chip" *ngFor="let item of poolVisual" cdkDrag
+                        [class.highlight]="item.participante.nomeCompleto.toLowerCase().includes(termoPesquisa.toLowerCase()) && termoPesquisa">
+                        <div class="avatar" [class.boy]="getGenero(item) === 'M'"
+                            [class.girl]="getGenero(item) === 'F'">{{ item.participante.nomeCompleto.charAt(0) }}</div>
+                        <div class="info">
+                            <span class="name">{{ item.participante.nomeCompleto }}</span>
+                            <span class="age">{{ getIdade(item) }}a</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="columns-area">
+                <div class="group-column" *ngFor="let col of colunasAtivas" [class.is-male]="col.genero === 'M'"
+                    [class.is-female]="col.genero === 'F'">
+                    <div class="col-header">
+                        <input [(ngModel)]="col.titulo" class="title-input">
+                        <mat-select [(ngModel)]="col.monitor" placeholder="Selecionar Monitor" class="monitor-select">
+                            <mat-option [value]="''">-- Sem Monitor --</mat-option>
+                            <mat-option *ngFor="let m of equipaMonitores" [value]="m"
+                                [disabled]="!isMonitorDisponivel(m, col)">{{ m }}</mat-option>
+                        </mat-select>
+                        <div class="count">{{ col.lista.length }} / {{ col.capacidade }}</div>
+                    </div>
+                    <div class="col-list" cdkDropList [cdkDropListData]="col.lista" (cdkDropListDropped)="drop($event)">
+                        <div class="student-card" *ngFor="let item of col.lista" cdkDrag>
+                            {{ item.participante.nomeCompleto }}
+                            <div class="stripe" [class.boy]="getGenero(item) === 'M'"
+                                [class.girl]="getGenero(item) === 'F'"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<ng-template #dialogMonitores>
-  <h2 mat-dialog-title style="margin-bottom:0">🖨️ Fichas de Monitor</h2>
-  <mat-dialog-content>
-    <p style="color:#666; margin-bottom:15px">Selecione um monitor para gerar o PDF.</p>
-    <div class="monitores-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; max-height:400px; overflow-y:auto;">
-      <button mat-stroked-button *ngFor="let monitor of getListaMonitoresAtivos()" (click)="imprimirFichaMonitor(monitor)" style="justify-content: flex-start; height: 50px;">
-        <mat-icon style="margin-right:10px; color:#555">person</mat-icon> {{ monitor }}
-      </button>
-    </div>
-    <div *ngIf="getListaMonitoresAtivos().length === 0" style="padding:30px; text-align:center; color:#999; border:2px dashed #eee; border-radius:8px;">
-      <p>Ainda não atribuíste monitores.</p>
-    </div>
-  </mat-dialog-content>
-  <mat-dialog-actions align="end"><button mat-button mat-dialog-close>Fechar</button></mat-dialog-actions>
-</ng-template>
-
 <ng-template #dialogGerirEquipa>
-  <h2 mat-dialog-title>👥 Gerir Equipa do Turno</h2>
-  <mat-dialog-content>
-    <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">Adicione os monitores disponíveis para este turno.</p>
-    <div style="display:flex; gap:10px; margin-bottom:20px;">
-      <mat-form-field appearance="outline" style="flex:1">
-        <mat-label>Nome do Monitor</mat-label>
-        <input matInput [(ngModel)]="novoMonitorNome" (keyup.enter)="adicionarMonitor()">
-      </mat-form-field>
-      <button mat-flat-button color="primary" style="height: 56px;" (click)="adicionarMonitor()"><mat-icon>add</mat-icon></button>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 15px 0 15px;">
+        <h2 mat-dialog-title style="margin: 0;">👥 Equipa do Turno</h2>
+        <button mat-mini-fab color="primary" *ngIf="!exibirBusca" (click)="exibirBusca = true">
+            <mat-icon>person_add</mat-icon>
+        </button>
     </div>
-    <mat-chip-listbox>
-      <mat-chip-option *ngFor="let m of equipaMonitores" [removable]="true" (removed)="removerMonitor(m)" color="accent" selected>
-        {{ m }} <mat-icon matChipRemove>cancel</mat-icon>
-      </mat-chip-option>
-    </mat-chip-listbox>
-    <p *ngIf="equipaMonitores.length === 0" style="margin-top:20px; text-align:center; color:#999; font-style:italic">Ainda sem equipa.</p>
-  </mat-dialog-content>
-  <mat-dialog-actions align="end"><button mat-button mat-dialog-close>Concluído</button></mat-dialog-actions>
+
+    <mat-dialog-content>
+        <div *ngIf="exibirBusca"
+            style="margin-top: 15px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fafafa;">
+            <mat-form-field appearance="outline" style="width: 100%;">
+                <mat-label>Pesquisar na Base de Dados...</mat-label>
+                <input type="text" matInput [formControl]="controlMonitor" [matAutocomplete]="auto">
+                <mat-autocomplete #auto="matAutocomplete"
+                    (optionSelected)="adicionarMonitorAEquipa($event.option.value)">
+                    <mat-option *ngFor="let m of monitoresFiltrados | async" [value]="m">{{ m.nome }}</mat-option>
+                </mat-autocomplete>
+            </mat-form-field>
+            <button mat-button color="warn" (click)="exibirBusca = false" style="width: 100%;">Cancelar</button>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <p style="font-size: 0.75rem; font-weight: bold; color: #888; text-transform: uppercase;">Monitores
+                marcados:</p>
+            <mat-chip-set>
+                <mat-chip-row *ngFor="let m of equipaMonitores" (removed)="removerMonitorDaEquipa(m)">
+                    {{ m }} <button matChipRemove><mat-icon>cancel</mat-icon></button>
+                </mat-chip-row>
+            </mat-chip-set>
+            <div *ngIf="equipaMonitores.length === 0" style="padding: 20px; text-align: center; color: #999;">
+                Nenhum monitor escalado.
+            </div>
+        </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end"><button mat-button mat-dialog-close
+            color="primary">Fechar</button></mat-dialog-actions>
 </ng-template>

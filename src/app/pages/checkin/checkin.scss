@@ -3,11 +3,10 @@
   background-color: #f7f9fc;
   min-height: 100vh;
   font-family: 'Lato', sans-serif;
-  padding-top: 200px; /* Espaço para o cabeçalho */
+  padding-top: 200px;
   padding-bottom: 40px;
 }
 
-/* --- HEADER FIXO --- */
 .header-area {
   position: fixed; top: 0; left: 0; width: 100%;
   background: white; z-index: 100;
@@ -17,9 +16,8 @@
   padding-bottom: 15px;
 }
 
-/* Wrapper para centrar o conteúdo do header no PC */
 .header-content {
-  max-width: 600px; /* Mobile default */
+  max-width: 600px;
   margin: 0 auto;
   width: 100%;
 }
@@ -41,7 +39,6 @@
 }
 .counter-badge.has-people { background: #e8f5e9; color: #2e7d32; }
 
-/* --- SCROLL DE TURNOS --- */
 .shift-scroller {
   display: flex; gap: 10px; overflow-x: auto;
   padding: 10px 20px;
@@ -59,7 +56,6 @@
   background: #2e7d32; color: white; box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
 }
 
-/* --- PESQUISA --- */
 .search-wrapper { padding: 5px 20px; }
 .search-box {
   background: #f0f2f5; border-radius: 12px; height: 45px;
@@ -68,23 +64,21 @@
 .search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.95rem; margin-left: 10px; }
 .search-box mat-icon { color: #999; font-size: 20px; }
 
-/* --- CARTÕES (LISTA) --- */
 .content-area { 
   padding: 0 20px; 
-  max-width: 600px; /* Mobile Default */
+  max-width: 600px;
   margin: 0 auto; 
 }
 
 .kid-card {
   background: white; border-radius: 18px; padding: 15px; 
-  margin-bottom: 20px; /* Mais espaço vertical no mobile */
+  margin-bottom: 20px; 
   display: flex; justify-content: space-between; align-items: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.02); border: 1px solid white;
   transition: transform 0.1s;
 }
 .kid-card:active { transform: scale(0.98); }
 
-/* Estilo quando está Dentro */
 .kid-card.checked-in { border: 1px solid #c8e6c9; background: #f1f8e9; }
 
 .card-body { display: flex; align-items: center; gap: 15px; flex: 1; }
@@ -116,7 +110,6 @@
 .note { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
 .checkin-details mat-icon { font-size: 12px; width: 12px; height: 12px; margin-right: 2px; }
 
-/* --- BOTÕES --- */
 .btn-action {
   border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.75rem; font-weight: 700;
   cursor: pointer; transition: all 0.2s; min-width: 80px;
@@ -124,7 +117,6 @@
 .btn-action.enter { background: #222; color: white; }
 .btn-action.leave { background: white; color: #c62828; border: 1px solid #ffcdd2; }
 
-/* --- POPUP (Custom Style) --- */
 .popup-container { padding: 10px; text-align: center; }
 .popup-container h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
 .subtitle { color: #666; margin: 0 0 20px 0; font-size: 0.9rem; }
@@ -145,13 +137,12 @@
   margin-top: 10px; cursor: pointer;
 }
 
-/* Empty State (Base) */
 .empty-state { 
   text-align: center; padding: 40px; color: #aaa; font-size: 0.9rem; 
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 
-/* ... (mantenha todo o CSS anterior até a parte responsiva) ... */
+
 
 /* ========================================= */
 /* --- VERSÃO COMPUTADOR (RESPONSIVO) --- */
@@ -159,44 +150,36 @@
 
 @media (min-width: 900px) {
   
-  /* 1. Alargar os contentores para aproveitar o espaço */
   .header-content, 
   .content-area {
-    max-width: 1100px; /* Largura máxima maior para PC */
+    max-width: 1100px;
     margin: 0 auto;
   }
 
-  /* 2. Transformar a lista em Grelha de 2 Colunas com Espaçamento Correto */
   .content-area {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Duas colunas de largura igual */
-    
-    /* AQUI ESTÁ A CORREÇÃO: Gap define o espaço horizontal E vertical */
-    gap: 30px; /* 30px de espaço entre colunas e linhas */
-    
-    padding-bottom: 60px; /* Espaço extra no final da página */
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    padding-bottom: 60px;
   }
 
   .kid-card {
-    margin-bottom: 0; /* Remove a margem individual, o 'gap' controla o espaço agora */
-    height: 100%; /* Garante que cards na mesma linha tenham a mesma altura */
-    box-sizing: border-box; /* Garante que padding não aumente o tamanho total */
+    margin-bottom: 0;
+    height: 100%; 
+    box-sizing: border-box; 
   }
 
-  /* 3. Ajustar o Header */
   .header-area {
     padding-bottom: 20px;
   }
   
-  /* Centralizar elementos do header */
   .search-wrapper, .shift-scroller, .top-info {
     max-width: 1100px;
     margin: 0 auto;
   }
 
-  /* CORREÇÃO DO EMPTY STATE NO GRID */
   .empty-state {
-    grid-column: 1 / -1; /* Ocupa a largura total (as duas colunas) */
+    grid-column: 1 / -1;
     margin-top: 50px;
   }
 }

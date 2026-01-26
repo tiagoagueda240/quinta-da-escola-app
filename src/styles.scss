@@ -1,18 +1,13 @@
-/* src/styles.css */
-
-/* 1. Importar o tema base do Angular Material (Isto conserta os inputs bloqueados) */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-/* 2. Configurações Globais */
 html, body { 
   height: 100%; 
   margin: 0; 
-  background-color: #f0f4f1; /* Um cinza-esverdeado muito suave */
+  background-color: #f0f4f1; 
   font-family: Roboto, "Helvetica Neue", sans-serif;
 }
 
-/* Ajuste para os títulos ficarem bonitos */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #2e7d32; /* Verde Quinta da Escola */
+  color: #2e7d32; 
 }

@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { InscricaoService } from '../../services/inscricao.service';
 import { Inscricao } from '../../models/inscricao.model';
-
-// Importações do Angular Material
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -41,7 +39,7 @@ export const FORMATOS_PT = {
     MatCardModule,
     MatIconModule
   ],
-  templateUrl: './inscricao.html', // Nota: Verifica se o nome do ficheiro é inscricao.component.html ou inscricao.html no teu projeto
+  templateUrl: './inscricao.html',
   styleUrls: ['./inscricao.scss'],
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'pt-PT' },
@@ -50,14 +48,10 @@ export const FORMATOS_PT = {
 })
 export class InscricaoComponent implements OnInit {
   inscricaoForm!: FormGroup;
-  
+
   valorBase = 395;
   valorTotal = 395;
-  
   isSubmitting = false;
-  detalhesPreco = '';
-  
-  // NOVA VARIÁVEL: Controla o ecrã de sucesso
   mostrarSucesso = false;
 
   private fb = inject(FormBuilder);
@@ -85,7 +79,8 @@ export class InscricaoComponent implements OnInit {
 
   ngOnInit(): void {
     this.criarFormulario();
-    
+
+    // Atualiza o preço sempre que o transporte mudar
     this.inscricaoForm.get('transporte')?.valueChanges.subscribe(() => {
       this.calcularTotal();
     });
@@ -94,14 +89,19 @@ export class InscricaoComponent implements OnInit {
   criarFormulario() {
     this.inscricaoForm = this.fb.group({
       tipoCliente: ['individual', Validators.required],
-      nomeInstituicao: [''], 
+      nomeInstituicao: [''],
       turnoEscolhido: ['', Validators.required],
 
       participante: this.fb.group({
         nomeCompleto: ['', Validators.required],
         genero: ['', Validators.required],
         dataNascimento: ['', Validators.required],
-        nif: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]], 
+
+        nif: ['', [
+          Validators.required,
+          Validators.pattern(/^[0-9]{9}$/)
+        ]],
+
         morada: ['', Validators.required],
         cc: ['', Validators.required],
         sistemaSaude: ['']
@@ -112,14 +112,18 @@ export class InscricaoComponent implements OnInit {
         detalheAlergiaAlimentar: [''],
         temOutrasAlergias: [false],
         detalheOutrasAlergias: [''],
-        tomaMedicacao: ['nao'], 
+        tomaMedicacao: ['nao'],
         detalheMedicacao: ['']
       }),
 
       ee: this.fb.group({
         nome: ['', Validators.required],
         email: ['', [Validators.required, Validators.email]],
-        telefone: ['', Validators.required],
+
+        telefone: ['', [
+          Validators.required,
+          Validators.pattern(/^[0-9]{9}$/)
+        ]],
         contactoEmergencia: ['']
       }),
 
@@ -129,24 +133,25 @@ export class InscricaoComponent implements OnInit {
     });
   }
 
+  permitirApenasNumeros(event: KeyboardEvent): boolean {
+    const charCode = (event.which) ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      return false;
+    }
+    return true;
+  }
+
   calcularTotal() {
     const valorTransporte = this.inscricaoForm.get('transporte')?.value || 0;
     this.valorTotal = this.valorBase + Number(valorTransporte);
-    
-    if (valorTransporte > 0) {
-      this.detalhesPreco = `(Base: ${this.valorBase}€ + Transporte: ${valorTransporte}€)`;
-    } else {
-      this.detalhesPreco = '(Valor Base)';
-    }
   }
 
   async onSubmit() {
     if (this.inscricaoForm.valid) {
       this.isSubmitting = true;
-      // Não desabilitamos o form imediatamente para não ficar cinzento atrás do overlay
-      
+
       const dadosForm = this.inscricaoForm.getRawValue();
-      
+
       const novaInscricao: Inscricao = {
         ...dadosForm,
         dataCriacao: new Date(),
@@ -157,27 +162,22 @@ export class InscricaoComponent implements OnInit {
 
       try {
         await this.inscricaoService.addInscricao(novaInscricao);
-        
-        // --- AQUI ESTÁ A MUDANÇA ---
-        // Em vez de alert e reset, mostramos o overlay
+
         this.mostrarSucesso = true;
         this.isSubmitting = false;
-        
-        // Scroll para o topo para garantir que o overlay é visto corretamente em mobile
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        
+
       } catch (erro) {
         console.error('Erro ao submeter:', erro);
-        alert('Ocorreu um erro técnico. Por favor, tente novamente ou contacte-nos.');
+        alert('Ocorreu um erro técnico. Por favor, tente novamente.');
         this.isSubmitting = false;
       }
     } else {
       this.inscricaoForm.markAllAsTouched();
-      alert('Por favor, preencha todos os campos obrigatórios assinalados a vermelho.');
+      alert('Por favor, verifique os campos assinalados a vermelho.');
     }
   }
 
-  // Função chamada pelo botão "Inscrever Irmão"
   novaInscricao() {
     window.location.reload();
   }

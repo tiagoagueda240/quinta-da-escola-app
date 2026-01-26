@@ -1,0 +1,293 @@
+// ============================================================
+// LAYOUT BASE
+// ============================================================
+.monitores-layout {
+  min-height: 100vh;
+  background: #f4f6f8;
+  display: flex; flex-direction: column;
+}
+
+// ============================================================
+// HEADER & DASHBOARD
+// ============================================================
+.page-header {
+  background: white; padding: 15px 30px; border-bottom: 1px solid #ddd;
+  
+  .header-top { 
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; 
+    h1 { margin: 0; font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; font-size: 1.3rem; }
+  }
+
+  .stats-bar {
+    display: flex; align-items: center; gap: 15px;
+    
+    .stat-pill {
+      display: flex; align-items: center; gap: 10px; padding: 8px 15px; border-radius: 50px;
+      &.monitors { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+      &.kids { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; border-radius: 12px; }
+      
+      .kids-detail { display: flex; flex-direction: column; line-height: 1; strong { font-size: 0.9rem; } small { font-size: 0.7rem; opacity: 0.8; } }
+    }
+    
+    .stat-arrow { display: flex; flex-direction: column; align-items: center; color: #999; .ratio-label { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; } }
+  }
+
+  .controls-row {
+     display: flex; gap: 15px; align-items: center; justify-content: space-evenly;
+     .turn-selector { min-width: 350px; margin-bottom: -15px; }
+     .search-box { flex: 0.5; background: #f0f2f5; height: 50px; border-radius: 8px; display: flex; align-items: center; padding: 0 15px; input { border: none; background: transparent; width: 100%; outline: none; margin-left: 10px; } }
+  }
+}
+
+.content-area { flex: 1; padding: 20px; max-width: 1400px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+
+// ============================================================
+// SPLIT VIEW (MODO TURNO - ARRASTAR E LARGAR)
+// ============================================================
+.split-view {
+  display: flex; gap: 20px; height: calc(100vh - 180px);
+  
+  .column {
+    display: flex; flex-direction: column;
+    border-radius: 12px; overflow: hidden;
+    
+    .col-header {
+      padding: 15px; display: flex; justify-content: space-between; align-items: center;
+      h3 { margin: 0; font-size: 1rem; text-transform: uppercase; color: #666; font-weight: bold; letter-spacing: 0.5px; }
+      .badge { background: #2e7d32; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; &.grey { background: #999; } }
+    }
+
+    // Barra de scroll bonita
+    .drop-zone { 
+      flex: 1; overflow-y: auto; padding: 10px; 
+      &::-webkit-scrollbar { width: 6px; }
+      &::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    }
+  }
+
+  // --- LADO ESQUERDO (Atribuídos) ---
+  .assigned-col {
+    flex: 1; min-width: 320px; max-width: 400px;
+    background: #e8f5e9; border: 1px solid #c8e6c9;
+
+    .compact-card.assigned {
+      background: white; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #2e7d32;
+      cursor: grab;
+      
+      .drag-handle mat-icon { font-size: 18px; color: #ccc; cursor: grab; }
+      .mini-avatar { width: 30px; height: 30px; background: #2e7d32; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.8rem; font-weight: bold; }
+      .info-row { flex: 1; display: flex; flex-direction: column; line-height: 1.2; .name { font-weight: 600; font-size: 0.9rem; } .role { font-size: 0.7rem; color: #666; } }
+      .mini-btn mat-icon { font-size: 18px; }
+    }
+  }
+
+  // --- LADO DIREITO (Disponíveis - Compacto para Arrastar) ---
+  .available-col {
+    flex: 2; background: white; border: 1px solid #e0e0e0;
+
+    .grid-mode {
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+      grid-auto-rows: min-content; 
+      gap: 12px;
+    }
+
+    .compact-card.available {
+      background: white; border: 1px solid #eee; border-radius: 10px; position: relative; overflow: hidden; cursor: grab;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.03); transition: all 0.2s; padding-bottom: 8px;
+
+      &:hover { border-color: #bbdefb; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+
+      // Linha lateral colorida
+      .status-line {
+        position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+        background: #ff9800; // Laranja
+        &.official { background: #2e7d32; } // Verde
+      }
+
+      .card-content { padding: 10px 10px 0 14px; }
+
+      .header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+      .mini-avatar {
+        width: 34px; height: 34px; background: #fff3e0; color: #e65100; border-radius: 50%; 
+        display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;
+        &.green { background: #e8f5e9; color: #2e7d32; }
+      }
+
+      .main-info {
+        flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+        .name { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .badges-row { display: flex; align-items: center; gap: 5px; }
+      }
+
+      .role-badge {
+        font-size: 0.65rem; text-transform: uppercase; font-weight: 800; padding: 1px 6px; border-radius: 4px;
+        &.intern { background: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
+        &.monitor { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+      }
+
+      .days-badge { font-size: 0.65rem; color: #d84315; background: #fbe9e7; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+
+      .mini-btn.add { width: 30px; height: 30px; line-height: 30px; margin-left: auto; mat-icon { font-size: 20px; } }
+
+      .shifts-row { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 44px; &.empty small { color: #ccc; font-size: 0.75rem; font-style: italic; } }
+      .shift-chip { font-size: 0.7rem; background: #f5f5f5; color: #666; padding: 2px 8px; border-radius: 10px; border: 1px solid #eee; white-space: nowrap; }
+    }
+  }
+}
+
+// ============================================================
+// GENERAL GRID (MODO LISTA GERAL)
+// ============================================================
+.general-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;
+}
+
+// CARTÃO DETALHADO (NOVO DESIGN RENOVADO)
+.monitor-card {
+  background: white; border-radius: 12px; padding: 0;
+  border: 1px solid #eee; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: transform 0.2s;
+
+  &:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+
+  // --- HEADER ---
+  .card-header {
+    padding: 15px; display: flex; align-items: center; gap: 15px;
+    border-bottom: 1px solid #f5f5f5;
+
+    .avatar {
+      width: 42px; height: 42px; background: #fff3e0; color: #e65100; // Laranja (Estagiário)
+      border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1rem;
+      &.official { background: #e8f5e9; color: #2e7d32; } // Verde (Monitor)
+    }
+
+    .info { 
+      flex: 1; 
+      h3 { margin: 0 0 4px 0; font-size: 1rem; color: #333; }
+      
+      .sub-info {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        
+        .role-badge {
+          font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase;
+          &.intern { background: #fff3e0; color: #ef6c00; }
+          &.monitor { background: #e8f5e9; color: #2e7d32; }
+        }
+
+        .phone { 
+          font-size: 0.75rem; color: #777; display: flex; align-items: center; gap: 3px;
+          mat-icon { font-size: 14px; width: 14px; height: 14px; }
+        }
+      }
+    }
+  }
+
+  // --- CORPO ---
+  .card-body { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+
+  // ALERTA DE DIAS EM FALTA
+  .status-alert {
+    background: #ffebee; color: #c62828; padding: 10px; border-radius: 8px;
+    display: flex; align-items: center; gap: 10px; font-size: 0.85rem; border: 1px solid #ffcdd2;
+    
+    mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    strong { font-weight: 800; text-decoration: underline; }
+  }
+
+  // LISTA DE TURNOS
+  .shifts-container {
+    .shifts-label { font-size: 0.7rem; color: #999; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; }
+    
+    .chips-list {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      .shift-chip {
+        background: #f0f4c3; color: #556b2f; border: 1px solid #dce775; // Tom amarelado/verde tropa
+        font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: 600;
+      }
+      .no-shifts { color: #ccc; font-size: 0.8rem; font-style: italic; }
+    }
+  }
+
+  // BOTÃO AGENDA
+  .manage-shifts-btn {
+    width: 100%; border-radius: 8px;
+    ::ng-deep .mat-icon { margin-right: 6px; }
+  }
+}
+
+.empty-state { text-align: center; color: #999; margin-top: 40px; mat-icon { font-size: 40px; width: 40px; height: 40px; opacity: 0.5; } }
+
+// ============================================================
+// ESTILOS DE ARRASTAR (CDK)
+// ============================================================
+.cdk-drag-preview {
+  box-sizing: border-box; border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  background: white; padding: 10px; display: flex; align-items: center; gap: 10px; opacity: 0.9;
+  border: 2px solid #2196f3;
+  width: 250px; height: auto; 
+  overflow: hidden;
+
+  .name { font-weight: bold; }
+  .mini-avatar { width: 30px; height: 30px; background: #222; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.custom-placeholder {
+  background: #e3f2fd; border: 2px dashed #2196f3; border-radius: 8px;
+  width: 100%; height: 100%;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.drop-zone.cdk-drop-list-dragging .compact-card:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// Dialog Text
+.dialog-desc { color: #666; margin-bottom: 10px; font-size: 0.9rem; }
+
+.mat-mdc-mini-fab.mat-primary{
+  background-color: #2e7d32;
+}
+
+
+.excel-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  background: #fafafa;
+  transition: all 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  
+  &.active {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    color: #1565c0;
+  }
+
+  mat-icon { font-size: 48px; width: 48px; height: 48px; color: #999; }
+  p { margin: 0; font-weight: 500; }
+}
+
+.help-text {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 15px;
+  padding: 8px;
+  background: #fff3e0;
+  border-radius: 4px;
+}
+
+.actions { display: flex; align-items: center; }

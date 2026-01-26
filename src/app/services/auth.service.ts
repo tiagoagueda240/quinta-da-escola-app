@@ -11,14 +11,11 @@ export class AuthService {
   private auth = inject(Auth);
   private router = inject(Router);
 
-  // --- A CORREÇÃO MÁGICA ---
-  // Em vez de usar BehaviorSubject manual, usamos o estado real do Firebase.
-  // Se existir um 'user', retorna true. Se for null, retorna false.
+
   public isLoggedIn$: Observable<boolean> = authState(this.auth).pipe(
     map(user => !!user)
   );
 
-  // Login real com Firebase
   async login(email: string, pass: string) {
     try {
       await signInWithEmailAndPassword(this.auth, email, pass);
@@ -29,7 +26,6 @@ export class AuthService {
     }
   }
 
-  // Logout real
   async logout() {
     await signOut(this.auth);
     this.router.navigate(['/login']);

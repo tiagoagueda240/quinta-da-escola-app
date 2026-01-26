@@ -5,8 +5,6 @@ import { AuthService } from '../../services/auth.service';
 import { Inscricao } from '../../models/inscricao.model';
 import { FormsModule } from '@angular/forms';
 import { SelectionModel } from '@angular/cdk/collections';
-
-// Material Imports
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,7 +19,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
-// PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -42,17 +39,14 @@ export class AdminComponent implements OnInit, AfterViewInit {
   colunasMostradas: string[] = ['select', 'estado', 'participante', 'turno', 'contacto', 'acoes'];
   selection = new SelectionModel<Inscricao>(true, []);
 
-  // KPIs
   totalInscritos = 0;
   pendentes = 0;
-  
-  // --- KPI: DISTRIBUIÇÃO GÉNERO ---
+
   totalRapazes = 0;
   totalRaparigas = 0;
-  
+
   ocupacaoPorTurno: { nome: string, count: number, percent: number }[] = [];
 
-  // Filtros
   filtroTexto = '';
   filtroTurno = '';
   filtroEstado = '';
@@ -64,12 +58,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
     '10º Turno – 30 Agosto a 5 Setembro'
   ];
 
-  // Sidebar e Edição
   selectedInscricao: Inscricao | null = null;
   sidebarOpen = false;
   isEditing = false;
-  
-  // POPUP e PDF
+
   acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
   turnoParaDialog: string = '';
   @ViewChild('dialogTurno') dialogTurno!: TemplateRef<any>;
@@ -95,13 +87,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
   carregarDados() {
     this.inscricaoService.getInscricoes().subscribe(dados => {
       this.dataSource.data = dados;
-      // Atualiza KPIs com base nos dados totais ou filtrados (aqui usamos totais iniciais)
-      this.atualizarKPIs(dados); 
+      this.atualizarKPIs(dados);
       this.calcularOcupacao(dados);
     });
   }
 
-  // --- Lógica de Seleção ---
   isAllSelected() {
     const numSelected = this.selection.selected.length;
     const numRows = this.dataSource.filteredData.length;
@@ -111,12 +101,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.isAllSelected() ? this.selection.clear() : this.dataSource.filteredData.forEach(row => this.selection.select(row));
   }
 
-  // --- KPIs ---
   atualizarKPIs(dados: Inscricao[]) {
     this.totalInscritos = dados.length;
     this.pendentes = dados.filter(i => i.estadoPagamento === 'pendente').length;
-    
-    // Contagem por Género (Útil para logística de quartos)
+
     this.totalRapazes = dados.filter(i => (i.participante as any).genero === 'M').length;
     this.totalRaparigas = dados.filter(i => (i.participante as any).genero === 'F').length;
   }
@@ -130,7 +118,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // --- Ações de Massa ---
   marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
     const selecionados = this.selection.selected;
     if (confirm(`Marcar ${selecionados.length} como ${novoEstado}?`)) {
@@ -155,7 +142,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.mostrarNotificacao(`Estado alterado para ${novo.toUpperCase()}`);
   }
 
-  // --- Sidebar Detalhes ---
   abrirDetalhes(row: Inscricao) {
     this.selectedInscricao = JSON.parse(JSON.stringify(row));
     if (this.selectedInscricao?.participante.dataNascimento) {
@@ -191,19 +177,18 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   reenviarEmail(inscricao: Inscricao) {
-    if(!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
+    if (!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
     this.mostrarNotificacao('A processar pedido...', 'success');
     this.inscricaoService.enviarEmailSeguro(inscricao);
     this.mostrarNotificacao('Email enviado para o servidor de correio!');
   }
 
-  // --- Filtros ---
   configurarFiltroAvancado() {
     this.dataSource.filterPredicate = (data: Inscricao, filter: string) => {
       const searchTerms = JSON.parse(filter);
-      const matchTexto = this.filtroTexto 
-        ? (data.participante.nomeCompleto.toLowerCase().includes(searchTerms.texto) || 
-           data.ee.email.toLowerCase().includes(searchTerms.texto)) : true;
+      const matchTexto = this.filtroTexto
+        ? (data.participante.nomeCompleto.toLowerCase().includes(searchTerms.texto) ||
+          data.ee.email.toLowerCase().includes(searchTerms.texto)) : true;
       const matchTurno = this.filtroTurno ? data.turnoEscolhido === searchTerms.turno : true;
       const matchEstado = this.filtroEstado ? data.estadoPagamento === searchTerms.estado : true;
       return matchTexto && matchTurno && matchEstado;
@@ -214,14 +199,13 @@ export class AdminComponent implements OnInit, AfterViewInit {
     const filtros = { texto: this.filtroTexto.trim().toLowerCase(), turno: this.filtroTurno, estado: this.filtroEstado };
     this.dataSource.filter = JSON.stringify(filtros);
     if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
-    
-    // Atualiza KPIs para refletir o que está a ser visto (ex: só o turno X)
+
     this.atualizarKPIs(this.dataSource.filteredData);
   }
 
   limparFiltros() { this.filtroTexto = ''; this.filtroTurno = ''; this.filtroEstado = ''; this.atualizarFiltros(); }
 
-  mostrarNotificacao(msg: string, tipo: 'success'|'error' = 'success') {
+  mostrarNotificacao(msg: string, tipo: 'success' | 'error' = 'success') {
     this.snackBar.open(msg, 'OK', { duration: 3000, panelClass: tipo === 'error' ? ['snackbar-error'] : ['snackbar-success'] });
   }
 
@@ -233,18 +217,17 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   sair() { this.authService.logout(); }
 
-  // --- GERADOR DE DADOS ---
   async gerarDadosTeste() {
     if (!confirm('Tem a certeza? Isto vai adicionar entre 50 a 70 novas inscrições de teste à base de dados.')) return;
     this.mostrarNotificacao('A gerar dados... Por favor aguarde.', 'success');
-    
+
     const nomesRapazes = ['Santiago', 'Francisco', 'João', 'Afonso', 'Rodrigo', 'Martim', 'Tomás', 'Duarte', 'Miguel', 'Gabriel', 'Lourenço', 'Gonçalo', 'Pedro', 'Tiago', 'Diogo', 'Rafael', 'Gustavo', 'Lucas', 'Simão', 'Salvador'];
     const nomesRaparigas = ['Maria', 'Leonor', 'Matilde', 'Beatriz', 'Carolina', 'Sofia', 'Alice', 'Mariana', 'Ana', 'Benedita', 'Francisca', 'Margarida', 'Inês', 'Clara', 'Lara', 'Laura', 'Madalena', 'Joana', 'Diana', 'Luísa'];
     const apelidos = ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Oliveira', 'Costa', 'Rodrigues', 'Martins', 'Jesus', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes', 'Lopes', 'Marques', 'Alves', 'Almeida', 'Ribeiro', 'Pinto', 'Carvalho', 'Teixeira', 'Moreira', 'Correia', 'Mendes', 'Nunes'];
     const transportesOpcoes = [{ label: 'Não (Entregue pelos pais)', valor: 0 }, { label: 'Lisboa - Quinta da Escola (+20€)', valor: 20 }, { label: 'Quinta da Escola - Lisboa (+20€)', valor: 20 }, { label: 'Lisboa - Quinta - Lisboa (+40€)', valor: 40 }];
-    
+
     const quantidade = Math.floor(Math.random() * (70 - 50 + 1)) + 50;
-    
+
     for (let i = 0; i < quantidade; i++) {
       const genero: 'M' | 'F' = Math.random() > 0.5 ? 'M' : 'F';
       const primeiroNome = genero === 'M' ? nomesRapazes[Math.floor(Math.random() * nomesRapazes.length)] : nomesRaparigas[Math.floor(Math.random() * nomesRaparigas.length)];
@@ -252,9 +235,9 @@ export class AdminComponent implements OnInit, AfterViewInit {
       const idade = Math.floor(Math.random() * (17 - 8 + 1)) + 8;
       const dataNascimento = new Date(2026 - idade, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
       const turno = this.listaTurnos[Math.floor(Math.random() * this.listaTurnos.length)];
-      
+
       const novaInscricao: any = {
-        dataCriacao: new Date(), tipoCliente: 'individual', nomeInstituicao: '', turnoEscolhido: turno, 
+        dataCriacao: new Date(), tipoCliente: 'individual', nomeInstituicao: '', turnoEscolhido: turno,
         valorBase: 395, valorTotal: 395, estadoPagamento: Math.random() > 0.4 ? 'pago' : 'pendente',
         transporte: transportesOpcoes[0].label, autorizaFotoVideo: true, politicaPrivacidade: true,
         participante: { nomeCompleto: nomeCompleto, dataNascimento: dataNascimento, genero: genero, nif: '999999999', cc: '11111111', morada: 'Rua Teste', sistemaSaude: 'SNS' },
@@ -267,7 +250,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.mostrarNotificacao(`Concluído! ${quantidade} gerados.`, 'success'); this.carregarDados();
   }
 
-  // --- DIALOGS & PDFS ---
   verificarTurnoParaCozinha() {
     if (this.filtroTurno) this.gerarPDFCozinha(this.filtroTurno);
     else { this.acaoDialog = 'cozinha'; this.turnoParaDialog = ''; this.dialog.open(this.dialogTurno, { width: '400px' }); }
@@ -284,49 +266,47 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.dialog.closeAll();
   }
 
-  // PDF COZINHA
   gerarPDFCozinha(turnoSelecionado: string) {
     const doc = new jsPDF();
     doc.setFontSize(16); doc.setTextColor(220, 53, 69); doc.text('ALERTA COZINHA', 14, 20);
     doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.text(`Turno: ${turnoSelecionado}`, 14, 28);
-    
+
     const listaPerigosa = this.dataSource.data.filter(i => i.turnoEscolhido === turnoSelecionado && (i.saude.temAlergiaAlimentar || i.saude.temOutrasAlergias));
     if (listaPerigosa.length === 0) { this.mostrarNotificacao(`Sem restrições.`, 'error'); return; }
-    
+
     const linhas = listaPerigosa.map(item => [item.participante.nomeCompleto, item.saude.detalheAlergiaAlimentar || '-']);
     autoTable(doc, { head: [['Nome', 'Alergias']], body: linhas, startY: 40, theme: 'grid', headStyles: { fillColor: [220, 53, 69] } });
     doc.save(`Cozinha_${turnoSelecionado.split(' – ')[0]}.pdf`); this.mostrarNotificacao('Lista cozinha gerada!');
   }
 
-  // PDF TRANSPORTE
   gerarPDFTransporte(turnoSelecionado: string) {
     const doc = new jsPDF();
     doc.setFontSize(18); doc.setTextColor(25, 118, 210); doc.text('LISTA TRANSPORTES', 14, 20);
     doc.setFontSize(10); doc.setTextColor(100); doc.text(`Turno: ${turnoSelecionado}`, 14, 28);
-    
+
     const todos = this.dataSource.data.filter(i => i.turnoEscolhido === turnoSelecionado && i.transporte && !i.transporte.startsWith('Não'));
     if (todos.length === 0) { this.mostrarNotificacao('Ninguém pediu transporte.', 'error'); return; }
-    
+
     // Ida
-    const ida = todos.filter(i => i.transporte.includes('Lisboa - Quinta')).sort((a,b)=>a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
+    const ida = todos.filter(i => i.transporte.includes('Lisboa - Quinta')).sort((a, b) => a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
     let y = 35;
-    if(ida.length > 0) {
-        doc.setFontSize(13); doc.setTextColor(0); doc.text('Lisboa -> Quinta', 14, y); y+=5;
-        autoTable(doc, { 
-            head: [['Criança', 'Contato', 'Check']], body: ida.map(i=>[i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped', 
-            headStyles: {fillColor:[46,125,50]}, didDrawCell: (d) => { if(d.section==='body'&&d.column.index===2){ doc.rect(d.cell.x+d.cell.width/2-2, d.cell.y+d.cell.height/2-2, 4, 4); } } 
-        });
-        y = (doc as any).lastAutoTable.finalY + 15;
+    if (ida.length > 0) {
+      doc.setFontSize(13); doc.setTextColor(0); doc.text('Lisboa -> Quinta', 14, y); y += 5;
+      autoTable(doc, {
+        head: [['Criança', 'Contato', 'Check']], body: ida.map(i => [i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped',
+        headStyles: { fillColor: [46, 125, 50] }, didDrawCell: (d) => { if (d.section === 'body' && d.column.index === 2) { doc.rect(d.cell.x + d.cell.width / 2 - 2, d.cell.y + d.cell.height / 2 - 2, 4, 4); } }
+      });
+      y = (doc as any).lastAutoTable.finalY + 15;
     }
     // Volta
-    const volta = todos.filter(i => i.transporte.includes('Quinta da Escola - Lisboa')).sort((a,b)=>a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
-    if(volta.length > 0) {
-        if(y>250) { doc.addPage(); y=20; }
-        doc.setFontSize(13); doc.setTextColor(0); doc.text('Quinta -> Lisboa', 14, y); y+=5;
-        autoTable(doc, { 
-            head: [['Criança', 'Contato', 'Check']], body: volta.map(i=>[i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped', 
-            headStyles: {fillColor:[198,40,40]}, didDrawCell: (d) => { if(d.section==='body'&&d.column.index===2){ doc.rect(d.cell.x+d.cell.width/2-2, d.cell.y+d.cell.height/2-2, 4, 4); } }
-        });
+    const volta = todos.filter(i => i.transporte.includes('Quinta da Escola - Lisboa')).sort((a, b) => a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
+    if (volta.length > 0) {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(13); doc.setTextColor(0); doc.text('Quinta -> Lisboa', 14, y); y += 5;
+      autoTable(doc, {
+        head: [['Criança', 'Contato', 'Check']], body: volta.map(i => [i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped',
+        headStyles: { fillColor: [198, 40, 40] }, didDrawCell: (d) => { if (d.section === 'body' && d.column.index === 2) { doc.rect(d.cell.x + d.cell.width / 2 - 2, d.cell.y + d.cell.height / 2 - 2, 4, 4); } }
+      });
     }
     doc.save(`Transp_${turnoSelecionado.split(' – ')[0]}.pdf`); this.mostrarNotificacao('PDF Transportes gerado!');
   }

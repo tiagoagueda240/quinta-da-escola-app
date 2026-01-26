@@ -11,70 +11,82 @@
     </div>
 
     <div class="shift-scroller">
-      <div class="shift-chip" 
-           *ngFor="let t of listaTurnos" 
-           [class.active]="t === turnoSelecionado"
-           (click)="mudarTurno(t)"
-           matRipple>
+
+      @for (t of listaTurnos; track $index) {
+      <div class="shift-chip" [class.active]="t === turnoSelecionado" (click)="mudarTurno(t)" matRipple>
         {{ getNomeCurtoTurno(t) }}
       </div>
+      }
+
     </div>
 
     <div class="search-wrapper">
       <div class="search-box">
         <mat-icon>search</mat-icon>
         <input type="text" [(ngModel)]="pesquisa" (keyup)="filtrar()" placeholder="Procurar criança...">
-        <button *ngIf="pesquisa" mat-icon-button (click)="pesquisa=''; filtrar()"><mat-icon>close</mat-icon></button>
+        @if (pesquisa) {
+        <button mat-icon-button (click)="pesquisa=''; filtrar()"><mat-icon>close</mat-icon></button>
+        }
       </div>
     </div>
   </div>
 
   <div class="content-area">
-    
-    <div class="kid-card" *ngFor="let item of inscricoesFiltradas" 
-         [class.checked-in]="item.checkin?.status === 'dentro'">
-      
+
+    @for (item of inscricoesFiltradas; track $index) {
+    <div class="kid-card" [class.checked-in]="item.checkin?.status === 'dentro'">
       <div class="card-body">
         <div class="avatar-ring">
           <div class="avatar">{{ item.participante.nomeCompleto.charAt(0) }}</div>
           <div class="status-dot"></div>
         </div>
-        
+
         <div class="info">
           <h3>{{ item.participante.nomeCompleto }}</h3>
-          
-          <div *ngIf="item.checkin?.status !== 'dentro'" class="meta-info">
+          @if (item.checkin?.status !== 'dentro') {
+          <div class="meta-info">
             <span class="status-label">A aguardar</span>
           </div>
+          }
 
-          <div *ngIf="item.checkin?.status === 'dentro'" class="checkin-details">
+          @if (item.checkin?.status === 'dentro') {
+          <div>
             <span class="time"><mat-icon>access_time</mat-icon> {{ item.checkin?.dataEntrada | date:'HH:mm' }}</span>
-            <span class="money" *ngIf="item.checkin?.dinheiroBolso"><mat-icon>euro</mat-icon> {{ item.checkin?.dinheiroBolso }}</span>
-            <span class="note" *ngIf="item.checkin?.notasCheckin"><mat-icon>note</mat-icon> Nota</span>
+            @if (item.checkin?.dinheiroBolso) {
+            <span class="money"><mat-icon>euro</mat-icon> {{
+              item.checkin?.dinheiroBolso }}</span>
+            }
+
+            @if (item.checkin?.notasCheckin) {
+            <span class="note"><mat-icon>note</mat-icon> Nota</span>
+            }
           </div>
+          }
         </div>
       </div>
 
       <div class="card-action">
-        <button *ngIf="item.checkin?.status !== 'dentro'" 
-                class="btn-action enter" 
-                (click)="abrirCheckin(item)" matRipple>
-          RECEBER
-        </button>
 
-        <button *ngIf="item.checkin?.status === 'dentro'" 
-                class="btn-action leave" 
-                (click)="registarSaida(item)" matRipple>
+        @if (item.checkin?.status === 'dentro') {
+        <button class="btn-action leave" (click)="registarSaida(item)" matRipple>
           SAIR
         </button>
+        }@else {
+        <button class="btn-action enter" (click)="abrirCheckin(item)" matRipple>
+          RECEBER
+        </button>
+        }
       </div>
     </div>
+    }
 
-    <div class="empty-state" *ngIf="inscricoesFiltradas.length === 0">
+
+    @if (inscricoesFiltradas.length === 0) {
+    <div class="empty-state">
       <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="80" style="opacity: 0.3">
       <p>Ninguém encontrado neste turno.</p>
     </div>
-
+    }
   </div>
 </div>
 
@@ -82,10 +94,10 @@
   <div class="popup-container">
     <h3>Check-in</h3>
     <p class="subtitle">{{ tempInscricao?.participante?.nomeCompleto }}</p>
-    
+
     <div class="input-row">
       <mat-icon>euro</mat-icon>
-      <input type="number" [(ngModel)]="tempDinheiro" placeholder="Dinheiro de bolso (opcional)">
+      <input type="number" [(ngModel)]="tempDinheiro" placeholder="Dinheiro">
     </div>
 
     <div class="input-row">

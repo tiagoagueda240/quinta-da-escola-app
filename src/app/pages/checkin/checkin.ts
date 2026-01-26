@@ -4,20 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { InscricaoService } from '../../services/inscricao.service';
 import { Inscricao } from '../../models/inscricao.model';
 
-// Material
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatRippleModule } from '@angular/material/core'; // Efeito de clique
+import { MatRippleModule } from '@angular/material/core';
 
 @Component({
   selector: 'app-checkin',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatIconModule, MatButtonModule, 
+    CommonModule, FormsModule, MatIconModule, MatButtonModule,
     MatFormFieldModule, MatInputModule, MatSnackBarModule, MatDialogModule, MatRippleModule
   ],
   templateUrl: './checkin.html',
@@ -29,7 +28,6 @@ export class CheckinComponent implements OnInit {
   pesquisa: string = '';
   totalPresentes = 0;
 
-  // Filtro de Turnos
   listaTurnos = [
     '1º Turno – 28 Junho a 4 Julho', '2º Turno – 5 a 11 Julho', '3º Turno – 12 a 18 Julho',
     '4º Turno – 19 a 25 Julho', '5º Turno – 26 Julho a 1 Agosto', '6º Turno – 2 a 8 Agosto',
@@ -38,7 +36,6 @@ export class CheckinComponent implements OnInit {
   ];
   turnoSelecionado: string = '';
 
-  // Popup
   tempInscricao: Inscricao | null = null;
   tempDinheiro: number | null = null;
   tempNotas: string = '';
@@ -50,25 +47,24 @@ export class CheckinComponent implements OnInit {
   private dialog = inject(MatDialog);
 
   ngOnInit() {
-    // Seleciona o 2º turno por defeito (ou o 1º) para teste
-    this.turnoSelecionado = this.listaTurnos[1]; 
+    this.turnoSelecionado = this.listaTurnos[1];
 
     this.inscricaoService.getInscricoes().subscribe(dados => {
       this.inscricoes = dados;
-      this.filtrar(); // Aplica filtros
+      this.filtrar();
     });
+
+
   }
 
-  // Novo: Selecionar Turno
   mudarTurno(turno: string) {
     this.turnoSelecionado = turno;
     this.filtrar();
   }
 
-  // Filtragem Inteligente (Texto + Turno)
   filtrar() {
     const texto = this.pesquisa.toLowerCase().trim();
-    
+
     this.inscricoesFiltradas = this.inscricoes.filter(i => {
       const matchTurno = i.turnoEscolhido === this.turnoSelecionado;
       const matchNome = i.participante.nomeCompleto.toLowerCase().includes(texto);
@@ -78,7 +74,6 @@ export class CheckinComponent implements OnInit {
     this.atualizarContador();
   }
 
-  // --- LÓGICA DE ENTRADA/SAÍDA (Igual) ---
   abrirCheckin(inscricao: Inscricao) {
     this.tempInscricao = inscricao;
     this.tempDinheiro = null;
@@ -98,14 +93,12 @@ export class CheckinComponent implements OnInit {
     };
     this.inscricaoService.updateInscricao(this.tempInscricao.id, dados as any).then(() => {
       this.dialog.closeAll();
-      this.mostrarToast(`Bem-vindo, ${this.tempInscricao?.participante.nomeCompleto.split(' ')[0]}! 👋`);
     });
   }
 
   registarSaida(inscricao: Inscricao) {
     if (!inscricao.id || !confirm(`Saída de ${inscricao.participante.nomeCompleto}?`)) return;
     this.inscricaoService.updateInscricao(inscricao.id, { 'checkin.status': 'fora' } as any)
-      .then(() => this.mostrarToast('Até amanhã! 👋'));
   }
 
   atualizarContador() {
@@ -116,7 +109,6 @@ export class CheckinComponent implements OnInit {
     this.snackBar.open(msg, '', { duration: 2500, verticalPosition: 'top', panelClass: 'success-toast' });
   }
 
-  // Helper para mostrar "1º Turno" em vez do texto todo nos botões
   getNomeCurtoTurno(t: string): string {
     return t.split(' – ')[0];
   }

@@ -1,3 +1,8 @@
+$green-primary: #2e7d32;   
+$green-dark: #1b5e20;     
+$green-light: #4caf50;    
+$shadow-color: rgba(46, 125, 50, 0.4); 
+
 .fab-container {
   position: fixed;
   bottom: 30px;
@@ -11,27 +16,27 @@
 .fab-main {
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  background: linear-gradient(135deg, $green-light, $green-dark);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 30px rgba(123, 102, 238, 0.4);
+  box-shadow: 0 8px 30px $shadow-color;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: none;
   outline: none;
   color: white;
 
   &:hover {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: 0 12px 35px rgba(123, 102, 238, 0.5);
+    transform: scale(1.1) rotate(90deg); 
+    box-shadow: 0 12px 35px rgba(46, 125, 50, 0.6);
   }
 
   &.active {
     background: #fff;
-    color: #7c3aed;
-    transform: rotate(0deg); // Reseta a rotação do hover
+    color: $green-primary; 
+    transform: rotate(0deg);
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   }
 }
@@ -70,13 +75,12 @@
     font-size: 24px;
   }
 
-  // Labels que aparecem à esquerda
   &::after {
     content: attr(title);
     position: absolute;
     right: 70px;
     white-space: nowrap;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(27, 94, 32, 0.9); 
     color: white;
     padding: 6px 12px;
     border-radius: 6px;
@@ -86,10 +90,11 @@
     opacity: 0;
     transition: all 0.2s ease;
     transform: translateX(10px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   }
 
   &:hover {
-    box-shadow: 0 8px 25px rgba(123, 102, 238, 0.25);
+    box-shadow: 0 8px 25px rgba(46, 125, 50, 0.3); 
     transform: scale(1.15) translateY(-5px) !important;
 
     &::after {
@@ -99,18 +104,16 @@
   }
 }
 
-// Animação em cascata dos itens
 .menu.active .menu-item {
   opacity: 1;
   transform: translateY(0) scale(1);
 
-  @for $i from 1 through 4 {
+  @for $i from 1 through 5 {
     &:nth-child(#{$i}) {
       transition-delay: 0.05s * $i;
     }
   }
 }
 
-// Cores Utilitárias rápidas
-.text-red-500 { color: #ef4444; }
-.text-indigo-600 { color: #4f46e5; }
+.text-red { color: #d32f2f; }
+.text-green { color: $green-primary; }

@@ -3,9 +3,9 @@
   <header class="topbar">
     <div class="logo-area">
       <div class="logo-icon"><mat-icon>forest</mat-icon></div>
-      <span>Dashboard 2026</span>
+      <span>Dashboard</span>
     </div>
-    
+
     <div class="actions-area" style="display: flex; gap: 10px;">
       <button mat-stroked-button (click)="verificarTurnoParaTransporte()" style="color: #444; border-color: #ccc;">
         <mat-icon style="color: #1976d2;">directions_bus</mat-icon> Lista Transportes
@@ -25,76 +25,85 @@
   <div class="selection-bar" *ngIf="selection.hasValue()">
     <div class="selection-count">{{ selection.selected.length }} selecionado(s)</div>
     <div class="selection-actions">
-      <button mat-button class="btn-action success" (click)="marcarSelecionadosComo('pago')"><mat-icon>check_circle</mat-icon> Pagos</button>
-      <button mat-button class="btn-action warn" (click)="marcarSelecionadosComo('pendente')"><mat-icon>pending</mat-icon> Pendentes</button>
+      <button mat-button class="btn-action success"
+        (click)="marcarSelecionadosComo('pago')"><mat-icon>check_circle</mat-icon> Pagos</button>
+      <button mat-button class="btn-action warn"
+        (click)="marcarSelecionadosComo('pendente')"><mat-icon>pending</mat-icon> Pendentes</button>
       <div class="divider"></div>
-      <button mat-button class="btn-action danger" (click)="apagarSelecionados()"><mat-icon>delete</mat-icon> Apagar</button>
+      <button mat-button class="btn-action danger" (click)="apagarSelecionados()"><mat-icon>delete</mat-icon>
+        Apagar</button>
     </div>
   </div>
 
   <div class="main-content">
 
-    <div class="dash-header">
-      <div>
-        <h2>Visão Geral</h2>
-        <p>Monitorização em tempo real</p>
-      </div>
-      
-      <div class="unified-controls mat-elevation-z2">
-        <div class="search-box">
-          <mat-icon>search</mat-icon>
-          <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Pesquisar...">
-        </div>
-        <div class="divider-vertical"></div>
-        <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Todos os Turnos" class="minimal-select">
-          <mat-option value="">Todos os Turnos</mat-option>
-          <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
-        </mat-select>
-        <div class="divider-vertical"></div>
-        <mat-select [(ngModel)]="filtroEstado" (selectionChange)="atualizarFiltros()" placeholder="Estado" class="minimal-select small">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="pago">Pago</mat-option>
-          <mat-option value="pendente">Pendente</mat-option>
-        </mat-select>
-        <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado" matTooltip="Limpar">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    </div>
 
-<div class="top-grid">
-      <div class="stats-container">
-        
-        <div class="stat-card-premium">
-          <div class="icon-box blue"><mat-icon>groups</mat-icon></div>
-          <div><span class="label">Total Inscritos</span><div class="value">{{ totalInscritos }}</div></div>
-        </div>
-        
-        <div class="stat-card-premium">
-          <div class="icon-box orange"><mat-icon>pending_actions</mat-icon></div>
-          <div><span class="label">Pendentes</span><div class="value">{{ pendentes }}</div></div>
-        </div>
-        
-        <div class="stat-card-premium">
-          <div class="icon-box teal"><mat-icon>wc</mat-icon></div>
-          
-          <div>
-            <span class="label">Rácio M / F</span>
-            <div class="value" style="display: flex; gap: 8px; align-items: baseline; font-size: 1.2rem;">
-               <span style="color: #1976d2; font-weight: 700;">{{ totalRapazes }} M</span>
-               <span style="color: #e0e0e0; font-weight: 300;">|</span>
-               <span style="color: #d81b60; font-weight: 700;">{{ totalRaparigas }} F</span>
+    <div class="top-grid">
+      <div class="left-stats">
+        <div class="stats-container">
+
+          <div class="stat-card-premium">
+            <div class="icon-box blue"><mat-icon>groups</mat-icon></div>
+            <div><span class="label">Total Inscritos</span>
+              <div class="value">{{ totalInscritos }}</div>
+            </div>
+          </div>
+
+          <div class="stat-card-premium">
+            <div class="icon-box orange"><mat-icon>pending_actions</mat-icon></div>
+            <div><span class="label">Pendentes</span>
+              <div class="value">{{ pendentes }}</div>
+            </div>
+          </div>
+
+          <div class="stat-card-premium">
+            <div class="icon-box teal"><mat-icon>wc</mat-icon></div>
+
+            <div>
+              <span class="label">Rácio M / F</span>
+              <div class="value" style="display: flex; gap: 8px; align-items: baseline; font-size: 1.2rem;">
+                <span style="color: #1976d2; font-weight: 700;">{{ totalRapazes }} M</span>
+                <span style="color: #e0e0e0; font-weight: 300;">|</span>
+                <span style="color: #d81b60; font-weight: 700;">{{ totalRaparigas }} F</span>
+              </div>
             </div>
           </div>
         </div>
 
+        <div class="unified-controls mat-elevation-z2">
+          <div class="search-box">
+            <mat-icon>search</mat-icon>
+            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Pesquisar...">
+          </div>
+          <div class="divider-vertical"></div>
+          <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Todos os Turnos"
+            class="minimal-select">
+            <mat-option value="">Todos os Turnos</mat-option>
+            <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+          </mat-select>
+          <div class="divider-vertical"></div>
+          <mat-select [(ngModel)]="filtroEstado" (selectionChange)="atualizarFiltros()" placeholder="Estado"
+            class="minimal-select small">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="pago">Pago</mat-option>
+            <mat-option value="pendente">Pendente</mat-option>
+          </mat-select>
+          <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado"
+            matTooltip="Limpar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
       </div>
 
+
       <div class="occupancy-widget mat-elevation-z2">
-        <div class="widget-header"><h3>Top Ocupação</h3><mat-icon>bar_chart</mat-icon></div>
+        <div class="widget-header">
+          <h3>Top Ocupação</h3><mat-icon>bar_chart</mat-icon>
+        </div>
         <div class="turn-list">
           <div class="turn-item" *ngFor="let t of ocupacaoPorTurno">
-            <div class="turn-label"><span class="t-name">{{ t.nome }}</span><span class="t-val">{{ t.count }} inscritos</span></div>
+            <div class="turn-label"><span class="t-name">{{ t.nome }}</span><span class="t-val">{{ t.count }}
+                inscritos</span></div>
             <mat-progress-bar mode="determinate" [value]="t.percent" class="custom-progress"></mat-progress-bar>
           </div>
         </div>
@@ -103,20 +112,24 @@
 
     <div class="table-wrapper mat-elevation-z2">
       <table mat-table [dataSource]="dataSource" matSort>
-        
+
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef>
-            <mat-checkbox (change)="$event ? masterToggle() : null" [checked]="selection.hasValue() && isAllSelected()" [indeterminate]="selection.hasValue() && !isAllSelected()" color="primary"></mat-checkbox>
+            <mat-checkbox (change)="$event ? masterToggle() : null" [checked]="selection.hasValue() && isAllSelected()"
+              [indeterminate]="selection.hasValue() && !isAllSelected()" color="primary"></mat-checkbox>
           </th>
           <td mat-cell *matCellDef="let row">
-            <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null" [checked]="selection.isSelected(row)" color="primary"></mat-checkbox>
+            <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null"
+              [checked]="selection.isSelected(row)" color="primary"></mat-checkbox>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="estado">
           <th mat-header-cell *matHeaderCellDef mat-sort-header> ESTADO </th>
           <td mat-cell *matCellDef="let row">
-            <span class="status-pill" [class.pago]="row.estadoPagamento === 'pago'" [class.pendente]="row.estadoPagamento === 'pendente'" (click)="togglePagamento(row); $event.stopPropagation()">
+            <span class="status-pill" [class.pago]="row.estadoPagamento === 'pago'"
+              [class.pendente]="row.estadoPagamento === 'pendente'"
+              (click)="togglePagamento(row); $event.stopPropagation()">
               <span class="dot"></span> {{ row.estadoPagamento | uppercase }}
             </span>
           </td>
@@ -145,7 +158,8 @@
           <td mat-cell *matCellDef="let row">
             <div class="ee-cell">
               <span>{{ row.ee.nome }}</span>
-              <button class="icon-btn whatsapp" (click)="abrirWhatsApp(row.ee.telefone); $event.stopPropagation()"><mat-icon>chat</mat-icon></button>
+              <button class="icon-btn whatsapp"
+                (click)="abrirWhatsApp(row.ee.telefone); $event.stopPropagation()"><mat-icon>chat</mat-icon></button>
             </div>
           </td>
         </ng-container>
@@ -153,14 +167,17 @@
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef> </th>
           <td mat-cell *matCellDef="let row">
-            <button mat-icon-button class="edit-btn" (click)="abrirDetalhes(row); $event.stopPropagation()"><mat-icon>edit_note</mat-icon></button>
+            <button mat-icon-button class="edit-btn"
+              (click)="abrirDetalhes(row); $event.stopPropagation()"><mat-icon>edit_note</mat-icon></button>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="colunasMostradas"></tr>
-        <tr mat-row *matRowDef="let row; columns: colunasMostradas;" class="hover-row" (click)="abrirDetalhes(row)"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunasMostradas;" class="hover-row" (click)="abrirDetalhes(row)">
+        </tr>
         <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="6" style="text-align:center; padding: 40px; color:#999">Nenhum registo encontrado.</td>
+          <td class="mat-cell" colspan="6" style="text-align:center; padding: 40px; color:#999">Nenhum registo
+            encontrado.</td>
         </tr>
       </table>
       <mat-paginator [pageSizeOptions]="[10, 25, 100]" showFirstLastButtons></mat-paginator>
@@ -170,7 +187,7 @@
 
 <div class="sidebar-backdrop" [class.open]="sidebarOpen" (click)="fecharDetalhes()"></div>
 <div class="sidebar" [class.open]="sidebarOpen">
-  
+
   <div class="sidebar-header" *ngIf="selectedInscricao">
     <div style="display:flex; align-items:center; gap:10px;">
       <button mat-icon-button (click)="fecharDetalhes()"><mat-icon>close</mat-icon></button>
@@ -179,12 +196,13 @@
     </div>
     <div class="actions">
       <button mat-stroked-button *ngIf="!isEditing" (click)="ativarEdicao()"><mat-icon>edit</mat-icon> Editar</button>
-      <button mat-flat-button color="primary" *ngIf="isEditing" (click)="guardarEdicao()"><mat-icon>save</mat-icon> Guardar</button>
+      <button mat-flat-button color="primary" *ngIf="isEditing" (click)="guardarEdicao()"><mat-icon>save</mat-icon>
+        Guardar</button>
     </div>
   </div>
 
   <div class="sidebar-content" *ngIf="selectedInscricao">
-    
+
     <div class="student-profile">
       <div class="avatar-large">{{ selectedInscricao.participante.nomeCompleto.charAt(0) }}</div>
       <div style="width: 100%">
@@ -203,6 +221,98 @@
       </div>
     </div>
 
+
+
+    <div class="section-box status-box">
+      <div class="row-between">
+        <span>Valor Total: <strong>{{ selectedInscricao.valorTotal }}€</strong></span>
+        <button mat-stroked-button [color]="selectedInscricao.estadoPagamento === 'pago' ? 'primary' : 'warn'"
+          (click)="togglePagamento(selectedInscricao)">
+          Status: {{ selectedInscricao.estadoPagamento | uppercase }}
+        </button>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Encarregado de Educação</h4>
+      <div *ngIf="!isEditing">
+        <div class="info-row"><mat-icon>person</mat-icon> {{ selectedInscricao.ee.nome }}</div>
+        <div class="info-row clickable" (click)="abrirWhatsApp(selectedInscricao.ee.telefone)">
+          <mat-icon>phone</mat-icon> {{ selectedInscricao.ee.telefone }} (WhatsApp)</div>
+        <div class="info-row"><mat-icon>email</mat-icon> {{ selectedInscricao.ee.email }}</div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Nome EE</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.ee.nome"></mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Telefone</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.ee.telefone"></mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Email</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.ee.email"></mat-form-field>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Dados Pessoais</h4>
+      <div *ngIf="!isEditing" class="info-grid">
+        <div><small>NIF</small>
+          <p>{{ selectedInscricao.participante.nif || '--' }}</p>
+        </div>
+        <div><small>CC</small>
+          <p>{{ selectedInscricao.participante.cc || '--' }}</p>
+        </div>
+        <div><small>Nascimento</small>
+          <p>{{ selectedInscricao.participante.dataNascimento | date:'dd/MM/yyyy' }}</p>
+        </div>
+        <div><small>Sistema Saúde</small>
+          <p>{{ selectedInscricao.participante.sistemaSaude || '--' }}</p>
+        </div>
+        <div class="full-width"><small>Morada</small>
+          <p>{{ selectedInscricao.participante.morada || '--' }}</p>
+        </div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <mat-form-field appearance="outline" class="edit-field"><mat-label>NIF</mat-label><input matInput
+              [(ngModel)]="selectedInscricao.participante.nif"></mat-form-field>
+          <mat-form-field appearance="outline" class="edit-field"><mat-label>CC</mat-label><input matInput
+              [(ngModel)]="selectedInscricao.participante.cc"></mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Morada</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.participante.morada"></mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Sistema Saúde</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.participante.sistemaSaude"></mat-form-field>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Logística</h4>
+      <div *ngIf="!isEditing">
+        <div class="info-row"><mat-icon>directions_bus</mat-icon> {{ selectedInscricao.transporte }}</div>
+        <div class="info-row"><mat-icon>photo_camera</mat-icon> Fotos: {{ selectedInscricao.autorizaFotoVideo ? 'Sim' :
+          'Não' }}</div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-checkbox [(ngModel)]="selectedInscricao.autorizaFotoVideo">Autoriza Fotos?</mat-checkbox>
+      </div>
+    </div>
+
+    <div class="section-box health-alert"
+      *ngIf="selectedInscricao.saude.temAlergiaAlimentar || selectedInscricao.saude.temOutrasAlergias || selectedInscricao.saude.tomaMedicacao === true || isEditing">
+      <h4><mat-icon>medical_services</mat-icon> Saúde & Alertas</h4>
+      <div *ngIf="!isEditing">
+        <div *ngIf="selectedInscricao.saude.temAlergiaAlimentar" class="alert-item"><strong>Alergia:</strong> {{
+          selectedInscricao.saude.detalheAlergiaAlimentar }}</div>
+        <div *ngIf="selectedInscricao.saude.tomaMedicacao === true" class="alert-item"><strong>Medicação:</strong> {{
+          selectedInscricao.saude.detalheMedicacao }}</div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Alergias</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.saude.detalheAlergiaAlimentar"></mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Medicação</mat-label><input matInput
+            [(ngModel)]="selectedInscricao.saude.detalheMedicacao"></mat-form-field>
+      </div>
+    </div>
+
     <div class="section-box" style="border-color: #bbdefb; background: #e3f2fd;">
       <h4 style="color: #1976d2;"><mat-icon>mail</mat-icon> Comunicação</h4>
       <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -213,75 +323,10 @@
       </div>
     </div>
 
-    <div class="section-box status-box">
-      <div class="row-between">
-        <span>Valor Total: <strong>{{ selectedInscricao.valorTotal }}€</strong></span>
-        <button mat-stroked-button [color]="selectedInscricao.estadoPagamento === 'pago' ? 'primary' : 'warn'" (click)="togglePagamento(selectedInscricao)">
-          Status: {{ selectedInscricao.estadoPagamento | uppercase }}
-        </button>
-      </div>
-    </div>
-
-    <div class="section-box">
-      <h4>Encarregado de Educação</h4>
-      <div *ngIf="!isEditing">
-        <div class="info-row"><mat-icon>person</mat-icon> {{ selectedInscricao.ee.nome }}</div>
-        <div class="info-row clickable" (click)="abrirWhatsApp(selectedInscricao.ee.telefone)"><mat-icon>phone</mat-icon> {{ selectedInscricao.ee.telefone }} (WhatsApp)</div>
-        <div class="info-row"><mat-icon>email</mat-icon> {{ selectedInscricao.ee.email }}</div>
-      </div>
-      <div *ngIf="isEditing" class="edit-group">
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Nome EE</mat-label><input matInput [(ngModel)]="selectedInscricao.ee.nome"></mat-form-field>
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Telefone</mat-label><input matInput [(ngModel)]="selectedInscricao.ee.telefone"></mat-form-field>
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Email</mat-label><input matInput [(ngModel)]="selectedInscricao.ee.email"></mat-form-field>
-      </div>
-    </div>
-
-    <div class="section-box">
-      <h4>Dados Pessoais</h4>
-      <div *ngIf="!isEditing" class="info-grid">
-        <div><small>NIF</small><p>{{ selectedInscricao.participante.nif || '--' }}</p></div>
-        <div><small>CC</small><p>{{ selectedInscricao.participante.cc || '--' }}</p></div>
-        <div><small>Nascimento</small><p>{{ selectedInscricao.participante.dataNascimento | date:'dd/MM/yyyy' }}</p></div>
-        <div><small>Sistema Saúde</small><p>{{ selectedInscricao.participante.sistemaSaude || '--' }}</p></div>
-        <div class="full-width"><small>Morada</small><p>{{ selectedInscricao.participante.morada || '--' }}</p></div>
-      </div>
-      <div *ngIf="isEditing" class="edit-group">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-          <mat-form-field appearance="outline" class="edit-field"><mat-label>NIF</mat-label><input matInput [(ngModel)]="selectedInscricao.participante.nif"></mat-form-field>
-          <mat-form-field appearance="outline" class="edit-field"><mat-label>CC</mat-label><input matInput [(ngModel)]="selectedInscricao.participante.cc"></mat-form-field>
-        </div>
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Morada</mat-label><input matInput [(ngModel)]="selectedInscricao.participante.morada"></mat-form-field>
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Sistema Saúde</mat-label><input matInput [(ngModel)]="selectedInscricao.participante.sistemaSaude"></mat-form-field>
-      </div>
-    </div>
-
-    <div class="section-box">
-      <h4>Logística</h4>
-      <div *ngIf="!isEditing">
-        <div class="info-row"><mat-icon>directions_bus</mat-icon> {{ selectedInscricao.transporte }}</div>
-        <div class="info-row"><mat-icon>photo_camera</mat-icon> Fotos: {{ selectedInscricao.autorizaFotoVideo ? 'Sim' : 'Não' }}</div>
-      </div>
-      <div *ngIf="isEditing" class="edit-group">
-        <mat-checkbox [(ngModel)]="selectedInscricao.autorizaFotoVideo">Autoriza Fotos?</mat-checkbox>
-      </div>
-    </div>
-
-    <div class="section-box health-alert" *ngIf="selectedInscricao.saude.temAlergiaAlimentar || selectedInscricao.saude.temOutrasAlergias || selectedInscricao.saude.tomaMedicacao === true || isEditing">
-      <h4><mat-icon>medical_services</mat-icon> Saúde & Alertas</h4>
-      <div *ngIf="!isEditing">
-        <div *ngIf="selectedInscricao.saude.temAlergiaAlimentar" class="alert-item"><strong>Alergia:</strong> {{ selectedInscricao.saude.detalheAlergiaAlimentar }}</div>
-        <div *ngIf="selectedInscricao.saude.tomaMedicacao === true" class="alert-item"><strong>Medicação:</strong> {{ selectedInscricao.saude.detalheMedicacao }}</div>
-      </div>
-      <div *ngIf="isEditing" class="edit-group">
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Alergias</mat-label><input matInput [(ngModel)]="selectedInscricao.saude.detalheAlergiaAlimentar"></mat-form-field>
-        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Medicação</mat-label><input matInput [(ngModel)]="selectedInscricao.saude.detalheMedicacao"></mat-form-field>
-      </div>
-    </div>
-
     <div class="delete-area" *ngIf="isEditing">
-        <button mat-button color="warn" (click)="apagarInscricao(selectedInscricao.id)" style="width:100%">
-            <mat-icon>delete_forever</mat-icon> Apagar Inscrição Definitivamente
-        </button>
+      <button mat-button color="warn" (click)="apagarInscricao(selectedInscricao.id)" style="width:100%">
+        <mat-icon>delete_forever</mat-icon> Apagar Inscrição Definitivamente
+      </button>
     </div>
 
   </div>
@@ -289,19 +334,19 @@
 
 <ng-template #dialogTurno>
   <h2 mat-dialog-title style="font-family: 'Montserrat', sans-serif;">
-    <mat-icon style="vertical-align: middle; margin-right: 8px;" 
+    <mat-icon style="vertical-align: middle; margin-right: 8px;"
       [style.color]="acaoDialog === 'cozinha' ? '#d32f2f' : '#1976d2'">
       {{ acaoDialog === 'cozinha' ? 'restaurant' : 'directions_bus' }}
     </mat-icon>
-    
+
     {{ acaoDialog === 'cozinha' ? 'Relatório Cozinha' : 'Listas de Transporte' }}
   </h2>
-  
+
   <mat-dialog-content>
     <p style="margin-bottom: 15px; color: #666;">
       Selecione o turno para gerar {{ acaoDialog === 'cozinha' ? 'a lista de alergias' : 'as tabelas de autocarro' }}:
     </p>
-    
+
     <mat-form-field appearance="outline" style="width: 100%;">
       <mat-label>Escolher Turno</mat-label>
       <mat-select [(ngModel)]="turnoParaDialog">
@@ -309,14 +354,12 @@
       </mat-select>
     </mat-form-field>
   </mat-dialog-content>
-  
+
   <mat-dialog-actions align="end" style="padding-bottom: 20px; padding-right: 20px;">
     <button mat-button mat-dialog-close>Cancelar</button>
-    
-    <button mat-flat-button 
-            [color]="acaoDialog === 'cozinha' ? 'warn' : 'primary'"
-            [disabled]="!turnoParaDialog" 
-            (click)="confirmarGeracaoPDF()">
+
+    <button mat-flat-button [color]="acaoDialog === 'cozinha' ? 'warn' : 'primary'" [disabled]="!turnoParaDialog"
+      (click)="confirmarGeracaoPDF()">
       <mat-icon>download</mat-icon> Gerar PDF
     </button>
   </mat-dialog-actions>

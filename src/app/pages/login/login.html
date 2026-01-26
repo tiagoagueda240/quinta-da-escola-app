@@ -1,7 +1,7 @@
 <div class="login-wrapper">
-  
+
   <div class="login-card">
-    
+
     <div class="card-header">
       <div class="brand-logo">
         <mat-icon>forest</mat-icon>
@@ -11,12 +11,14 @@
     </div>
 
     <form [formGroup]="loginForm" (ngSubmit)="entrar()">
-      
+
       <mat-form-field appearance="outline" class="premium-input">
         <mat-label>Email</mat-label>
         <input matInput formControlName="email" placeholder="admin@quintadaescola.com">
         <mat-icon matSuffix>email</mat-icon>
-        <mat-error *ngIf="loginForm.get('email')?.hasError('email')">Email inválido</mat-error>
+        @if(loginForm.get('email')?.hasError('email')){
+        <mat-error>Email inválido</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="premium-input">
@@ -27,14 +29,23 @@
         </button>
       </mat-form-field>
 
-      <div class="error-notification" *ngIf="erro">
+      @if (erro) {
+      <div class="error-notification">
         <mat-icon>error_outline</mat-icon>
         <span>{{ erro }}</span>
       </div>
 
+      }
+
       <button mat-flat-button class="btn-primary" type="submit" [disabled]="loginForm.invalid || isLoading">
-        <span *ngIf="!isLoading">INICIAR SESSÃO</span>
-        <div *ngIf="isLoading" class="loader"></div>
+        @if (!isLoading) {
+        <span>INICIAR SESSÃO</span>
+
+        }@else{
+        <div class="loader">
+        </div>
+
+        }
       </button>
 
     </form>

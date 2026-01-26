@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc, query, orderBy, Timestamp } from '@angular/fire/firestore';
-import { HttpClient } from '@angular/common/http'; // Importar HTTP
+import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, writeBatch } from '@angular/fire/firestore';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Inscricao } from '../models/inscricao.model';
@@ -15,22 +15,16 @@ export class InscricaoService {
 
   constructor() {}
 
-  // --- 1. ADICIONAR COM EMAIL ---
   async addInscricao(inscricao: Inscricao) {
-    // 1. Grava na Base de Dados (Firebase)
     const colRef = collection(this.firestore, this.collectionName);
     const docRef = await addDoc(colRef, inscricao);
     
-    // 2. Dispara o Email Seguro (PHP + Brevo)
     this.enviarEmailSeguro(inscricao);
     
     return docRef;
   }
 
-  // --- 2. FUNÇÃO DE ENVIO ---
   enviarEmailSeguro(dados: Inscricao) {
-    // ATENÇÃO: Substitui pelo link REAL do teu site onde puseste o PHP
-    // Exemplo: 'https://aminhacolonia.pt/api/send-email.php'
     const url = 'https://turnos.quintadaescola.com/send-email.php'; 
 
     const payload = {
@@ -40,14 +34,23 @@ export class InscricaoService {
       valor: dados.valorTotal
     };
 
-    // Envia o pedido para o teu PHP
     this.http.post(url, payload).subscribe({
       next: (res) => console.log('Email enviado com sucesso via PHP!', res),
       error: (err) => console.error('Erro ao enviar email:', err)
     });
   }
 
-  // --- OUTROS MÉTODOS (Get, Update, Delete) ---
+  async updateBatch(updates: { id: string, data: any }[]) {
+  const batch = writeBatch(this.firestore);
+  
+  updates.forEach(item => {
+    const docRef = doc(this.firestore, this.collectionName, item.id);
+    batch.update(docRef, item.data);
+  });
+
+  return batch.commit();
+}
+
   getInscricoes(): Observable<Inscricao[]> {
     const colRef = collection(this.firestore, this.collectionName);
     const q = query(colRef, orderBy('dataCriacao', 'desc'));

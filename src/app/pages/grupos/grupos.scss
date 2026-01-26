@@ -1,227 +1,444 @@
 // LAYOUT & GERAL
-.grupos-layout { 
-  height: 100vh; 
-  display: flex; 
-  flex-direction: column; 
-  background-color: #f0f2f5; 
-  overflow: hidden; 
+
+.grupos-layout {
+
+height: 100vh;
+
+display: flex;
+
+flex-direction: column;
+
+background-color: #f0f2f5;
+
+overflow: hidden;
+
 }
+
+
 
 // HEADER
+
 .control-header {
-  background: white; 
-  padding: 10px 20px; 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  border-bottom: 1px solid #ddd; 
-  z-index: 10;
-  
-  .header-left h2 { 
-    margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; color: #444; 
-  }
-  
-  .header-center { 
-    flex: 1; display: flex; justify-content: center; gap: 20px;
-    
-    .turno-select { width: 300px; font-size: 0.9rem; }
-    
-    // --- BARRA DE PESQUISA ---
-    .search-box {
-        display: flex; align-items: center; 
-        background: #f1f3f4; 
-        padding: 0 15px; 
-        border-radius: 20px; 
-        width: 250px; 
-        height: 40px;
-        transition: background 0.2s;
-        
-        &:focus-within { background: white; box-shadow: 0 0 0 2px #e3f2fd; }
 
-        mat-icon { color: #777; margin-right: 5px; }
-        input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; }
-    }
-  }
+background: white;
 
-  .header-right {
-    display: flex; gap: 10px;
-  }
+padding: 10px 20px;
+
+display: flex;
+
+justify-content: space-between;
+
+align-items: center;
+
+border-bottom: 1px solid #ddd;
+
+z-index: 10;
+
+
+.header-left h2 {
+
+margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; color: #444;
+
 }
 
-.empty-state { 
-  flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #999; 
-  mat-icon { font-size: 64px; width: 64px; height: 64px; margin-bottom: 20px; opacity: 0.5; } 
+
+.header-center {
+
+flex: 1; display: flex; justify-content: center; gap: 20px;
+
+
+.turno-select { width: 300px; font-size: 0.9rem; }
+
+
+// --- BARRA DE PESQUISA ---
+
+.search-box {
+
+display: flex; align-items: center;
+
+background: #f1f3f4;
+
+padding: 0 15px;
+
+border-radius: 20px;
+
+width: 250px;
+
+height: 40px;
+
+transition: background 0.2s;
+
+
+&:focus-within { background: white; box-shadow: 0 0 0 2px #e3f2fd; }
+
+
+
+mat-icon { color: #777; margin-right: 5px; }
+
+input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; }
+
 }
+
+}
+
+
+
+.header-right {
+
+display: flex; gap: 10px;
+
+}
+
+}
+
+
+
+.empty-state {
+
+flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #999;
+
+mat-icon { font-size: 64px; width: 64px; height: 64px; margin-bottom: 20px; opacity: 0.5; }
+
+}
+
+
 
 // WORKSPACE
+
 .workspace {
-  flex: 1; display: flex; flex-direction: column; overflow: hidden;
-  
-  .toolbar {
-    padding: 10px 20px; background: white; display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #eee;
-    
-    .step-group { 
-      display: flex; flex-direction: column; gap: 5px; 
-      .step-label { font-size: 0.7rem; text-transform: uppercase; color: #888; font-weight: bold; letter-spacing: 0.5px; } 
-      .input-row { display: flex; align-items: center; gap: 10px; } 
-    }
-    .tiny-input { width: 80px; font-size: 0.8rem; }
-    .divider-vertical { width: 1px; height: 40px; background: #eee; margin: 0 10px; }
-  }
+
+flex: 1; display: flex; flex-direction: column; overflow: hidden;
+
+
+.toolbar {
+
+padding: 10px 20px; background: white; display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #eee;
+
+
+.step-group {
+
+display: flex; flex-direction: column; gap: 5px;
+
+.step-label { font-size: 0.7rem; text-transform: uppercase; color: #888; font-weight: bold; letter-spacing: 0.5px; }
+
+.input-row { display: flex; align-items: center; gap: 10px; }
+
 }
+
+.tiny-input { width: 80px; font-size: 0.8rem; }
+
+.divider-vertical { width: 1px; height: 40px; background: #eee; margin: 0 10px; }
+
+}
+
+}
+
+
 
 // BOARD & SIDEBAR
+
 .board-container { flex: 1; display: flex; overflow: hidden; padding: 20px; gap: 20px; }
 
+
+
 .sidebar-unassigned {
-  width: 250px; min-width: 250px; background: white; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e0e0e0;
-  
-  .dock-header { 
-    background: #37474f; color: white; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; 
-    .badge { background: #ff5252; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; } 
-  }
-  .dock-list { flex: 1; overflow-y: auto; padding: 8px; background: #fafafa; display: flex; flex-direction: column; gap: 6px; }
-  .empty-msg { text-align: center; color: #aaa; margin-top: 20px; font-size: 0.9rem; }
+
+width: 250px; min-width: 250px; background: white; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e0e0e0;
+
+
+.dock-header {
+
+background: #37474f; color: white; padding: 10px; font-weight: bold; display: flex; justify-content: space-between;
+
+.badge { background: #ff5252; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+
 }
+
+.dock-list { flex: 1; overflow-y: auto; padding: 8px; background: #fafafa; display: flex; flex-direction: column; gap: 6px; }
+
+.empty-msg { text-align: center; color: #aaa; margin-top: 20px; font-size: 0.9rem; }
+
+}
+
+
 
 // --- ÍCONES DE ALERTA ---
+
 .alert-icon { font-size: 16px; width: 16px; height: 16px; color: #d32f2f; } // Vermelho
-.med-icon { font-size: 16px; width: 16px; height: 16px; color: #1976d2; }   // Azul
+
+.med-icon { font-size: 16px; width: 16px; height: 16px; color: #1976d2; } // Azul
+
 .tiny { font-size: 14px; width: 14px; height: 14px; }
 
-// --- CHIP (Sidebar) ---
-.student-chip {
-  background: white; border: 1px solid #ddd; border-radius: 20px; padding: 4px 10px 4px 4px; display: flex; align-items: center; gap: 8px; cursor: grab; transition: all 0.2s;
-  
-  &:hover { background: #e3f2fd; border-color: #2196f3; }
-  
-  // Highlight da Pesquisa
-  &.highlight { 
-    border: 2px solid #ff9800; 
-    background: #fff3e0; 
-    transform: scale(1.02); 
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  }
 
-  .avatar { 
-    width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: white; 
-    &.boy { background: #1976d2; } &.girl { background: #e91e63; } 
-  }
-  .info { 
-      display: flex; flex-direction: column; line-height: 1; width: 100%;
-      .name { font-size: 0.8rem; } 
-      .badges { display: flex; align-items: center; gap: 5px; margin-top: 2px; .age { font-size: 0.65rem; color: #888; } }
-  }
+
+// --- CHIP (Sidebar) ---
+
+.student-chip {
+
+background: white; border: 1px solid #ddd; border-radius: 20px; padding: 4px 10px 4px 4px; display: flex; align-items: center; gap: 8px; cursor: grab; transition: all 0.2s;
+
+
+&:hover { background: #e3f2fd; border-color: #2196f3; }
+
+
+// Highlight da Pesquisa
+
+&.highlight {
+
+border: 2px solid #ff9800;
+
+background: #fff3e0;
+
+transform: scale(1.02);
+
+box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
 }
+
+
+
+.avatar {
+
+width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: white;
+
+&.boy { background: #1976d2; } &.girl { background: #e91e63; }
+
+}
+
+.info {
+
+display: flex; flex-direction: column; line-height: 1; width: 100%;
+
+.name { font-size: 0.8rem; }
+
+.badges { display: flex; align-items: center; gap: 5px; margin-top: 2px; .age { font-size: 0.65rem; color: #888; } }
+
+}
+
+}
+
+
 
 // --- COLUNAS ---
+
 .columns-area { flex: 1; display: flex; gap: 15px; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
 
+
+
 .group-column {
-  min-width: 260px; max-width: 260px; background: #ebecf0; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%;
 
-  // --- CORES & DROPDOWN STYLE ---
-  // Default (Vazio): Fundo Cinza, Texto Escuro
-  .col-header { 
-    background: #cfd8dc; color: #37474f; 
-    .title-input, .cap-input { color: #263238; } 
-    .print-btn mat-icon { color: #546e7a; }
-    .col-meta .cap-control { background: rgba(0,0,0,0.05); mat-icon { color: #546e7a; } }
-    .capacity-bar { background: rgba(0,0,0,0.1); }
-    // Dropdown Escuro
-    ::ng-deep .monitor-select .mat-mdc-select-value { color: #263238 !important; }
-    ::ng-deep .monitor-select .mat-mdc-select-arrow { color: #546e7a !important; }
-  }
+min-width: 260px; max-width: 260px; background: #ebecf0; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%;
 
-  // Rapazes (Azul)
-  &.is-male .col-header { 
-    background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; 
-    .title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
-    .col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
-    .capacity-bar { background: rgba(255,255,255,0.3); }
-    // Dropdown Branco
-    ::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
-    ::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
-  }
 
-  // Raparigas (Rosa)
-  &.is-female .col-header { 
-    background: linear-gradient(135deg, #ec407a, #d81b60); color: white; 
-    .title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
-    .col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
-    .capacity-bar { background: rgba(255,255,255,0.3); }
-    // Dropdown Branco
-    ::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
-    ::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
-  }
 
-  // Misto (Laranja)
-  &.is-mixed .col-header { 
-    background: linear-gradient(135deg, #ffa726, #fb8c00); color: white; 
-    .title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
-    .col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
-    .capacity-bar { background: rgba(255,255,255,0.3); }
-    // Dropdown Branco
-    ::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
-    ::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
-  }
+// --- CORES & DROPDOWN STYLE ---
 
-  // --- ESTRUTURA HEADER ---
-  .col-header {
-    padding: 10px; border-radius: 6px 6px 0 0; transition: background 0.3s;
-    
-    .header-top { display: flex; align-items: center; justify-content: space-between; }
-    
-    .print-btn { 
-      background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.7; 
-      &:hover { opacity: 1; transform: scale(1.1); } 
-    }
-    
-    .title-input { background: transparent; border: none; font-weight: bold; width: 85%; margin-bottom: 5px; font-size: 1rem; &:focus { outline: none; } }
-    
-    .col-meta {
-      display: flex; gap: 5px; margin-bottom: 8px;
-      
-      // Select Monitor (Estilo Personalizado)
-      .monitor-select { 
-        flex: 1; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 0 5px; height: 28px; font-size: 0.85rem; border: 1px solid transparent; 
-        &:hover { background: rgba(255,255,255,0.25); } 
-      }
+// Default (Vazio): Fundo Cinza, Texto Escuro
 
-      .cap-control { 
-        display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 3px; 
-        .cap-input { background: transparent; border: none; width: 25px; text-align: center; font-weight: bold; -moz-appearance: textfield; &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } } 
-      }
-    }
-    
-    .capacity-bar { 
-      height: 4px; border-radius: 2px; overflow: hidden; 
-      .fill { height: 100%; background: #76ff03; transition: width 0.3s; &.full { background: #ff1744; } } 
-    }
-    .count-text { font-size: 0.7rem; text-align: right; margin-top: 2px; opacity: 0.9; }
-  }
+.col-header {
 
-  .col-list { padding: 8px; overflow-y: auto; flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 6px; }
+background: #cfd8dc; color: #37474f;
+
+.title-input, .cap-input { color: #263238; }
+
+.print-btn mat-icon { color: #546e7a; }
+
+.col-meta .cap-control { background: rgba(0,0,0,0.05); mat-icon { color: #546e7a; } }
+
+.capacity-bar { background: rgba(0,0,0,0.1); }
+
+// Dropdown Escuro
+
+::ng-deep .monitor-select .mat-mdc-select-value { color: #263238 !important; }
+
+::ng-deep .monitor-select .mat-mdc-select-arrow { color: #546e7a !important; }
+
 }
+
+
+
+// Rapazes (Azul)
+
+&.is-male .col-header {
+
+background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white;
+
+.title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
+
+.col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
+
+.capacity-bar { background: rgba(255,255,255,0.3); }
+
+// Dropdown Branco
+
+::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
+
+::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
+
+}
+
+
+
+// Raparigas (Rosa)
+
+&.is-female .col-header {
+
+background: linear-gradient(135deg, #ec407a, #d81b60); color: white;
+
+.title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
+
+.col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
+
+.capacity-bar { background: rgba(255,255,255,0.3); }
+
+// Dropdown Branco
+
+::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
+
+::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
+
+}
+
+
+
+// Misto (Laranja)
+
+&.is-mixed .col-header {
+
+background: linear-gradient(135deg, #ffa726, #fb8c00); color: white;
+
+.title-input, .cap-input { color: white; } .print-btn mat-icon { color: white; }
+
+.col-meta .cap-control { background: rgba(255,255,255,0.2); mat-icon { color: white; } }
+
+.capacity-bar { background: rgba(255,255,255,0.3); }
+
+// Dropdown Branco
+
+::ng-deep .monitor-select .mat-mdc-select-value { color: white !important; }
+
+::ng-deep .monitor-select .mat-mdc-select-arrow { color: rgba(255,255,255,0.7) !important; }
+
+}
+
+
+
+// --- ESTRUTURA HEADER ---
+
+.col-header {
+
+padding: 10px; border-radius: 6px 6px 0 0; transition: background 0.3s;
+
+
+.header-top { display: flex; align-items: center; justify-content: space-between; }
+
+
+.print-btn {
+
+background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.7;
+
+&:hover { opacity: 1; transform: scale(1.1); }
+
+}
+
+
+.title-input { background: transparent; border: none; font-weight: bold; width: 85%; margin-bottom: 5px; font-size: 1rem; &:focus { outline: none; } }
+
+
+.col-meta {
+
+display: flex; gap: 5px; margin-bottom: 8px;
+
+
+// Select Monitor (Estilo Personalizado)
+
+.monitor-select {
+
+flex: 1; background: rgba(255,255,255,0.15); border-radius: 4px; padding: 0 5px; height: 28px; font-size: 0.85rem; border: 1px solid transparent;
+
+&:hover { background: rgba(255,255,255,0.25); }
+
+}
+
+
+
+.cap-control {
+
+display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 3px;
+
+.cap-input { background: transparent; border: none; width: 25px; text-align: center; font-weight: bold; -moz-appearance: textfield; &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } }
+
+}
+
+}
+
+
+.capacity-bar {
+
+height: 4px; border-radius: 2px; overflow: hidden;
+
+.fill { height: 100%; background: #76ff03; transition: width 0.3s; &.full { background: #ff1744; } }
+
+}
+
+.count-text { font-size: 0.7rem; text-align: right; margin-top: 2px; opacity: 0.9; }
+
+}
+
+
+
+.col-list { padding: 8px; overflow-y: auto; flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 6px; }
+
+}
+
+
 
 // --- CARTÃO DO ALUNO ---
-.student-card {
-  background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; position: relative; overflow: hidden; transition: all 0.2s;
-  
-  &:hover { background: #fdfdfd; }
-  
-  // Highlight Pesquisa
-  &.highlight { border: 2px solid #ff9800; background: #fff3e0; box-shadow: 0 0 10px rgba(255, 152, 0, 0.5); }
 
-  .card-row { 
-      display: flex; justify-content: space-between; align-items: center; 
-      .s-name { font-size: 0.85rem; color: #333; } 
-      .icons-row { display: flex; gap: 4px; align-items: center; }
-      .s-age { font-size: 0.75rem; color: #777; background: #eee; padding: 1px 4px; border-radius: 3px; } 
-  }
-  .gender-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; &.boy { background: #1976d2; } &.girl { background: #e91e63; } }
+.student-card {
+
+background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; position: relative; overflow: hidden; transition: all 0.2s;
+
+
+&:hover { background: #fdfdfd; }
+
+
+// Highlight Pesquisa
+
+&.highlight { border: 2px solid #ff9800; background: #fff3e0; box-shadow: 0 0 10px rgba(255, 152, 0, 0.5); }
+
+
+
+.card-row {
+
+display: flex; justify-content: space-between; align-items: center;
+
+.s-name { font-size: 0.85rem; color: #333; }
+
+.icons-row { display: flex; gap: 4px; align-items: center; }
+
+.s-age { font-size: 0.75rem; color: #777; background: #eee; padding: 1px 4px; border-radius: 3px; }
+
 }
 
+.gender-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; &.boy { background: #1976d2; } &.girl { background: #e91e63; } }
+
+}
+
+
+
 .cdk-drag-preview { box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 4px; background: white; padding: 8px; }
+
 .cdk-drag-placeholder { opacity: 0; }
+
 .cdk-drag-animating { transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); }
+
+::ng-deep .mat-mdc-tab-labels{
+    background-color: white !important;
+}
+ 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
