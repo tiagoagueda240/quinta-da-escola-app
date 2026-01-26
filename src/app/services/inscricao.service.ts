@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, writeBatch } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, writeBatch, getDoc } from '@angular/fire/firestore';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -13,19 +13,19 @@ export class InscricaoService {
   private http: HttpClient = inject(HttpClient);
   private collectionName = 'inscricoes';
 
-  constructor() {}
+  constructor() { }
 
   async addInscricao(inscricao: Inscricao) {
     const colRef = collection(this.firestore, this.collectionName);
     const docRef = await addDoc(colRef, inscricao);
-    
+
     this.enviarEmailSeguro(inscricao);
-    
+
     return docRef;
   }
 
   enviarEmailSeguro(dados: Inscricao) {
-    const url = 'https://turnos.quintadaescola.com/send-email.php'; 
+    const url = 'https://turnos.quintadaescola.com/send-email.php';
 
     const payload = {
       nome: dados.ee.nome,
@@ -41,15 +41,15 @@ export class InscricaoService {
   }
 
   async updateBatch(updates: { id: string, data: any }[]) {
-  const batch = writeBatch(this.firestore);
-  
-  updates.forEach(item => {
-    const docRef = doc(this.firestore, this.collectionName, item.id);
-    batch.update(docRef, item.data);
-  });
+    const batch = writeBatch(this.firestore);
 
-  return batch.commit();
-}
+    updates.forEach(item => {
+      const docRef = doc(this.firestore, this.collectionName, item.id);
+      batch.update(docRef, item.data);
+    });
+
+    return batch.commit();
+  }
 
   getInscricoes(): Observable<Inscricao[]> {
     const colRef = collection(this.firestore, this.collectionName);
@@ -77,5 +77,11 @@ export class InscricaoService {
   deleteInscricao(id: string) {
     const docRef = doc(this.firestore, this.collectionName, id);
     return deleteDoc(docRef);
+  }
+
+  async getConfiguracoesTurnos(): Promise<any> {
+    const docRef = doc(this.firestore, 'configuracoes', 'turnos');
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data() : null;
   }
 }

@@ -2,12 +2,14 @@
   "name": "quinta-da-escola-app",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
-  },
+  "ng": "ng",
+  "start": "ng serve",
+  "start:prod": "ng serve --configuration production",
+  "build": "ng build",
+  "build:prod": "ng build --configuration production",
+  "watch": "ng build --watch --configuration development",
+  "test": "ng test"
+},
   "prettier": {
     "printWidth": 100,
     "singleQuote": true,

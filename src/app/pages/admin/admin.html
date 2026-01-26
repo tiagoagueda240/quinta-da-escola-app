@@ -3,18 +3,15 @@
   <header class="topbar">
     <div class="logo-area">
       <div class="logo-icon"><mat-icon>forest</mat-icon></div>
-      <span>Dashboard</span>
+      <span>Dashboard Admin</span>
     </div>
 
     <div class="actions-area" style="display: flex; gap: 10px;">
-      <button mat-stroked-button (click)="verificarTurnoParaTransporte()" style="color: #444; border-color: #ccc;">
-        <mat-icon style="color: #1976d2;">directions_bus</mat-icon> Lista Transportes
+      <button mat-stroked-button (click)="verificarTurnoParaTransporte()">
+        <mat-icon color="primary">directions_bus</mat-icon> Transportes
       </button>
-      <button mat-stroked-button (click)="verificarTurnoParaCozinha()" style="color: #444; border-color: #ccc;">
-        <mat-icon style="color: #d32f2f;">restaurant</mat-icon> Lista Restrições
-      </button>
-      <button mat-flat-button color="primary" (click)="gerarDadosTeste()">
-        <mat-icon>science</mat-icon> Gerar Dados
+      <button mat-stroked-button (click)="verificarTurnoParaCozinha()">
+        <mat-icon color="warn">restaurant</mat-icon> Cozinha
       </button>
       <button mat-stroked-button color="warn" (click)="sair()">
         <mat-icon>logout</mat-icon> Sair
@@ -23,87 +20,76 @@
   </header>
 
   <div class="selection-bar" *ngIf="selection.hasValue()">
-    <div class="selection-count">{{ selection.selected.length }} selecionado(s)</div>
+    <div class="selection-count">{{ selection.selected.length }} selecionados</div>
     <div class="selection-actions">
-      <button mat-button class="btn-action success"
-        (click)="marcarSelecionadosComo('pago')"><mat-icon>check_circle</mat-icon> Pagos</button>
-      <button mat-button class="btn-action warn"
-        (click)="marcarSelecionadosComo('pendente')"><mat-icon>pending</mat-icon> Pendentes</button>
+      <button mat-button (click)="marcarSelecionadosComo('pago')"><mat-icon>check</mat-icon> PAGO</button>
+      <button mat-button (click)="marcarSelecionadosComo('pendente')"><mat-icon>history</mat-icon> PENDENTE</button>
       <div class="divider"></div>
-      <button mat-button class="btn-action danger" (click)="apagarSelecionados()"><mat-icon>delete</mat-icon>
-        Apagar</button>
+      <button mat-button color="warn" (click)="apagarSelecionados()"><mat-icon>delete</mat-icon></button>
     </div>
   </div>
 
   <div class="main-content">
 
-
     <div class="top-grid">
       <div class="left-stats">
         <div class="stats-container">
-
           <div class="stat-card-premium">
             <div class="icon-box blue"><mat-icon>groups</mat-icon></div>
-            <div><span class="label">Total Inscritos</span>
+            <div><span class="label">Inscritos</span>
               <div class="value">{{ totalInscritos }}</div>
             </div>
           </div>
-
           <div class="stat-card-premium">
-            <div class="icon-box orange"><mat-icon>pending_actions</mat-icon></div>
+            <div class="icon-box orange"><mat-icon>payments</mat-icon></div>
             <div><span class="label">Pendentes</span>
               <div class="value">{{ pendentes }}</div>
             </div>
           </div>
-
           <div class="stat-card-premium">
             <div class="icon-box teal"><mat-icon>wc</mat-icon></div>
-
-            <div>
-              <span class="label">Rácio M / F</span>
-              <div class="value" style="display: flex; gap: 8px; align-items: baseline; font-size: 1.2rem;">
-                <span style="color: #1976d2; font-weight: 700;">{{ totalRapazes }} M</span>
-                <span style="color: #e0e0e0; font-weight: 300;">|</span>
-                <span style="color: #d81b60; font-weight: 700;">{{ totalRaparigas }} F</span>
-              </div>
+            <div><span class="label">M / F</span>
+              <div class="value" style="font-size: 1.1rem;">{{ totalRapazes }}M | {{ totalRaparigas }}F</div>
             </div>
           </div>
         </div>
 
         <div class="unified-controls mat-elevation-z2">
+          <mat-select [(ngModel)]="filtroLocal" (selectionChange)="atualizarListaDeTurnosPorLocal()"
+            class="minimal-select" style="font-weight: 700; color: #2e7d32; flex: 0.6;">
+            <mat-option value="quinta">Quinta da Escola</mat-option>
+            <mat-option value="costaCaparica">Costa da Caparica</mat-option>
+            <mat-option value="quiaios">Quiaios</mat-option>
+          </mat-select>
+
+          <div class="divider-vertical"></div>
+
           <div class="search-box">
             <mat-icon>search</mat-icon>
-            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Pesquisar...">
+            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Nome ou EE...">
           </div>
+
           <div class="divider-vertical"></div>
-          <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Todos os Turnos"
+
+          <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Turnos"
             class="minimal-select">
             <mat-option value="">Todos os Turnos</mat-option>
             <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
           </mat-select>
-          <div class="divider-vertical"></div>
-          <mat-select [(ngModel)]="filtroEstado" (selectionChange)="atualizarFiltros()" placeholder="Estado"
-            class="minimal-select small">
-            <mat-option value="">Todos</mat-option>
-            <mat-option value="pago">Pago</mat-option>
-            <mat-option value="pendente">Pendente</mat-option>
-          </mat-select>
-          <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado"
-            matTooltip="Limpar">
-            <mat-icon>close</mat-icon>
+
+          <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado">
+            <mat-icon>backspace</mat-icon>
           </button>
         </div>
       </div>
 
-
       <div class="occupancy-widget mat-elevation-z2">
         <div class="widget-header">
-          <h3>Top Ocupação</h3><mat-icon>bar_chart</mat-icon>
+          <h3>Ocupação do Local</h3><mat-icon>analytics</mat-icon>
         </div>
         <div class="turn-list">
           <div class="turn-item" *ngFor="let t of ocupacaoPorTurno">
-            <div class="turn-label"><span class="t-name">{{ t.nome }}</span><span class="t-val">{{ t.count }}
-                inscritos</span></div>
+            <div class="turn-label"><span>{{ t.nome }}</span><span>{{ t.count }}/80</span></div>
             <mat-progress-bar mode="determinate" [value]="t.percent" class="custom-progress"></mat-progress-bar>
           </div>
         </div>
@@ -116,7 +102,7 @@
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef>
             <mat-checkbox (change)="$event ? masterToggle() : null" [checked]="selection.hasValue() && isAllSelected()"
-              [indeterminate]="selection.hasValue() && !isAllSelected()" color="primary"></mat-checkbox>
+              color="primary"></mat-checkbox>
           </th>
           <td mat-cell *matCellDef="let row">
             <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null"
@@ -142,7 +128,7 @@
               <div class="avatar-small">{{ row.participante.nomeCompleto.charAt(0) }}</div>
               <div class="text-data">
                 <span class="name">{{ row.participante.nomeCompleto }}</span>
-                <span class="meta">Nasc: {{ row.participante.dataNascimento | date:'dd/MM/yyyy' }}</span>
+                <span class="meta">{{ row.participante.dataNascimento | date:'dd/MM/yyyy' }}</span>
               </div>
             </div>
           </td>
@@ -154,10 +140,10 @@
         </ng-container>
 
         <ng-container matColumnDef="contacto">
-          <th mat-header-cell *matHeaderCellDef> EE / CONTACTO </th>
+          <th mat-header-cell *matHeaderCellDef> CONTACTO </th>
           <td mat-cell *matCellDef="let row">
             <div class="ee-cell">
-              <span>{{ row.ee.nome }}</span>
+              <span>{{ row.ee.telefone }}</span>
               <button class="icon-btn whatsapp"
                 (click)="abrirWhatsApp(row.ee.telefone); $event.stopPropagation()"><mat-icon>chat</mat-icon></button>
             </div>
@@ -167,20 +153,16 @@
         <ng-container matColumnDef="acoes">
           <th mat-header-cell *matHeaderCellDef> </th>
           <td mat-cell *matCellDef="let row">
-            <button mat-icon-button class="edit-btn"
-              (click)="abrirDetalhes(row); $event.stopPropagation()"><mat-icon>edit_note</mat-icon></button>
+            <button mat-icon-button
+              (click)="abrirDetalhes(row); $event.stopPropagation()"><mat-icon>visibility</mat-icon></button>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="colunasMostradas"></tr>
         <tr mat-row *matRowDef="let row; columns: colunasMostradas;" class="hover-row" (click)="abrirDetalhes(row)">
         </tr>
-        <tr class="mat-row" *matNoDataRow>
-          <td class="mat-cell" colspan="6" style="text-align:center; padding: 40px; color:#999">Nenhum registo
-            encontrado.</td>
-        </tr>
       </table>
-      <mat-paginator [pageSizeOptions]="[10, 25, 100]" showFirstLastButtons></mat-paginator>
+      <mat-paginator [pageSizeOptions]="[10, 20, 50]" showFirstLastButtons></mat-paginator>
     </div>
   </div>
 </div>
@@ -238,7 +220,8 @@
       <div *ngIf="!isEditing">
         <div class="info-row"><mat-icon>person</mat-icon> {{ selectedInscricao.ee.nome }}</div>
         <div class="info-row clickable" (click)="abrirWhatsApp(selectedInscricao.ee.telefone)">
-          <mat-icon>phone</mat-icon> {{ selectedInscricao.ee.telefone }} (WhatsApp)</div>
+          <mat-icon>phone</mat-icon> {{ selectedInscricao.ee.telefone }} (WhatsApp)
+        </div>
         <div class="info-row"><mat-icon>email</mat-icon> {{ selectedInscricao.ee.email }}</div>
       </div>
       <div *ngIf="isEditing" class="edit-group">
@@ -331,36 +314,19 @@
 
   </div>
 </div>
-
 <ng-template #dialogTurno>
-  <h2 mat-dialog-title style="font-family: 'Montserrat', sans-serif;">
-    <mat-icon style="vertical-align: middle; margin-right: 8px;"
-      [style.color]="acaoDialog === 'cozinha' ? '#d32f2f' : '#1976d2'">
-      {{ acaoDialog === 'cozinha' ? 'restaurant' : 'directions_bus' }}
-    </mat-icon>
-
-    {{ acaoDialog === 'cozinha' ? 'Relatório Cozinha' : 'Listas de Transporte' }}
-  </h2>
-
+  <h2 mat-dialog-title>Gerar Relatório</h2>
   <mat-dialog-content>
-    <p style="margin-bottom: 15px; color: #666;">
-      Selecione o turno para gerar {{ acaoDialog === 'cozinha' ? 'a lista de alergias' : 'as tabelas de autocarro' }}:
-    </p>
-
-    <mat-form-field appearance="outline" style="width: 100%;">
-      <mat-label>Escolher Turno</mat-label>
+    <mat-form-field appearance="outline" style="width:100%">
+      <mat-label>Selecione o Turno</mat-label>
       <mat-select [(ngModel)]="turnoParaDialog">
         <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
       </mat-select>
     </mat-form-field>
   </mat-dialog-content>
-
-  <mat-dialog-actions align="end" style="padding-bottom: 20px; padding-right: 20px;">
+  <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancelar</button>
-
-    <button mat-flat-button [color]="acaoDialog === 'cozinha' ? 'warn' : 'primary'" [disabled]="!turnoParaDialog"
-      (click)="confirmarGeracaoPDF()">
-      <mat-icon>download</mat-icon> Gerar PDF
-    </button>
+    <button mat-flat-button color="primary" [disabled]="!turnoParaDialog" (click)="confirmarGeracaoPDF()">Gerar
+      PDF</button>
   </mat-dialog-actions>
 </ng-template>

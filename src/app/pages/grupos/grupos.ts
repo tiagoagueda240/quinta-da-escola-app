@@ -71,12 +71,9 @@ export class GruposComponent implements OnInit {
   termoPesquisa: string = '';
   modoVisualizacao: 'camarata' | 'atividade' = 'camarata';
 
-  listaTurnos = [
-    '1º Turno – 28 Junho a 4 Julho', '2º Turno – 5 a 11 Julho', '3º Turno – 12 a 18 Julho',
-    '4º Turno – 19 a 25 Julho', '5º Turno – 26 Julho a 1 Agosto', '6º Turno – 2 a 8 Agosto',
-    '7º Turno – 9 a 15 Agosto', '8º Turno – 16 a 22 Agosto', '9º Turno – 23 a 29 Agosto',
-    '10º Turno – 30 Agosto a 5 Setembro'
-  ];
+  filtroLocal: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
+  todosOsTurnosConfig: any = null;
+  listaTurnos: string[] = []; // Agora será preenchida dinamicamente
 
   // Configurações de Logística
   qtdQuartosM = 2; qtdQuartosF = 3; qtdGruposAtiv = 5;
@@ -85,6 +82,7 @@ export class GruposComponent implements OnInit {
   poolVisual: Inscricao[] = [];
 
   ngOnInit() {
+    this.carregarDadosIniciais();
     this.carregarDados();
 
     // Filtro dinâmico para a pesquisa de monitores
@@ -96,6 +94,39 @@ export class GruposComponent implements OnInit {
       })
     );
   }
+
+  async carregarDadosIniciais() {
+    try {
+      // 1. Carrega os turnos do Firebase
+      const config = await this.inscricaoService.getConfiguracoesTurnos();
+      if (config) {
+        this.todosOsTurnosConfig = config;
+        this.atualizarListaTurnos(); // Carrega turnos do local padrão (Quinta)
+      }
+
+      // 2. Subscreve às inscrições
+      this.inscricaoService.getInscricoes().subscribe(dados => {
+        this.todosRegistos = dados;
+        this.atualizarVista();
+      });
+
+      // 3. Monitores
+      this.monitorService.getMonitores().subscribe(m => this.monitoresGlobais = m);
+    } catch (error) {
+      this.snackBar.open('Erro ao carregar configurações', 'Erro');
+    }
+  }
+
+  atualizarListaTurnos() {
+    // Mapeia o valor do filtro para a chave do Firebase
+    this.listaTurnos = this.todosOsTurnosConfig[this.filtroLocal] || [];
+    this.turnoSelecionado = ''; // Reseta o turno ao mudar o local
+    this.colunasCamaratas = [];
+    this.colunasAtividades = [];
+    this.poolVisual = [];
+  }
+
+
 
   private _filterMonitores(value: string): Monitor[] {
     const filterValue = value.toLowerCase();
@@ -164,10 +195,24 @@ export class GruposComponent implements OnInit {
 
   atualizarVista() {
     if (!this.turnoSelecionado) return;
-    const criancasTurno = this.todosRegistos.filter(i => i.turnoEscolhido === this.turnoSelecionado);
+
+    // Tradução para bater com o campo 'local' no modelo de dados
+    const mapaLocais: any = {
+      'quinta': 'Quinta',
+      'costaCaparica': 'Costa da Caparica',
+      'quiaios': 'Quiaios'
+    };
+
+    // Filtra crianças que pertencem ao LOCAL e ao TURNO selecionados
+    const criancasFiltradas = this.todosRegistos.filter(i =>
+      i.local === mapaLocais[this.filtroLocal] &&
+      i.turnoEscolhido === this.turnoSelecionado
+    );
+
     const atribuidosIds = new Set<string>();
     this.colunasAtivas.forEach(c => c.lista.forEach(k => { if (k.id) atribuidosIds.add(k.id); }));
-    this.poolVisual = criancasTurno.filter(k => k.id && !atribuidosIds.has(k.id));
+
+    this.poolVisual = criancasFiltradas.filter(k => k.id && !atribuidosIds.has(k.id));
   }
 
   isMonitorDisponivel(nomeMonitor: string, colunaAtual: ColunaGrupo): boolean {

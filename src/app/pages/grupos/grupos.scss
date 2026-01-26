@@ -22,7 +22,7 @@ overflow: hidden;
 
 background: white;
 
-padding: 10px 20px;
+padding: 30px 20px;
 
 display: flex;
 
@@ -33,6 +33,10 @@ align-items: center;
 border-bottom: 1px solid #ddd;
 
 z-index: 10;
+
+.mat-mdc-form-field{
+    height: 50px !important;
+}
 
 
 .header-left h2 {

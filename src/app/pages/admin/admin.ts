@@ -39,29 +39,27 @@ export class AdminComponent implements OnInit, AfterViewInit {
   colunasMostradas: string[] = ['select', 'estado', 'participante', 'turno', 'contacto', 'acoes'];
   selection = new SelectionModel<Inscricao>(true, []);
 
+  // Dados Dinâmicos do Firebase
+  todosOsTurnosConfig: any = null;
+  listaTurnos: string[] = [];
+
+  // KPIs
   totalInscritos = 0;
   pendentes = 0;
-
   totalRapazes = 0;
   totalRaparigas = 0;
-
   ocupacaoPorTurno: { nome: string, count: number, percent: number }[] = [];
 
+  // Filtros
+  filtroLocal: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
   filtroTexto = '';
   filtroTurno = '';
   filtroEstado = '';
 
-  listaTurnos = [
-    '1º Turno – 28 Junho a 4 Julho', '2º Turno – 5 a 11 Julho', '3º Turno – 12 a 18 Julho',
-    '4º Turno – 19 a 25 Julho', '5º Turno – 26 Julho a 1 Agosto', '6º Turno – 2 a 8 Agosto',
-    '7º Turno – 9 a 15 Agosto', '8º Turno – 16 a 22 Agosto', '9º Turno – 23 a 29 Agosto',
-    '10º Turno – 30 Agosto a 5 Setembro'
-  ];
-
+  // Sidebar e Modals
   selectedInscricao: Inscricao | null = null;
   sidebarOpen = false;
   isEditing = false;
-
   acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
   turnoParaDialog: string = '';
   @ViewChild('dialogTurno') dialogTurno!: TemplateRef<any>;
@@ -76,7 +74,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   ngOnInit() {
     this.configurarFiltroAvancado();
-    this.carregarDados();
+    this.carregarTurnosEDados();
   }
 
   ngAfterViewInit() {
@@ -84,54 +82,100 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.dataSource.sort = this.sort;
   }
 
-  carregarDados() {
-    this.inscricaoService.getInscricoes().subscribe(dados => {
-      this.dataSource.data = dados;
-      this.atualizarKPIs(dados);
-      this.calcularOcupacao(dados);
-    });
+  async carregarTurnosEDados() {
+    try {
+      const config = await this.inscricaoService.getConfiguracoesTurnos();
+      if (config) {
+        this.todosOsTurnosConfig = config;
+        this.atualizarListaDeTurnosPorLocal();
+
+        // Subscreve às inscrições
+        this.inscricaoService.getInscricoes().subscribe(dados => {
+          this.dataSource.data = dados;
+          this.atualizarFiltros(); // Aplica o filtro de local inicial
+        });
+      }
+    } catch (error) {
+      this.mostrarNotificacao('Erro ao carregar configurações do Firebase', 'error');
+    }
   }
 
-  isAllSelected() {
-    const numSelected = this.selection.selected.length;
-    const numRows = this.dataSource.filteredData.length;
-    return numSelected === numRows;
+  atualizarListaDeTurnosPorLocal() {
+    if (this.todosOsTurnosConfig) {
+      this.listaTurnos = this.todosOsTurnosConfig[this.filtroLocal] || [];
+      this.filtroTurno = ''; // Reseta o turno ao trocar local
+      this.atualizarFiltros();
+    }
   }
-  masterToggle() {
-    this.isAllSelected() ? this.selection.clear() : this.dataSource.filteredData.forEach(row => this.selection.select(row));
+
+  configurarFiltroAvancado() {
+    this.dataSource.filterPredicate = (data: Inscricao, filter: string) => {
+      const searchTerms = JSON.parse(filter);
+
+      // Mapeamento para bater com o campo 'local' do model
+      const mapaLocais: any = {
+        'quinta': 'Quinta',
+        'costaCaparica': 'Costa da Caparica',
+        'quiaios': 'Quiaios'
+      };
+
+      const matchLocal = data.local === mapaLocais[this.filtroLocal];
+      const matchTexto = searchTerms.texto ?
+        data.participante.nomeCompleto.toLowerCase().includes(searchTerms.texto) ||
+        data.ee.nome.toLowerCase().includes(searchTerms.texto) : true;
+      const matchTurno = searchTerms.turno ? data.turnoEscolhido === searchTerms.turno : true;
+      const matchEstado = searchTerms.estado ? data.estadoPagamento === searchTerms.estado : true;
+
+      return matchLocal && matchTexto && matchTurno && matchEstado;
+    };
+  }
+
+  atualizarFiltros() {
+    const filtros = {
+      texto: this.filtroTexto.trim().toLowerCase(),
+      turno: this.filtroTurno,
+      estado: this.filtroEstado
+    };
+    this.dataSource.filter = JSON.stringify(filtros);
+
+    const dadosFiltrados = this.dataSource.filteredData;
+    this.atualizarKPIs(dadosFiltrados);
+    this.calcularOcupacao(dadosFiltrados);
+
+    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
   }
 
   atualizarKPIs(dados: Inscricao[]) {
     this.totalInscritos = dados.length;
     this.pendentes = dados.filter(i => i.estadoPagamento === 'pendente').length;
-
-    this.totalRapazes = dados.filter(i => (i.participante as any).genero === 'M').length;
-    this.totalRaparigas = dados.filter(i => (i.participante as any).genero === 'F').length;
+    this.totalRapazes = dados.filter(i => i.participante.genero === 'M').length;
+    this.totalRaparigas = dados.filter(i => i.participante.genero === 'F').length;
   }
 
   calcularOcupacao(dados: Inscricao[]) {
     const counts: any = {};
-    dados.forEach(d => { const t = d.turnoEscolhido; counts[t] = (counts[t] || 0) + 1; });
+    dados.forEach(d => { counts[d.turnoEscolhido] = (counts[d.turnoEscolhido] || 0) + 1; });
+
     this.ocupacaoPorTurno = this.listaTurnos.map(turnoNome => {
       const count = counts[turnoNome] || 0;
-      return { nome: turnoNome.split(' – ')[0], count: count, percent: (count / 20) * 100 };
+      return {
+        nome: turnoNome.includes('–') ? turnoNome.split(' – ')[0] : turnoNome.split('-')[0],
+        count: count,
+        percent: (count / 80) * 100
+      };
     });
   }
 
-  marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
-    const selecionados = this.selection.selected;
-    if (confirm(`Marcar ${selecionados.length} como ${novoEstado}?`)) {
-      selecionados.forEach(i => { if (i.id) this.inscricaoService.updateInscricao(i.id, { estadoPagamento: novoEstado }); });
-      this.selection.clear(); this.mostrarNotificacao('Atualizado!');
-    }
+  // --- Ações de Tabela ---
+
+  isAllSelected() {
+    return this.selection.selected.length === this.dataSource.filteredData.length;
   }
 
-  apagarSelecionados() {
-    const selecionados = this.selection.selected;
-    if (confirm(`Apagar ${selecionados.length} registos?`)) {
-      selecionados.forEach(i => { if (i.id) this.inscricaoService.deleteInscricao(i.id); });
-      this.selection.clear(); this.mostrarNotificacao('Apagado.', 'error');
-    }
+  masterToggle() {
+    this.isAllSelected() ?
+      this.selection.clear() :
+      this.dataSource.filteredData.forEach(row => this.selection.select(row));
   }
 
   togglePagamento(inscricao: Inscricao) {
@@ -142,30 +186,117 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.mostrarNotificacao(`Estado alterado para ${novo.toUpperCase()}`);
   }
 
+
+  marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
+    const selecionados = this.selection.selected;
+    if (confirm(`Alterar ${selecionados.length} inscrições para ${novoEstado}?`)) {
+      selecionados.forEach(i => {
+        if (i.id) this.inscricaoService.updateInscricao(i.id, { estadoPagamento: novoEstado });
+      });
+      this.selection.clear();
+    }
+  }
+
+  apagarSelecionados() {
+    const selecionados = this.selection.selected;
+    if (confirm(`Apagar ${selecionados.length} registos permanentemente?`)) {
+      selecionados.forEach(i => { if (i.id) this.inscricaoService.deleteInscricao(i.id); });
+      this.selection.clear();
+    }
+  }
+
+  // --- Sidebar e Edição ---
+
   abrirDetalhes(row: Inscricao) {
     this.selectedInscricao = JSON.parse(JSON.stringify(row));
     if (this.selectedInscricao?.participante.dataNascimento) {
       this.selectedInscricao.participante.dataNascimento = new Date(this.selectedInscricao.participante.dataNascimento);
     }
-    this.sidebarOpen = true; this.isEditing = false;
-    document.body.style.overflow = 'hidden';
+    this.sidebarOpen = true;
+    this.isEditing = false;
   }
 
   fecharDetalhes() {
-    if (this.isEditing && !confirm('Sair sem guardar?')) return;
-    this.sidebarOpen = false; this.isEditing = false;
+    this.sidebarOpen = false;
     setTimeout(() => this.selectedInscricao = null, 300);
-    document.body.style.overflow = 'auto';
+  }
+
+  async guardarEdicao() {
+    if (!this.selectedInscricao?.id) return;
+    await this.inscricaoService.updateInscricao(this.selectedInscricao.id, this.selectedInscricao);
+    this.isEditing = false;
+    this.mostrarNotificacao('Dados atualizados!');
+  }
+
+  // --- PDF e Helpers ---
+
+  verificarTurnoParaCozinha() {
+    this.acaoDialog = 'cozinha';
+    this.turnoParaDialog = this.filtroTurno;
+    this.dialog.open(this.dialogTurno, { width: '400px' });
+  }
+
+  verificarTurnoParaTransporte() {
+    this.acaoDialog = 'transporte';
+    this.turnoParaDialog = this.filtroTurno;
+    this.dialog.open(this.dialogTurno, { width: '400px' });
+  }
+
+  confirmarGeracaoPDF() {
+    if (this.acaoDialog === 'cozinha') this.gerarPDFCozinha(this.turnoParaDialog);
+    else this.gerarPDFTransporte(this.turnoParaDialog);
+    this.dialog.closeAll();
+  }
+
+  gerarPDFCozinha(turno: string) {
+    const doc = new jsPDF();
+    const lista = this.dataSource.data.filter(i => i.turnoEscolhido === turno && (i.saude.temAlergiaAlimentar || i.saude.temOutrasAlergias));
+
+    doc.text(`Restrições Alimentares - ${turno}`, 14, 20);
+    autoTable(doc, {
+      head: [['Participante', 'Alergia/Restrição']],
+      body: lista.map(i => [i.participante.nomeCompleto, i.saude.detalheAlergiaAlimentar || i.saude.detalheOutrasAlergias || 'Não especificado']),
+      startY: 30
+    });
+    doc.save(`Cozinha_${this.filtroLocal}.pdf`);
+  }
+
+  gerarPDFTransporte(turno: string) {
+    const doc = new jsPDF();
+    const lista = this.dataSource.data.filter(i => i.turnoEscolhido === turno && i.transporte !== 'Não (Entregue pelos pais)');
+
+    doc.text(`Lista de Transportes - ${turno}`, 14, 20);
+    autoTable(doc, {
+      head: [['Participante', 'Tipo Transporte', 'Contacto']],
+      body: lista.map(i => [i.participante.nomeCompleto, i.transporte, i.ee.telefone]),
+      startY: 30
+    });
+    doc.save(`Transportes_${this.filtroLocal}.pdf`);
+  }
+
+  abrirWhatsApp(tel: string) {
+    const n = tel.replace(/\s/g, '');
+    window.open(`https://wa.me/351${n}`, '_blank');
+  }
+
+  mostrarNotificacao(m: string, t: 'success' | 'error' = 'success') {
+    this.snackBar.open(m, 'OK', { duration: 3000, panelClass: t === 'success' ? 'snackbar-success' : 'snackbar-error' });
+  }
+
+  limparFiltros() {
+    this.filtroTexto = '';
+    this.filtroTurno = '';
+    this.filtroEstado = '';
+    this.atualizarFiltros();
   }
 
   ativarEdicao() { this.isEditing = true; }
 
-  async guardarEdicao() {
-    if (!this.selectedInscricao?.id) return;
-    try {
-      await this.inscricaoService.updateInscricao(this.selectedInscricao.id, this.selectedInscricao);
-      this.mostrarNotificacao('Guardado!'); this.isEditing = false;
-    } catch (e) { this.mostrarNotificacao('Erro ao guardar.', 'error'); }
+  reenviarEmail(inscricao: Inscricao) {
+    if (!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
+    this.mostrarNotificacao('A processar pedido...', 'success');
+    this.inscricaoService.enviarEmailSeguro(inscricao);
+    this.mostrarNotificacao('Email enviado para o servidor de correio!');
   }
 
   apagarInscricao(id?: string) {
@@ -176,138 +307,5 @@ export class AdminComponent implements OnInit, AfterViewInit {
     }
   }
 
-  reenviarEmail(inscricao: Inscricao) {
-    if (!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
-    this.mostrarNotificacao('A processar pedido...', 'success');
-    this.inscricaoService.enviarEmailSeguro(inscricao);
-    this.mostrarNotificacao('Email enviado para o servidor de correio!');
-  }
-
-  configurarFiltroAvancado() {
-    this.dataSource.filterPredicate = (data: Inscricao, filter: string) => {
-      const searchTerms = JSON.parse(filter);
-      const matchTexto = this.filtroTexto
-        ? (data.participante.nomeCompleto.toLowerCase().includes(searchTerms.texto) ||
-          data.ee.email.toLowerCase().includes(searchTerms.texto)) : true;
-      const matchTurno = this.filtroTurno ? data.turnoEscolhido === searchTerms.turno : true;
-      const matchEstado = this.filtroEstado ? data.estadoPagamento === searchTerms.estado : true;
-      return matchTexto && matchTurno && matchEstado;
-    };
-  }
-
-  atualizarFiltros() {
-    const filtros = { texto: this.filtroTexto.trim().toLowerCase(), turno: this.filtroTurno, estado: this.filtroEstado };
-    this.dataSource.filter = JSON.stringify(filtros);
-    if (this.dataSource.paginator) this.dataSource.paginator.firstPage();
-
-    this.atualizarKPIs(this.dataSource.filteredData);
-  }
-
-  limparFiltros() { this.filtroTexto = ''; this.filtroTurno = ''; this.filtroEstado = ''; this.atualizarFiltros(); }
-
-  mostrarNotificacao(msg: string, tipo: 'success' | 'error' = 'success') {
-    this.snackBar.open(msg, 'OK', { duration: 3000, panelClass: tipo === 'error' ? ['snackbar-error'] : ['snackbar-success'] });
-  }
-
-  abrirWhatsApp(telefone: string) {
-    let num = telefone.replace(/[^0-9]/g, '');
-    if (!num.startsWith('351') && num.length === 9) num = '351' + num;
-    window.open(`https://wa.me/${num}`, '_blank');
-  }
-
   sair() { this.authService.logout(); }
-
-  async gerarDadosTeste() {
-    if (!confirm('Tem a certeza? Isto vai adicionar entre 50 a 70 novas inscrições de teste à base de dados.')) return;
-    this.mostrarNotificacao('A gerar dados... Por favor aguarde.', 'success');
-
-    const nomesRapazes = ['Santiago', 'Francisco', 'João', 'Afonso', 'Rodrigo', 'Martim', 'Tomás', 'Duarte', 'Miguel', 'Gabriel', 'Lourenço', 'Gonçalo', 'Pedro', 'Tiago', 'Diogo', 'Rafael', 'Gustavo', 'Lucas', 'Simão', 'Salvador'];
-    const nomesRaparigas = ['Maria', 'Leonor', 'Matilde', 'Beatriz', 'Carolina', 'Sofia', 'Alice', 'Mariana', 'Ana', 'Benedita', 'Francisca', 'Margarida', 'Inês', 'Clara', 'Lara', 'Laura', 'Madalena', 'Joana', 'Diana', 'Luísa'];
-    const apelidos = ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Oliveira', 'Costa', 'Rodrigues', 'Martins', 'Jesus', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes', 'Lopes', 'Marques', 'Alves', 'Almeida', 'Ribeiro', 'Pinto', 'Carvalho', 'Teixeira', 'Moreira', 'Correia', 'Mendes', 'Nunes'];
-    const transportesOpcoes = [{ label: 'Não (Entregue pelos pais)', valor: 0 }, { label: 'Lisboa - Quinta da Escola (+20€)', valor: 20 }, { label: 'Quinta da Escola - Lisboa (+20€)', valor: 20 }, { label: 'Lisboa - Quinta - Lisboa (+40€)', valor: 40 }];
-
-    const quantidade = Math.floor(Math.random() * (70 - 50 + 1)) + 50;
-
-    for (let i = 0; i < quantidade; i++) {
-      const genero: 'M' | 'F' = Math.random() > 0.5 ? 'M' : 'F';
-      const primeiroNome = genero === 'M' ? nomesRapazes[Math.floor(Math.random() * nomesRapazes.length)] : nomesRaparigas[Math.floor(Math.random() * nomesRaparigas.length)];
-      const nomeCompleto = `${primeiroNome} ${apelidos[Math.floor(Math.random() * apelidos.length)]} ${apelidos[Math.floor(Math.random() * apelidos.length)]}`;
-      const idade = Math.floor(Math.random() * (17 - 8 + 1)) + 8;
-      const dataNascimento = new Date(2026 - idade, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
-      const turno = this.listaTurnos[Math.floor(Math.random() * this.listaTurnos.length)];
-
-      const novaInscricao: any = {
-        dataCriacao: new Date(), tipoCliente: 'individual', nomeInstituicao: '', turnoEscolhido: turno,
-        valorBase: 395, valorTotal: 395, estadoPagamento: Math.random() > 0.4 ? 'pago' : 'pendente',
-        transporte: transportesOpcoes[0].label, autorizaFotoVideo: true, politicaPrivacidade: true,
-        participante: { nomeCompleto: nomeCompleto, dataNascimento: dataNascimento, genero: genero, nif: '999999999', cc: '11111111', morada: 'Rua Teste', sistemaSaude: 'SNS' },
-        saude: { temAlergiaAlimentar: false, detalheAlergiaAlimentar: '', temOutrasAlergias: false, detalheOutrasAlergias: '', tomaMedicacao: 'nao', detalheMedicacao: '' },
-        ee: { nome: `EE de ${primeiroNome}`, email: `pai.${primeiroNome.toLowerCase()}@teste.com`, telefone: '910000000', contactoEmergencia: '960000000' },
-        camarata: '', monitorCamarata: '', grupo: '', monitorGrupo: ''
-      };
-      try { await this.inscricaoService.addInscricao(novaInscricao); } catch (error) { console.error('Erro:', error); }
-    }
-    this.mostrarNotificacao(`Concluído! ${quantidade} gerados.`, 'success'); this.carregarDados();
-  }
-
-  verificarTurnoParaCozinha() {
-    if (this.filtroTurno) this.gerarPDFCozinha(this.filtroTurno);
-    else { this.acaoDialog = 'cozinha'; this.turnoParaDialog = ''; this.dialog.open(this.dialogTurno, { width: '400px' }); }
-  }
-
-  verificarTurnoParaTransporte() {
-    if (this.filtroTurno) this.gerarPDFTransporte(this.filtroTurno);
-    else { this.acaoDialog = 'transporte'; this.turnoParaDialog = ''; this.dialog.open(this.dialogTurno, { width: '400px' }); }
-  }
-
-  confirmarGeracaoPDF() {
-    if (!this.turnoParaDialog) return;
-    this.acaoDialog === 'cozinha' ? this.gerarPDFCozinha(this.turnoParaDialog) : this.gerarPDFTransporte(this.turnoParaDialog);
-    this.dialog.closeAll();
-  }
-
-  gerarPDFCozinha(turnoSelecionado: string) {
-    const doc = new jsPDF();
-    doc.setFontSize(16); doc.setTextColor(220, 53, 69); doc.text('ALERTA COZINHA', 14, 20);
-    doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.text(`Turno: ${turnoSelecionado}`, 14, 28);
-
-    const listaPerigosa = this.dataSource.data.filter(i => i.turnoEscolhido === turnoSelecionado && (i.saude.temAlergiaAlimentar || i.saude.temOutrasAlergias));
-    if (listaPerigosa.length === 0) { this.mostrarNotificacao(`Sem restrições.`, 'error'); return; }
-
-    const linhas = listaPerigosa.map(item => [item.participante.nomeCompleto, item.saude.detalheAlergiaAlimentar || '-']);
-    autoTable(doc, { head: [['Nome', 'Alergias']], body: linhas, startY: 40, theme: 'grid', headStyles: { fillColor: [220, 53, 69] } });
-    doc.save(`Cozinha_${turnoSelecionado.split(' – ')[0]}.pdf`); this.mostrarNotificacao('Lista cozinha gerada!');
-  }
-
-  gerarPDFTransporte(turnoSelecionado: string) {
-    const doc = new jsPDF();
-    doc.setFontSize(18); doc.setTextColor(25, 118, 210); doc.text('LISTA TRANSPORTES', 14, 20);
-    doc.setFontSize(10); doc.setTextColor(100); doc.text(`Turno: ${turnoSelecionado}`, 14, 28);
-
-    const todos = this.dataSource.data.filter(i => i.turnoEscolhido === turnoSelecionado && i.transporte && !i.transporte.startsWith('Não'));
-    if (todos.length === 0) { this.mostrarNotificacao('Ninguém pediu transporte.', 'error'); return; }
-
-    // Ida
-    const ida = todos.filter(i => i.transporte.includes('Lisboa - Quinta')).sort((a, b) => a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
-    let y = 35;
-    if (ida.length > 0) {
-      doc.setFontSize(13); doc.setTextColor(0); doc.text('Lisboa -> Quinta', 14, y); y += 5;
-      autoTable(doc, {
-        head: [['Criança', 'Contato', 'Check']], body: ida.map(i => [i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped',
-        headStyles: { fillColor: [46, 125, 50] }, didDrawCell: (d) => { if (d.section === 'body' && d.column.index === 2) { doc.rect(d.cell.x + d.cell.width / 2 - 2, d.cell.y + d.cell.height / 2 - 2, 4, 4); } }
-      });
-      y = (doc as any).lastAutoTable.finalY + 15;
-    }
-    // Volta
-    const volta = todos.filter(i => i.transporte.includes('Quinta da Escola - Lisboa')).sort((a, b) => a.participante.nomeCompleto.localeCompare(b.participante.nomeCompleto));
-    if (volta.length > 0) {
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setFontSize(13); doc.setTextColor(0); doc.text('Quinta -> Lisboa', 14, y); y += 5;
-      autoTable(doc, {
-        head: [['Criança', 'Contato', 'Check']], body: volta.map(i => [i.participante.nomeCompleto, i.ee.telefone, '']), startY: y, theme: 'striped',
-        headStyles: { fillColor: [198, 40, 40] }, didDrawCell: (d) => { if (d.section === 'body' && d.column.index === 2) { doc.rect(d.cell.x + d.cell.width / 2 - 2, d.cell.y + d.cell.height / 2 - 2, 4, 4); } }
-      });
-    }
-    doc.save(`Transp_${turnoSelecionado.split(' – ')[0]}.pdf`); this.mostrarNotificacao('PDF Transportes gerado!');
-  }
 }

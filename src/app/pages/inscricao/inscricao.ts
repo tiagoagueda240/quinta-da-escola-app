@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { InscricaoService } from '../../services/inscricao.service';
 import { Inscricao } from '../../models/inscricao.model';
+
+// Angular Material Imports
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -13,9 +15,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
 export const FORMATOS_PT = {
-  parse: {
-    dateInput: 'DD/MM/YYYY',
-  },
+  parse: { dateInput: 'DD/MM/YYYY' },
   display: {
     dateInput: { month: '2-digit', year: 'numeric', day: '2-digit' },
     monthYearLabel: { year: 'numeric', month: 'short' },
@@ -28,16 +28,9 @@ export const FORMATOS_PT = {
   selector: 'app-inscricao',
   standalone: true,
   imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatInputModule,
-    MatSelectModule,
-    MatCheckboxModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatButtonModule,
-    MatCardModule,
-    MatIconModule
+    CommonModule, ReactiveFormsModule, MatInputModule, MatSelectModule,
+    MatCheckboxModule, MatDatepickerModule, MatNativeDateModule,
+    MatButtonModule, MatCardModule, MatIconModule
   ],
   templateUrl: './inscricao.html',
   styleUrls: ['./inscricao.scss'],
@@ -49,26 +42,19 @@ export const FORMATOS_PT = {
 export class InscricaoComponent implements OnInit {
   inscricaoForm!: FormGroup;
 
-  valorBase = 395;
-  valorTotal = 395;
+  // Variáveis Dinâmicas
+  turnos: string[] = [];
+  localAtual: 'Quinta' | 'Costa da Caparica' | 'Quiaios' = 'Quinta';
+
+  //valorBase = 395;
+  //valorTotal = 395;
+  valorBase = 300;
+  valorTotal = 300;
   isSubmitting = false;
   mostrarSucesso = false;
 
   private fb = inject(FormBuilder);
   private inscricaoService = inject(InscricaoService);
-
-  turnos = [
-    '1º Turno – 28 Junho a 4 Julho',
-    '2º Turno – 5 a 11 Julho',
-    '3º Turno – 12 a 18 Julho',
-    '4º Turno – 19 a 25 Julho',
-    '5º Turno – 26 Julho a 1 Agosto',
-    '6º Turno – 2 a 8 Agosto',
-    '7º Turno – 9 a 15 Agosto',
-    '8º Turno – 16 a 22 Agosto',
-    '9º Turno – 23 a 29 Agosto',
-    '10º Turno – 30 Agosto a 5 Setembro'
-  ];
 
   opcoesTransporte = [
     { label: 'Não (Entregue pelos pais)', valor: 0 },
@@ -79,11 +65,30 @@ export class InscricaoComponent implements OnInit {
 
   ngOnInit(): void {
     this.criarFormulario();
+    this.carregarDadosIniciais();
 
-    // Atualiza o preço sempre que o transporte mudar
     this.inscricaoForm.get('transporte')?.valueChanges.subscribe(() => {
       this.calcularTotal();
     });
+  }
+
+  async carregarDadosIniciais() {
+    try {
+      const config = await this.inscricaoService.getConfiguracoesTurnos();
+
+      if (config && config.quinta) {
+        this.turnos = config.quinta;
+
+        // Lógica de Seleção Automática
+        if (this.turnos.length === 1) {
+          // Se houver apenas 1 turno, seleciona-o automaticamente no formulário
+          this.inscricaoForm.get('turnoEscolhido')?.patchValue(this.turnos[0]);
+          this.inscricaoForm.get('turnoEscolhido')?.disable();
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar turnos do Firebase:', error);
+    }
   }
 
   criarFormulario() {
@@ -91,22 +96,15 @@ export class InscricaoComponent implements OnInit {
       tipoCliente: ['individual', Validators.required],
       nomeInstituicao: [''],
       turnoEscolhido: ['', Validators.required],
-
       participante: this.fb.group({
         nomeCompleto: ['', Validators.required],
         genero: ['', Validators.required],
         dataNascimento: ['', Validators.required],
-
-        nif: ['', [
-          Validators.required,
-          Validators.pattern(/^[0-9]{9}$/)
-        ]],
-
+        nif: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]],
         morada: ['', Validators.required],
         cc: ['', Validators.required],
         sistemaSaude: ['']
       }),
-
       saude: this.fb.group({
         temAlergiaAlimentar: [false],
         detalheAlergiaAlimentar: [''],
@@ -115,18 +113,12 @@ export class InscricaoComponent implements OnInit {
         tomaMedicacao: ['nao'],
         detalheMedicacao: ['']
       }),
-
       ee: this.fb.group({
         nome: ['', Validators.required],
         email: ['', [Validators.required, Validators.email]],
-
-        telefone: ['', [
-          Validators.required,
-          Validators.pattern(/^[0-9]{9}$/)
-        ]],
+        telefone: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]],
         contactoEmergencia: ['']
       }),
-
       autorizaFotoVideo: [false, Validators.requiredTrue],
       transporte: [0, Validators.required],
       politicaPrivacidade: [false, Validators.requiredTrue]
@@ -135,10 +127,7 @@ export class InscricaoComponent implements OnInit {
 
   permitirApenasNumeros(event: KeyboardEvent): boolean {
     const charCode = (event.which) ? event.which : event.keyCode;
-    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
-      return false;
-    }
-    return true;
+    return !(charCode > 31 && (charCode < 48 || charCode > 57));
   }
 
   calcularTotal() {
@@ -149,32 +138,31 @@ export class InscricaoComponent implements OnInit {
   async onSubmit() {
     if (this.inscricaoForm.valid) {
       this.isSubmitting = true;
-
       const dadosForm = this.inscricaoForm.getRawValue();
+
+      // Encontrar a label do transporte para guardar no DB
+      const labelTransporte = this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label;
 
       const novaInscricao: Inscricao = {
         ...dadosForm,
+        local: this.localAtual, // Define automaticamente como "Quinta"
         dataCriacao: new Date(),
         valorTotal: this.valorTotal,
         estadoPagamento: 'pendente',
-        transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido'
+        transporte: labelTransporte || 'Não definido'
       };
 
       try {
         await this.inscricaoService.addInscricao(novaInscricao);
-
         this.mostrarSucesso = true;
-        this.isSubmitting = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
       } catch (erro) {
-        console.error('Erro ao submeter:', erro);
-        alert('Ocorreu um erro técnico. Por favor, tente novamente.');
+        alert('Erro ao guardar inscrição. Tente novamente.');
+      } finally {
         this.isSubmitting = false;
       }
     } else {
       this.inscricaoForm.markAllAsTouched();
-      alert('Por favor, verifique os campos assinalados a vermelho.');
     }
   }
 

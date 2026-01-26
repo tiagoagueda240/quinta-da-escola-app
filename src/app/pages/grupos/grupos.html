@@ -5,8 +5,17 @@
         </div>
 
         <div class="header-center">
+            <mat-form-field appearance="outline" class="local-select">
+                <mat-label>Local</mat-label>
+                <mat-select [(ngModel)]="filtroLocal" (selectionChange)="atualizarListaTurnos()">
+                    <mat-option value="quinta">Quinta da Escola</mat-option>
+                    <mat-option value="costaCaparica">Costa da Caparica</mat-option>
+                    <mat-option value="quiaios">Quiaios</mat-option>
+                </mat-select>
+            </mat-form-field>
+
             <mat-form-field appearance="outline" class="turno-select">
-                <mat-label>Selecione o Turno</mat-label>
+                <mat-label>Turno</mat-label>
                 <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
                     <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
                 </mat-select>
