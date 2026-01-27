@@ -17,10 +17,16 @@ export class InscricaoService {
 
   async addInscricao(inscricao: Inscricao) {
     const colRef = collection(this.firestore, this.collectionName);
-    const docRef = await addDoc(colRef, inscricao);
 
+    // Converte para objeto simples para evitar problemas com classes/protótipos
+    const dadosParaGuardar = JSON.parse(JSON.stringify(inscricao));
+
+    // O JSON.stringify corrompe datas, por isso repomos as datas manualmente
+    dadosParaGuardar.dataCriacao = inscricao.dataCriacao;
+    dadosParaGuardar.participante.dataNascimento = inscricao.participante.dataNascimento;
+
+    const docRef = await addDoc(colRef, dadosParaGuardar);
     this.enviarEmailSeguro(inscricao);
-
     return docRef;
   }
 
@@ -35,7 +41,7 @@ export class InscricaoService {
     };
 
     this.http.post(url, payload).subscribe({
-      next: (res) => console.log('Email enviado com sucesso via PHP!', res),
+      next: (res) => console.log('Email enviado com sucesso!', res),
       error: (err) => console.error('Erro ao enviar email:', err)
     });
   }

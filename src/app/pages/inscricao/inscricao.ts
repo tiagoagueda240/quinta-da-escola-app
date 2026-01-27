@@ -14,13 +14,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
-export const FORMATOS_PT = {
-  parse: { dateInput: 'DD/MM/YYYY' },
+import { MatLuxonDateModule, MAT_LUXON_DATE_ADAPTER_OPTIONS } from '@angular/material-luxon-adapter';
+
+export const FORMATOS_PT_LUXON = {
+  parse: {
+    dateInput: 'dd/MM/yyyy', // Como o Luxon interpreta a escrita
+  },
   display: {
-    dateInput: { month: '2-digit', year: 'numeric', day: '2-digit' },
-    monthYearLabel: { year: 'numeric', month: 'short' },
-    dateA11yLabel: { year: 'numeric', month: 'long', day: 'numeric' },
-    monthYearA11yLabel: { year: 'numeric', month: 'long' },
+    dateInput: 'dd/MM/yyyy', // O que aparece no ecrã (EXATAMENTE O QUE PRECISAS)
+    monthYearLabel: 'MMM yyyy',
+    dateA11yLabel: 'DD',
+    monthYearA11yLabel: 'MMMM yyyy',
   },
 };
 
@@ -30,13 +34,15 @@ export const FORMATOS_PT = {
   imports: [
     CommonModule, ReactiveFormsModule, MatInputModule, MatSelectModule,
     MatCheckboxModule, MatDatepickerModule, MatNativeDateModule,
-    MatButtonModule, MatCardModule, MatIconModule
+    MatButtonModule, MatCardModule, MatIconModule, MatLuxonDateModule
   ],
   templateUrl: './inscricao.html',
   styleUrls: ['./inscricao.scss'],
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'pt-PT' },
-    { provide: MAT_DATE_FORMATS, useValue: FORMATOS_PT }
+    { provide: MAT_DATE_FORMATS, useValue: FORMATOS_PT_LUXON },
+    // Importante: garante que a data não muda de dia devido ao fuso horário (UTC)
+    { provide: MAT_LUXON_DATE_ADAPTER_OPTIONS, useValue: { useUtc: true } }
   ]
 })
 export class InscricaoComponent implements OnInit {
@@ -140,29 +146,29 @@ export class InscricaoComponent implements OnInit {
       this.isSubmitting = true;
       const dadosForm = this.inscricaoForm.getRawValue();
 
-      // Encontrar a label do transporte para guardar no DB
-      const labelTransporte = this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label;
+      // CONVERSÃO CRÍTICA: Se dataNascimento for Luxon, converte para JS Date
+      if (dadosForm.participante.dataNascimento && typeof dadosForm.participante.dataNascimento.toJSDate === 'function') {
+        dadosForm.participante.dataNascimento = dadosForm.participante.dataNascimento.toJSDate();
+      }
 
       const novaInscricao: Inscricao = {
         ...dadosForm,
-        local: this.localAtual, // Define automaticamente como "Quinta"
-        dataCriacao: new Date(),
+        local: this.localAtual,
+        dataCriacao: new Date(), // Date nativo
         valorTotal: this.valorTotal,
         estadoPagamento: 'pendente',
-        transporte: labelTransporte || 'Não definido'
+        transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido'
       };
 
       try {
         await this.inscricaoService.addInscricao(novaInscricao);
         this.mostrarSucesso = true;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (erro) {
-        alert('Erro ao guardar inscrição. Tente novamente.');
+        console.error("Erro detalhado:", erro); // Muda o alert por isto para veres o erro real na consola
+        alert('Erro ao guardar inscrição. Vê a consola do navegador.');
       } finally {
         this.isSubmitting = false;
       }
-    } else {
-      this.inscricaoForm.markAllAsTouched();
     }
   }
 
