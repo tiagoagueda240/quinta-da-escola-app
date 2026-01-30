@@ -1,7 +1,9 @@
 <div class="monitores-layout">
+
   <header class="page-header mat-elevation-z2">
     <div class="header-top">
       <h1><mat-icon>group_work</mat-icon> Gestão de Monitores</h1>
+
       <div class="stats-bar" *ngIf="turnoSelecionado">
         <div class="stat-pill monitors">
           <mat-icon>badge</mat-icon>
@@ -18,29 +20,66 @@
       </div>
     </div>
 
+
+
     <div class="controls-row">
-      <mat-form-field appearance="outline" class="turn-selector">
-        <mat-label>Selecionar Turno</mat-label>
+      <mat-form-field appearance="outline" class="turn-selector" subscriptSizing="dynamic">
+        <mat-label>Modo de Visualização</mat-label>
         <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="atualizarListas()">
-          <mat-option value="">-- Ver Lista Geral --</mat-option>
+          <mat-option value="">-- Ver Lista Geral (Auditoria) --</mat-option>
           <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
         </mat-select>
       </mat-form-field>
 
       <div class="search-box">
         <mat-icon>search</mat-icon>
-        <input type="text" [(ngModel)]="pesquisa" (keyup)="atualizarListas()" placeholder="Procurar alcunha ou nome...">
+        <input type="text" [(ngModel)]="pesquisa" (keyup)="atualizarListas()"
+          placeholder="Procurar alcunha, nome ou email...">
       </div>
 
       <div class="actions">
-        <button mat-mini-fab color="primary" (click)="abrirNovo()"><mat-icon>add</mat-icon></button>
-        <button mat-mini-fab color="accent" (click)="abrirImportar()"
-          style="margin-left:8px"><mat-icon>upload_file</mat-icon></button>
+        <button mat-mini-fab color="primary" (click)="abrirNovo()"
+          matTooltip="Novo Monitor"><mat-icon>add</mat-icon></button>
+        <button mat-mini-fab color="accent" (click)="abrirImportar()" style="margin-left:8px"
+          matTooltip="Importar Excel"><mat-icon>upload_file</mat-icon></button>
       </div>
     </div>
   </header>
 
+  <div class="filters-row" *ngIf="!turnoSelecionado">
+
+    <div class="filter-label">
+      <mat-icon>filter_list</mat-icon>
+      <span>Filtros:</span>
+    </div>
+
+    <mat-form-field appearance="outline" class="compact-dropdown" subscriptSizing="dynamic">
+      <mat-select [(ngModel)]="filtroFormacao" (selectionChange)="atualizarListas()">
+
+        <mat-select-trigger>
+          <span class="prefix-label">Formação:</span>
+          <span class="selected-value">{{ filtroFormacao || 'Todas' }}</span>
+        </mat-select-trigger>
+
+        <mat-option value="">Todas</mat-option>
+        <mat-option *ngFor="let f of listaFormacoes" [value]="f">{{ f }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="divider-vertical"></div>
+
+    <mat-chip-listbox multiple class="custom-chips">
+      <mat-chip-option color="warn" (selectionChange)="toggleFiltroAlcunha($event)">
+        Sem Alcunha
+      </mat-chip-option>
+      <mat-chip-option color="warn" (selectionChange)="toggleFiltroContacto($event)">
+        Sem Telefone
+      </mat-chip-option>
+    </mat-chip-listbox>
+  </div>
+
   <div class="content-area">
+
     <div class="split-view" *ngIf="turnoSelecionado" cdkDropListGroup>
       <div class="column assigned-col">
         <div class="col-header">
@@ -48,9 +87,11 @@
         </div>
         <div class="drop-zone" id="lista-atribuidos" cdkDropList [cdkDropListData]="monitoresAtribuidos"
           (cdkDropListDropped)="drop($event)">
-          <div class="compact-card assigned" *ngFor="let m of monitoresAtribuidos" cdkDrag>
-            <div class="mini-avatar">{{ m.nomeMonitor.charAt(0) }}</div>
-            <div class="info-row"><span class="name">{{ m.nomeMonitor }}</span></div>
+          <div class="compact-card" *ngFor="let m of monitoresAtribuidos" cdkDrag>
+            <div class="left-part">
+              <div class="mini-avatar">{{ (m.nomeMonitor || m.nome).charAt(0) }}</div>
+              <span class="name">{{ m.nomeMonitor || m.nome }}</span>
+            </div>
             <button mat-icon-button color="warn" (click)="toggleTurno(m)"><mat-icon>close</mat-icon></button>
           </div>
         </div>
@@ -60,47 +101,77 @@
         <div class="col-header">
           <h3>Bolsa Disponível</h3>
         </div>
-        <div class="drop-zone grid-mode" id="lista-disponiveis" cdkDropList [cdkDropListData]="monitoresDisponiveis"
+        <div class="drop-zone" id="lista-disponiveis" cdkDropList [cdkDropListData]="monitoresDisponiveis"
           (cdkDropListDropped)="drop($event)">
-          <div class="compact-card available" *ngFor="let m of monitoresDisponiveis" cdkDrag>
-            <div class="card-content">
-              <div class="header-row">
-                <div class="mini-avatar">{{ m.nomeMonitor.charAt(0) }}</div>
-                <div class="main-info">
-                  <span class="name">{{ m.nomeMonitor }}</span>
-                  <small style="opacity:0.6; display:block; font-size:0.7rem;">{{ m.nome }}</small>
-                </div>
-                <button mat-icon-button color="primary" (click)="toggleTurno(m)"><mat-icon>add</mat-icon></button>
+          <div class="compact-card" *ngFor="let m of monitoresDisponiveis" cdkDrag>
+            <div class="left-part">
+              <div class="mini-avatar">{{ (m.nomeMonitor || m.nome).charAt(0) }}</div>
+              <div style="display:flex; flex-direction:column; line-height:1.1;">
+                <span class="name">{{ m.nomeMonitor || m.nome }}</span>
+                <small *ngIf="m.nomeMonitor" style="font-size:0.7rem; color:#888">{{ obterPrimeiroUltimoNome(m.nome)
+                  }}</small>
               </div>
             </div>
+            <button mat-icon-button color="primary" (click)="toggleTurno(m)"><mat-icon>add</mat-icon></button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="general-grid" *ngIf="!turnoSelecionado">
-      <div class="monitor-card" *ngFor="let m of monitoresDisponiveis">
+      <div class="monitor-card" *ngFor="let m of monitoresDisponiveis" [class.warning-border]="!m.nomeMonitor">
+
         <div class="card-header">
-          <div class="avatar" [class.official]="m.diasTrabalhados >= 8">{{ m.nomeMonitor.charAt(0) }}</div>
-          <div class="info">
-            <h3>{{ m.nomeMonitor }}</h3>
-            <div class="sub-info">
-              <span class="role-badge">{{ m.status | uppercase }}</span>
-              <span class="phone"><mat-icon>phone</mat-icon> {{ m.telefone }}</span>
-            </div>
+          <div class="avatar" [class.official]="m.nomeMonitor && m.status !== 'estagiario'"
+            [class.intern]="m.status === 'estagiario'" [class.missing-data]="!m.nomeMonitor">
+            {{ (m.nomeMonitor || m.nome).charAt(0) }}
           </div>
+
+          <div class="info">
+            <ng-container *ngIf="m.nomeMonitor">
+              <span class="alcunha-text">{{ m.nomeMonitor }}</span>
+              <span class="role-badge" [ngClass]="m.status === 'estagiario' ? 'intern' : 'monitor'">{{ m.status
+                }}</span>
+            </ng-container>
+
+            <ng-container *ngIf="!m.nomeMonitor">
+              <span class="name-alert">{{ obterPrimeiroUltimoNome(m.nome) }}</span>
+              <span class="missing-label">Falta Nome de Monitor</span>
+            </ng-container>
+          </div>
+
           <button mat-icon-button [matMenuTriggerFor]="menu"><mat-icon>more_vert</mat-icon></button>
           <mat-menu #menu="matMenu">
             <button mat-menu-item (click)="abrirEditar(m)">Editar</button>
             <button mat-menu-item (click)="apagarMonitor(m.id)">Eliminar</button>
           </mat-menu>
         </div>
+
         <div class="card-body">
+          <div class="data-row"><mat-icon>person</mat-icon> {{ m.nome }}</div>
+          <div class="data-row" [class.missing]="!m.telefone">
+            <mat-icon>phone</mat-icon> {{ m.telefone || 'Sem contacto!' }}
+          </div>
+        </div>
+
+        <div class="formacoes-container" *ngIf="m.formacoes && m.formacoes.length > 0">
+          <div class="tags-list">
+            <span class="tag" *ngFor="let f of m.formacoes">Formação: {{ f }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer">
           <button mat-stroked-button color="primary" (click)="abrirGestaoTurnos(m)">Gerir Agenda</button>
         </div>
+
       </div>
     </div>
   </div>
+
+  <mat-paginator [length]="totalMonitores" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]"
+    (page)="carregarPagina($event)" aria-label="Selecionar página">
+  </mat-paginator>
+
 </div>
 
 <ng-template #dialogImportar>
@@ -121,8 +192,8 @@
   <h2 mat-dialog-title>{{ isEditing ? 'Editar' : 'Novo' }} Monitor</h2>
   <form [formGroup]="monitorForm" (ngSubmit)="guardarMonitor()">
     <mat-dialog-content>
-      <mat-form-field appearance="outline" style="width:100%"><mat-label>Alcunha</mat-label><input matInput
-          formControlName="nomeMonitor"></mat-form-field>
+      <mat-form-field appearance="outline" style="width:100%"><mat-label>Alcunha (Nome de Monitor)</mat-label><input
+          matInput formControlName="nomeMonitor"></mat-form-field>
       <mat-form-field appearance="outline" style="width:100%"><mat-label>Nome Completo</mat-label><input matInput
           formControlName="nome"></mat-form-field>
       <div style="display:flex; gap:10px">
@@ -140,7 +211,7 @@
 </ng-template>
 
 <ng-template #dialogTurnosMonitor>
-  <h2 mat-dialog-title>Agenda: {{ selectedMonitor?.nomeMonitor }}</h2>
+  <h2 mat-dialog-title>Agenda: {{ selectedMonitor?.nomeMonitor || selectedMonitor?.nome }}</h2>
   <mat-dialog-content>
     <mat-selection-list #turnosList
       (selectionChange)="atualizarSelecaoTurnos($event, turnosList.selectedOptions.selected)">
