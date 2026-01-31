@@ -1,14 +1,13 @@
-
 export interface Inscricao {
-  id?: string;
+  id?: string; // O PHP pode mandar como string ou number
   dataCriacao: Date;
 
   tipoCliente: 'individual' | 'instituicao';
   nomeInstituicao?: string;
-  turnoEscolhido: string;   // Ex: "2º Turno - 6 a 12 Julho"
+  turnoEscolhido: string;
   local: 'Quinta' | 'Costa da Caparica' | 'Quiaios';
 
-  // 2. Dados do Participante
+  // Objeto JSON vindo do MySQL
   participante: {
     nomeCompleto: string;
     genero: 'M' | 'F';
@@ -22,6 +21,13 @@ export interface Inscricao {
     nif: string;
   };
 
+  ee: {
+    nome: string;
+    email: string;
+    telefone: string;
+    contactoEmergencia?: string;
+  };
+
   saude: {
     temAlergiaAlimentar: boolean;
     detalheAlergiaAlimentar?: string;
@@ -31,19 +37,6 @@ export interface Inscricao {
     detalheMedicacao?: string;
   };
 
-  ee: {
-    nome: string;
-    email: string;
-    telefone: string;
-    contactoEmergencia?: string;
-  };
-
-  autorizaFotoVideo: boolean;
-  transporte: string;
-
-  valorTotal: number;
-  estadoPagamento: 'pendente' | 'pago';
-
   checkin?: {
     status: 'dentro' | 'fora';
     dataEntrada: Date;
@@ -51,9 +44,28 @@ export interface Inscricao {
     notasCheckin?: string;
   };
 
+  autorizaFotoVideo: boolean;
+  transporte: string;
+  valorTotal: number;
+  estadoPagamento: 'pendente' | 'pago';
+
+  // Campos de Logística
   camarata?: string;
   monitorCamarata?: string;
-
   grupo?: string;
   monitorGrupo?: string;
+}
+
+// Adiciona estas interfaces no fim do ficheiro ou num ficheiro de models
+export interface TurnoConfig {
+  id: number;
+  nome: string;
+  ativo: boolean;
+  limite?: number;
+}
+
+export interface ConfigTurnos {
+  quinta: TurnoConfig[];
+  costaCaparica: TurnoConfig[];
+  quiaios: TurnoConfig[];
 }

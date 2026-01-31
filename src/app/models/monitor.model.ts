@@ -1,19 +1,18 @@
 export interface Monitor {
   id?: string;
-  nome: string;           // Nome completo
-  nomeMonitor: string;    // Alcunha (exibido na app)
+  nome: string;
+  nomeMonitor: string;
   telefone: string;
   email: string;
-  dataNascimento: Date;
+  dataNascimento?: Date;
 
-  // Novos campos para a importação robusta
-  intolerancias?: string; // Mapeado de "Intolerâncias" ou "Rest. Alim"
-  formacoes: string[];    // Histórico das abas (ex: "Fev 2024", "Maio 2025")
-  faltaAlcunha?: boolean; // Flag para UI indicar que a alcunha foi gerada automaticamente
+  intolerancias?: string;
+  formacoes: string[];    // Array vindo do JSON
+  faltaAlcunha?: boolean; // Calculado no front
 
   diasTrabalhados: number;
   status: 'estagiario' | 'monitor' | 'coordenador';
-  turnosAtribuidos: string[];
+  turnosAtribuidos: string[]; // Array vindo do JSON
   obs?: string;
   tamanhoTshirt?: string;
 }

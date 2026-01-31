@@ -1,112 +1,92 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  Firestore, collection, getDocs, addDoc, doc,
-  updateDoc, deleteDoc, query, orderBy, writeBatch,
-  where, limit, startAt, endAt,
-  collectionData,
-  startAfter,
-  QueryDocumentSnapshot
-} from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { lastValueFrom, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Monitor } from '../models/monitor.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MonitorService {
-  private firestore = inject(Firestore);
-  private colName = 'monitores';
+  private http = inject(HttpClient);
+  private apiUrl = 'https://turnos.quintadaescola.com/api/monitores.php';
+
+  private getHeaders() {
+    const token = localStorage.getItem('auth_token');
+    return {
+      headers: new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      })
+    };
+  }
 
   /**
-   * NIVEL 3: Obtém monitores de forma pontual (One-time fetch)
-   * Permite pesquisar por nome diretamente no Firebase e limita a 50 resultados.
+   * Busca monitores com pesquisa opcional.
+   * O PHP já faz o filtro "LIKE %...%"
    */
   async getMonitoresOtimizados(termoPesquisa: string = '', limite: number = 50): Promise<Monitor[]> {
-    const colRef = collection(this.firestore, this.colName);
-    let q;
+    // O parametro 'limit' pode ser passado para o PHP se quiseres
+    const url = `${this.apiUrl}?q=${termoPesquisa}&limit=${limite}`;
 
-    if (termoPesquisa) {
-      // Truque do Firestore para "começa com": usa o range Unicode \uf8ff
-      q = query(
-        colRef,
-        orderBy('nome'),
-        startAt(termoPesquisa),
-        endAt(termoPesquisa + '\uf8ff'),
-        limit(limite)
-      );
-    } else {
-      q = query(colRef, orderBy('nome'), limit(limite));
-    }
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Monitor));
+    return await lastValueFrom(
+      this.http.get<Monitor[]>(url, this.getHeaders())
+    );
   }
 
   /**
-   * Gravação em Batch: Envia todas as alterações do Excel de uma só vez.
-   * Evita picos de escrita e notificações desnecessárias.
+   * Gravação em Batch (Importação Excel)
+   * O PHP deteta automaticamente que é um array e faz insert múltiplo.
    */
   async saveBulkMonitores(lista: Monitor[]) {
-    const batch = writeBatch(this.firestore);
-    const colRef = collection(this.firestore, this.colName);
-
-    lista.forEach(m => {
-      if (m.id) {
-        const docRef = doc(this.firestore, this.colName, m.id);
-        const { id, ...dados } = m;
-        batch.update(docRef, dados);
-      } else {
-        const newDocRef = doc(colRef);
-        batch.set(newDocRef, m);
-      }
-    });
-
-    return await batch.commit();
+    return await lastValueFrom(
+      this.http.post(this.apiUrl, lista, this.getHeaders())
+    );
   }
 
-  addMonitor(monitor: Monitor) {
-    const colRef = collection(this.firestore, this.colName);
-    return addDoc(colRef, monitor);
+  async addMonitor(monitor: Monitor) {
+    return await lastValueFrom(
+      this.http.post(this.apiUrl, monitor, this.getHeaders())
+    );
   }
 
-  updateMonitor(id: string, data: Partial<Monitor>) {
-    const docRef = doc(this.firestore, this.colName, id);
-    return updateDoc(docRef, data);
+  async updateMonitor(id: string, data: Partial<Monitor>) {
+    return await lastValueFrom(
+      this.http.put(`${this.apiUrl}?id=${id}`, data, this.getHeaders())
+    );
   }
 
-  deleteMonitor(id: string) {
-    const docRef = doc(this.firestore, this.colName, id);
-    return deleteDoc(docRef);
+  async deleteMonitor(id: string) {
+    return await lastValueFrom(
+      this.http.delete(`${this.apiUrl}?id=${id}`, this.getHeaders())
+    );
   }
 
+  /**
+   * Retorna Observable para uso reativo (ex: pipes async no template)
+   */
   getMonitores(): Observable<Monitor[]> {
-    const colRef = collection(this.firestore, this.colName);
-    const q = query(colRef, orderBy('nome'));
-    return collectionData(q, { idField: 'id' }) as Observable<Monitor[]>;
+    return this.http.get<Monitor[]>(this.apiUrl, this.getHeaders()).pipe(
+      map(monitores => {
+        // Conversão de datas se necessário
+        return monitores.map(m => {
+          if (m.dataNascimento) m.dataNascimento = new Date(m.dataNascimento);
+          return m;
+        });
+      })
+    );
   }
 
-  async getMonitoresPaginados(termo: string = '', limite: number = 10, proximoDe?: QueryDocumentSnapshot<any>) {
-    const colRef = collection(this.firestore, this.colName);
-    let q;
-
-    // Criamos a base da query
-    const constraints: any[] = [orderBy('nome'), limit(limite)];
-
-    if (termo) {
-      constraints.push(startAt(termo), endAt(termo + '\uf8ff'));
-    }
-
-    // Se quisermos a "próxima página", começamos depois do último documento da anterior
-    if (proximoDe) {
-      constraints.push(startAfter(proximoDe));
-    }
-
-    q = query(colRef, ...constraints);
-    const snapshot = await getDocs(q);
+  // Mantemos o método para compatibilidade, mas agora usa a API simples
+  async getMonitoresPaginados(termo: string = '', limite: number = 10, offset: number = 0) {
+    const url = `${this.apiUrl}?q=${termo}&limit=${limite}&offset=${offset}`;
+    const dados = await lastValueFrom(this.http.get<Monitor[]>(url, this.getHeaders()));
 
     return {
-      dados: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Monitor)),
-      ultimoDoc: snapshot.docs[snapshot.docs.length - 1] // Guardamos a âncora
+      dados: dados,
+      // API SQL não devolve cursor de documento, devolvemos apenas os dados
+      // Se precisares de paginação real, o PHP teria de devolver o "total"
+      ultimoDoc: null
     };
   }
 }

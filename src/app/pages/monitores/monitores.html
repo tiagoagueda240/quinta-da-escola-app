@@ -26,7 +26,7 @@
       <mat-form-field appearance="outline" class="turn-selector" subscriptSizing="dynamic">
         <mat-label>Modo de Visualização</mat-label>
         <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="atualizarListas()">
-          <mat-option value="">-- Ver Lista Geral (Auditoria) --</mat-option>
+          <mat-option value="">-- Ver Lista Geral --</mat-option>
           <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
         </mat-select>
       </mat-form-field>
@@ -168,9 +168,6 @@
     </div>
   </div>
 
-  <mat-paginator [length]="totalMonitores" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]"
-    (page)="carregarPagina($event)" aria-label="Selecionar página">
-  </mat-paginator>
 
 </div>
 

@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
+// Material
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-login',
@@ -15,7 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
     ReactiveFormsModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    MatSnackBarModule
   ],
   templateUrl: './login.html',
   styleUrls: ['./login.scss']
@@ -28,6 +31,7 @@ export class LoginComponent {
 
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+  // private snackBar = inject(MatSnackBar); // Opcional, se quiseres usar Toast em vez de texto vermelho
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -37,17 +41,25 @@ export class LoginComponent {
   }
 
   async entrar() {
-    if (this.loginForm.valid) {
-      this.isLoading = true;
-      this.erro = '';
-      const { email, password } = this.loginForm.value;
+    if (this.loginForm.invalid) return;
 
-      try {
-        await this.authService.login(email, password);
-      } catch (e) {
-        this.erro = 'Dados incorretos.';
-        this.isLoading = false;
+    this.isLoading = true;
+    this.erro = '';
+    const { email, password } = this.loginForm.value;
+
+    try {
+      await this.authService.login(email, password);
+      // O redirecionamento agora é feito no Service, ou podes fazer aqui
+    } catch (e: any) {
+      this.isLoading = false;
+
+      // Tenta ler a mensagem de erro que vem do PHP
+      if (e.error && e.error.erro) {
+        this.erro = e.error.erro; // Ex: "Credenciais inválidas"
+      } else {
+        this.erro = 'Erro ao conectar ao servidor.';
       }
+      console.error(e);
     }
   }
 }

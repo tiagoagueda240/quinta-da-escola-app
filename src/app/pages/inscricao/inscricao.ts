@@ -83,7 +83,9 @@ export class InscricaoComponent implements OnInit {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
 
       if (config && config.quinta) {
-        this.turnos = config.quinta;
+        this.turnos = (config.quinta || [])
+          .filter(t => t.ativo === true)
+          .map(t => t.nome);
 
         // Lógica de Seleção Automática
         if (this.turnos.length === 1) {

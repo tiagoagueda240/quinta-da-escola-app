@@ -7,12 +7,18 @@
     </div>
 
     <div class="actions-area" style="display: flex; gap: 10px;">
-      <button mat-stroked-button (click)="verificarTurnoParaTransporte()">
-        <mat-icon color="primary">directions_bus</mat-icon> Transportes
+      <ng-container *ngIf="filtroLocal === 'quinta'">
+        <button mat-stroked-button (click)="verificarTurnoParaTransporte()">
+          <mat-icon color="primary">directions_bus</mat-icon> Transportes
+        </button>
+        <button mat-stroked-button (click)="verificarTurnoParaCozinha()">
+          <mat-icon color="warn">restaurant</mat-icon> Cozinha
+        </button>
+      </ng-container>
+      <button mat-stroked-button (click)="abrirConfigTurnos()">
+        <mat-icon color="warn">settings</mat-icon> Configurar Turnos
       </button>
-      <button mat-stroked-button (click)="verificarTurnoParaCozinha()">
-        <mat-icon color="warn">restaurant</mat-icon> Cozinha
-      </button>
+
       <button mat-stroked-button color="warn" (click)="sair()">
         <mat-icon>logout</mat-icon> Sair
       </button>
@@ -74,7 +80,11 @@
           <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Turnos"
             class="minimal-select">
             <mat-option value="">Todos os Turnos</mat-option>
-            <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+
+            <mat-option *ngFor="let t of listaTurnos" [value]="t">
+              {{ t }}
+            </mat-option>
+
           </mat-select>
 
           <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado">
@@ -270,7 +280,8 @@
     <div class="section-box">
       <h4>Logística</h4>
       <div *ngIf="!isEditing">
-        <div class="info-row"><mat-icon>directions_bus</mat-icon> {{ selectedInscricao.transporte }}</div>
+        <div class="info-row"><mat-icon>directions_bus</mat-icon> {{ selectedInscricao.transporte || "Sem transporte" }}
+        </div>
         <div class="info-row"><mat-icon>photo_camera</mat-icon> Fotos: {{ selectedInscricao.autorizaFotoVideo ? 'Sim' :
           'Não' }}</div>
       </div>

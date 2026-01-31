@@ -19,8 +19,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ConfigTurnosComponent } from '../../components/config-turnos.component';
 
 @Component({
   selector: 'app-admin',
@@ -72,9 +74,18 @@ export class AdminComponent implements OnInit, AfterViewInit {
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Carrega configuração inicial e define os turnos
+    await this.recarregarDadosCompletos();
+
     this.configurarFiltroAvancado();
-    this.carregarTurnosEDados();
+
+    // Subscreve às inscrições (Dados das crianças)
+    this.inscricaoService.getInscricoes().subscribe(dados => {
+      this.dataSource.data = dados;
+      // Sempre que chegam novos dados de inscrições, recalculamos tudo
+      this.atualizarFiltros();
+    });
   }
 
   ngAfterViewInit() {
@@ -102,8 +113,14 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   atualizarListaDeTurnosPorLocal() {
     if (this.todosOsTurnosConfig) {
-      this.listaTurnos = this.todosOsTurnosConfig[this.filtroLocal] || [];
-      this.filtroTurno = ''; // Reseta o turno ao trocar local
+
+      // AGORA: Vamos buscar a lista E convertemos logo para texto (.map)
+      const listaBruta = this.todosOsTurnosConfig[this.filtroLocal] || [];
+
+      // Extraímos apenas o 'nome' de cada objeto para ficar uma lista de strings
+      this.listaTurnos = listaBruta.map((t: any) => t.nome);
+
+      this.filtroTurno = '';
       this.atualizarFiltros();
     }
   }
@@ -153,17 +170,38 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   calcularOcupacao(dados: Inscricao[]) {
+    // 1. Contar quantos inscritos existem por turno
     const counts: any = {};
-    dados.forEach(d => { counts[d.turnoEscolhido] = (counts[d.turnoEscolhido] || 0) + 1; });
-
-    this.ocupacaoPorTurno = this.listaTurnos.map(turnoNome => {
-      const count = counts[turnoNome] || 0;
-      return {
-        nome: turnoNome.includes('–') ? turnoNome.split(' – ')[0] : turnoNome.split('-')[0],
-        count: count,
-        percent: (count / 80) * 100
-      };
+    dados.forEach(d => {
+      counts[d.turnoEscolhido] = (counts[d.turnoEscolhido] || 0) + 1;
     });
+
+    // 2. Obter a configuração completa (Objetos com nome, limite, ativo)
+    const configLocal = this.todosOsTurnosConfig[this.filtroLocal] || [];
+
+    // 3. Mapear para o formato do Widget
+    this.ocupacaoPorTurno = configLocal
+      .filter((t: any) => {
+        // LÓGICA DE EXIBIÇÃO:
+        // Mostra o turno se estiver 'Ativo' OU se tiver alguém inscrito (mesmo que inativo)
+        // Isto esconde turnos inativos que estão vazios (0 inscritos).
+        return t.ativo === true || (counts[t.nome] && counts[t.nome] > 0);
+      })
+      .map((t: any) => {
+        const count = counts[t.nome] || 0;
+        const limiteReal = t.limite || 80; // Usa o limite configurado ou 80 por defeito
+
+        // Limpeza visual do nome (remove datas longas se houver hífen)
+        // Ex: "1º Turno - 28 Junho..." vira "1º Turno" para caber na caixa pequena
+        const nomeCurto = t.nome.includes('–') ? t.nome.split(' – ')[0] : t.nome.split('-')[0];
+
+        return {
+          nome: nomeCurto,
+          count: count,
+          total: limiteReal,
+          percent: (count / limiteReal) * 100
+        };
+      });
   }
 
   // --- Ações de Tabela ---
@@ -305,6 +343,45 @@ export class AdminComponent implements OnInit, AfterViewInit {
       this.inscricaoService.deleteInscricao(id);
       this.fecharDetalhes(); this.mostrarNotificacao('Apagado.', 'error');
     }
+  }
+
+  abrirConfigTurnos() {
+    const dialogRef = this.dialog.open(ConfigTurnosComponent, { width: '600px' });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        // Se houve alterações (result === true), recarregamos TUDO
+        await this.recarregarDadosCompletos();
+
+        // Notificação visual para confirmar a atualização
+      }
+    });
+  }
+
+  async recarregarDadosCompletos() {
+    try {
+      // 1. Buscar a configuração mais recente à base de dados
+      const config = await this.inscricaoService.getConfiguracoesTurnos();
+
+      if (config) {
+        this.todosOsTurnosConfig = config;
+
+        // 2. Atualizar a lista do dropdown (Filtrar apenas os ativos)
+        this.atualizarListaDeTurnosPorLocal();
+
+        // 3. Forçar o recálculo dos gráficos de ocupação com os novos limites
+        // (Nota: Chamamos atualizarFiltros porque ele invoca o calcularOcupacao internamente)
+        this.atualizarFiltros();
+      }
+    } catch (error) {
+      this.mostrarNotificacao('Erro ao atualizar dados.', 'error');
+    }
+  }
+
+  async carregarTurnosDoServidor() {
+    // AQUI ESTÁ O SEGREDO: Usamos o método getTurnosAtivos
+    // Assim, no dropdown só aparecem os que marcaste como "Ativo: true"
+    this.listaTurnos = await this.inscricaoService.getTurnosAtivos('quinta');
   }
 
   sair() { this.authService.logout(); }

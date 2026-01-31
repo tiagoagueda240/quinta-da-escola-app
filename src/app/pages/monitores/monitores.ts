@@ -20,7 +20,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatListModule } from '@angular/material/list';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 @Component({
   selector: 'app-monitores',
@@ -37,10 +37,6 @@ import * as XLSX from 'xlsx';
 export class MonitoresComponent implements OnInit {
   monitores: Monitor[] = [];
   inscricoes: Inscricao[] = [];
-  totalMonitores = 100; // O ideal seria ter um contador no Firebase, ou um valor estimado
-  pageSize = 10;
-  ultimoDocAcessado: any = null;
-  historicoPaginas: any[] = []; // Para poder voltar atrás
 
   monitoresAtribuidos: Monitor[] = [];
   monitoresDisponiveis: Monitor[] = [];
@@ -140,20 +136,37 @@ export class MonitoresComponent implements OnInit {
   toggleFiltroContacto(event: any) { this.filtroFaltaContacto = event.selected; this.atualizarListas(); }
 
   atualizarListas() {
+    // 1. Preparar o termo de pesquisa (minúsculas e sem espaços extra)
+    const termo = this.pesquisa ? this.pesquisa.toLowerCase().trim() : '';
+
     const filtrados = this.monitores.filter(m => {
+      // --- LÓGICA DE PESQUISA (NOVO) ---
+      const matchPesquisa = !termo ||
+        m.nome.toLowerCase().includes(termo) ||
+        (m.nomeMonitor && m.nomeMonitor.toLowerCase().includes(termo)) ||
+        m.email.toLowerCase().includes(termo);
+
+      // --- FILTROS EXISTENTES ---
       const matchFormacao = this.filtroFormacao ? m.formacoes?.includes(this.filtroFormacao) : true;
       const matchFaltaAlcunha = this.filtroFaltaAlcunha ? (!m.nomeMonitor || m.nomeMonitor.trim() === '') : true;
       const matchFaltaContacto = this.filtroFaltaContacto ? (!m.telefone || m.telefone.trim() === '') : true;
-      return matchFormacao && matchFaltaAlcunha && matchFaltaContacto;
+
+      // Só passa se cumprir TODOS os critérios
+      return matchPesquisa && matchFormacao && matchFaltaAlcunha && matchFaltaContacto;
     });
 
+    // --- DIVISÃO POR TURNOS ---
     if (this.turnoSelecionado) {
       this.monitoresAtribuidos = this.monitores.filter(m => m.turnosAtribuidos?.includes(this.turnoSelecionado));
+
+      // Apenas aplicamos a pesquisa à lista de "Disponíveis" (lado direito)
+      // para não esconder quem já está na equipa confirmada (lado esquerdo)
       this.monitoresDisponiveis = filtrados.filter(m => !m.turnosAtribuidos?.includes(this.turnoSelecionado));
     } else {
       this.monitoresAtribuidos = [];
       this.monitoresDisponiveis = filtrados;
     }
+
     this.atualizarStats();
   }
 
@@ -167,22 +180,20 @@ export class MonitoresComponent implements OnInit {
     const reader = new FileReader();
     reader.onload = async (e: any) => {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
 
-      // Mapa local para evitar duplicados e gerir atualizações
+      // 1. ATENÇÃO: Adicionei 'cellStyles: true' para tentar ler as cores
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
+
       let mapMonitores = new Map<string, Monitor>();
-
-      // Variáveis de contagem para o feedback final
       let novos = 0;
       let atualizados = 0;
+      let ignoradosPorCor = 0; // Contador para feedback
 
-      // 1. Carregar os monitores que já temos na lista local para o Mapa
       this.monitores.forEach(m => {
         const key = this.gerarChaveUnica(m.email, m.nome);
         if (key) mapMonitores.set(key, { ...m });
       });
 
-      // 2. Percorrer as abas do Excel
       for (const sheetName of workbook.SheetNames) {
         if (sheetName.trim() === 'Fev 2026') break;
         if (this.isAbaIrrelevante(sheetName)) continue;
@@ -194,8 +205,20 @@ export class MonitoresComponent implements OnInit {
         const { headerRowIndex, mapColunas } = this.detectarCabecalhos(jsonData);
         if (mapColunas.get('nome') === undefined) continue;
 
-        // 3. Percorrer as linhas de cada aba
         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+
+          // --- NOVO BLOCO DE VERIFICAÇÃO DE COR ---
+          // Obtemos o endereço da célula na Coluna A (índice 0) da linha atual (i)
+          const cellAddress = XLSX.utils.encode_cell({ r: i, c: 0 });
+          const cell = worksheet[cellAddress];
+
+          // Se a célula existir e for vermelha, ignoramos a linha inteira
+          if (this.isCellRed(cell)) {
+            ignoradosPorCor++;
+            continue;
+          }
+          // ----------------------------------------
+
           const row = jsonData[i];
           const nome = this.getVal(row, mapColunas, 'nome')?.toString().trim() || '';
           const email = this.getVal(row, mapColunas, 'email')?.toString().trim().toLowerCase() || '';
@@ -209,29 +232,24 @@ export class MonitoresComponent implements OnInit {
           const status = sheetName.toLowerCase().includes('estag') ? 'estagiario' : 'monitor';
 
           if (registro) {
-            // --- ATUALIZAR MONITOR EXISTENTE ---
             const historico = registro.formacoes || [];
             if (!historico.includes(sheetName)) {
               registro.formacoes = [...historico, sheetName];
             }
-
-            // Atualiza telefone se o existente estiver vazio
             const novoTel = this.getVal(row, mapColunas, 'telefone')?.toString();
             if (novoTel && !registro.telefone) registro.telefone = novoTel;
 
             mapMonitores.set(key, registro);
             atualizados++;
           } else {
-            // --- CRIAR NOVO MONITOR (Com todos os campos obrigatórios) ---
             const alcunha = this.getVal(row, mapColunas, 'alcunha')?.toString().trim() || '';
-
             mapMonitores.set(key, {
               nome: nome || 'Sem Nome',
               email: email,
               telefone: this.getVal(row, mapColunas, 'telefone')?.toString() || '',
               nomeMonitor: alcunha,
               faltaAlcunha: alcunha.length < 2,
-              dataNascimento: new Date(), // Valor padrão para evitar erro de tipo
+              dataNascimento: new Date(),
               intolerancias: this.getVal(row, mapColunas, 'intolerancias')?.toString() || '',
               diasTrabalhados: status === 'estagiario' ? 0 : 8,
               status: status as any,
@@ -243,22 +261,20 @@ export class MonitoresComponent implements OnInit {
         }
       }
 
-      // 4. Gravação em Massa (Batch) no Firestore
       try {
         await this.monitorService.saveBulkMonitores(Array.from(mapMonitores.values()));
-
-        // 5. Recarregar a lista (Nível 3 - Manual fetch) para ver as alterações
         await this.carregarDadosIniciais();
-
         this.dialog.closeAll();
+
+        // Feedback atualizado
         this.snackBar.open(
-          `Sincronização concluída: ${novos} novos e ${atualizados} atualizações aplicadas.`,
+          `Concluído: ${novos} novos, ${atualizados} atualizados. (${ignoradosPorCor} ignorados por estarem a vermelho)`,
           'OK',
           { duration: 5000 }
         );
       } catch (error) {
-        console.error('Erro ao gravar no Firebase:', error);
-        this.snackBar.open('Erro ao sincronizar com a base de dados.', 'Fechar');
+        console.error('Erro ao gravar:', error);
+        this.snackBar.open('Erro ao sincronizar.', 'Fechar');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -307,21 +323,29 @@ export class MonitoresComponent implements OnInit {
   async atualizarSelecaoTurnos(e: any, sel: any[]) { if (this.selectedMonitor?.id) { const novos = sel.map(o => o.value); await this.monitorService.updateMonitor(this.selectedMonitor.id, { turnosAtribuidos: novos }); this.selectedMonitor.turnosAtribuidos = novos; } }
   isMonitorNoTurno(t: string) { return this.selectedMonitor?.turnosAtribuidos?.includes(t); }
 
-  async carregarPagina(event?: PageEvent) {
-    // Se mudou o tamanho da página
-    if (event && event.pageSize !== this.pageSize) {
-      this.pageSize = event.pageSize;
-      this.ultimoDocAcessado = null;
-    }
 
-    const resultado = await this.monitorService.getMonitoresPaginados(
-      this.pesquisa,
-      this.pageSize,
-      this.ultimoDocAcessado
-    );
+  /**
+ * Verifica se a célula tem fundo vermelho (Estilos Excel)
+ */
+  private isCellRed(cell: any): boolean {
+    if (!cell || !cell.s || !cell.s.fgColor) return false;
 
-    this.monitores = resultado.dados;
-    this.ultimoDocAcessado = resultado.ultimoDoc;
-    this.atualizarListas();
+    // O Excel guarda as cores hexadecimais (muitas vezes em ARGB: Alpha, Red, Green, Blue)
+    // Ex: FFFF0000 é vermelho puro.
+    const color = cell.s.fgColor.rgb;
+
+    if (!color) return false;
+
+    // Lista de códigos Hex comuns para vermelho no Excel
+    const vermelhos = [
+      'FFFF0000', // Vermelho Standard
+      'FF0000',   // Vermelho Curto
+      'FFC00000', // Vermelho Escuro
+      'FFCC0000',
+      'FFFFC7CE', // Fundo Rosa/Vermelho claro (comum em validação de dados/erros)
+      'FFFF9999'  // Vermelho claro
+    ];
+
+    return vermelhos.includes(color.toUpperCase());
   }
 }
