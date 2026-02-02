@@ -1,4 +1,21 @@
 <div class="mobile-layout">
+  <div class="security-overlay" *ngIf="modoLink && !pinValidado">
+    <div class="pin-card">
+      <mat-icon class="lock-icon">lock</mat-icon>
+      <h2>Acesso Restrito</h2>
+      <p>Insira o PIN de 4 dígitos fornecido pelo administrador.</p>
+
+      <div class="pin-input-area">
+        <input type="tel" [(ngModel)]="pinInput" maxlength="4" placeholder="----" class="pin-field">
+      </div>
+
+      <button mat-flat-button color="primary" (click)="validarPin()" [disabled]="pinInput.length < 4">
+        DESBLOQUEAR
+      </button>
+
+      <p class="error-msg" *ngIf="erroPin">{{ erroPin }}</p>
+    </div>
+  </div>
 
   <div class="header-area">
     <div class="top-info">

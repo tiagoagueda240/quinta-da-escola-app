@@ -20,8 +20,6 @@
       </div>
     </div>
 
-
-
     <div class="controls-row">
       <mat-form-field appearance="outline" class="turn-selector" subscriptSizing="dynamic">
         <mat-label>Modo de Visualização</mat-label>
@@ -38,10 +36,13 @@
       </div>
 
       <div class="actions">
-        <button mat-mini-fab color="primary" (click)="abrirNovo()"
-          matTooltip="Novo Monitor"><mat-icon>add</mat-icon></button>
+        <button mat-mini-fab color="primary" (click)="abrirNovo()" matTooltip="Novo Monitor">
+          <mat-icon>add</mat-icon>
+        </button>
         <button mat-mini-fab color="accent" (click)="abrirImportar()" style="margin-left:8px"
-          matTooltip="Importar Excel"><mat-icon>upload_file</mat-icon></button>
+          matTooltip="Importar Excel">
+          <mat-icon>upload_file</mat-icon>
+        </button>
       </div>
     </div>
   </header>
@@ -81,18 +82,48 @@
   <div class="content-area">
 
     <div class="split-view" *ngIf="turnoSelecionado" cdkDropListGroup>
+
       <div class="column assigned-col">
         <div class="col-header">
           <h3>Equipa Confirmada</h3>
         </div>
         <div class="drop-zone" id="lista-atribuidos" cdkDropList [cdkDropListData]="monitoresAtribuidos"
           (cdkDropListDropped)="drop($event)">
+
           <div class="compact-card" *ngFor="let m of monitoresAtribuidos" cdkDrag>
-            <div class="left-part">
-              <div class="mini-avatar">{{ (m.nomeMonitor || m.nome).charAt(0) }}</div>
-              <span class="name">{{ m.nomeMonitor || m.nome }}</span>
+
+            <div class="coord-indicator" *ngIf="isCoordenador(m)" matTooltip="Coordenador de Turno">
+              <mat-icon>star</mat-icon>
             </div>
-            <button mat-icon-button color="warn" (click)="toggleTurno(m)"><mat-icon>close</mat-icon></button>
+
+            <div class="left-part">
+              <div class="mini-avatar" [class.is-coord]="isCoordenador(m)">
+                {{ (m.nomeMonitor || m.nome).charAt(0) }}
+              </div>
+
+              <div style="display:flex; flex-direction:column;">
+                <span class="name" [class.bold-coord]="isCoordenador(m)">
+                  {{ m.nomeMonitor || m.nome }}
+                </span>
+                <span *ngIf="isCoordenador(m)"
+                  style="font-size:0.65rem; color:#fbc02d; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">
+                  Coordenador
+                </span>
+              </div>
+            </div>
+
+            <div class="actions-right">
+              <button mat-icon-button (click)="toggleCoordenador(m)" [color]="isCoordenador(m) ? 'accent' : ''"
+                [matTooltip]="isCoordenador(m) ? 'Remover de Coordenador' : 'Definir como Coordenador'">
+                <mat-icon>{{ isCoordenador(m) ? 'star' : 'star_border' }}</mat-icon>
+              </button>
+
+              <button mat-icon-button color="warn" (click)="toggleTurno(m)"
+                [matTooltip]="isCoordenador(m) ? '⚠️ Remover Coordenação e Sair do Turno' : 'Remover do Turno'">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -108,8 +139,9 @@
               <div class="mini-avatar">{{ (m.nomeMonitor || m.nome).charAt(0) }}</div>
               <div style="display:flex; flex-direction:column; line-height:1.1;">
                 <span class="name">{{ m.nomeMonitor || m.nome }}</span>
-                <small *ngIf="m.nomeMonitor" style="font-size:0.7rem; color:#888">{{ obterPrimeiroUltimoNome(m.nome)
-                  }}</small>
+                <small *ngIf="m.nomeMonitor" style="font-size:0.7rem; color:#888">
+                  {{ obterPrimeiroUltimoNome(m.nome) }}
+                </small>
               </div>
             </div>
             <button mat-icon-button color="primary" (click)="toggleTurno(m)"><mat-icon>add</mat-icon></button>
@@ -168,7 +200,6 @@
     </div>
   </div>
 
-
 </div>
 
 <ng-template #dialogImportar>
@@ -210,11 +241,17 @@
 <ng-template #dialogTurnosMonitor>
   <h2 mat-dialog-title>Agenda: {{ selectedMonitor?.nomeMonitor || selectedMonitor?.nome }}</h2>
   <mat-dialog-content>
-    <mat-selection-list #turnosList
-      (selectionChange)="atualizarSelecaoTurnos($event, turnosList.selectedOptions.selected)">
-      <mat-list-option *ngFor="let t of listaTurnos" [value]="t" [selected]="isMonitorNoTurno(t)">{{ t
-        }}</mat-list-option>
+
+    <mat-selection-list #turnosList (selectionChange)="atualizarSelecaoTurnos($event)">
+
+      <mat-list-option *ngFor="let t of listaTurnos" [value]="t" [selected]="isMonitorNoTurno(t)">
+        {{ t }}
+      </mat-list-option>
+
     </mat-selection-list>
+
   </mat-dialog-content>
-  <mat-dialog-actions align="end"><button mat-button mat-dialog-close>Fechar</button></mat-dialog-actions>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Fechar</button>
+  </mat-dialog-actions>
 </ng-template>

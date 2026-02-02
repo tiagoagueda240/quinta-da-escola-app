@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, ViewChild, AfterViewInit, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { InscricaoService } from '../../services/inscricao.service';
 import { AuthService } from '../../services/auth.service';
 import { Inscricao } from '../../models/inscricao.model';
@@ -19,10 +20,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
-
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ConfigTurnosComponent } from '../../components/config-turnos.component';
+import { DialogGerarAcessoComponent } from '../../components/gerar-acesso.component';
 
 @Component({
   selector: 'app-admin',
@@ -41,7 +42,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
   colunasMostradas: string[] = ['select', 'estado', 'participante', 'turno', 'contacto', 'acoes'];
   selection = new SelectionModel<Inscricao>(true, []);
 
-  // Dados Dinâmicos do Firebase
   todosOsTurnosConfig: any = null;
   listaTurnos: string[] = [];
 
@@ -64,28 +64,21 @@ export class AdminComponent implements OnInit, AfterViewInit {
   isEditing = false;
   acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
   turnoParaDialog: string = '';
+  linkGerado: string = '';
+
   @ViewChild('dialogTurno') dialogTurno!: TemplateRef<any>;
+  @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   private inscricaoService = inject(InscricaoService);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
-
-  @ViewChild(MatSort) sort!: MatSort;
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  private http = inject(HttpClient);
 
   async ngOnInit() {
-    // Carrega configuração inicial e define os turnos
     await this.recarregarDadosCompletos();
-
     this.configurarFiltroAvancado();
-
-    // Subscreve às inscrições (Dados das crianças)
-    this.inscricaoService.getInscricoes().subscribe(dados => {
-      this.dataSource.data = dados;
-      // Sempre que chegam novos dados de inscrições, recalculamos tudo
-      this.atualizarFiltros();
-    });
   }
 
   ngAfterViewInit() {
@@ -93,55 +86,61 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.dataSource.sort = this.sort;
   }
 
-  async carregarTurnosEDados() {
+  // --- CARREGAMENTO DE DADOS ---
+
+  async recarregarDadosCompletos() {
     try {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
       if (config) {
         this.todosOsTurnosConfig = config;
         this.atualizarListaDeTurnosPorLocal();
-
-        // Subscreve às inscrições
-        this.inscricaoService.getInscricoes().subscribe(dados => {
-          this.dataSource.data = dados;
-          this.atualizarFiltros(); // Aplica o filtro de local inicial
-        });
       }
+
+      this.inscricaoService.getInscricoes().subscribe(dados => {
+        this.dataSource.data = dados;
+        this.atualizarFiltros();
+      });
+
     } catch (error) {
-      this.mostrarNotificacao('Erro ao carregar configurações do Firebase', 'error');
+      this.mostrarNotificacao('Erro ao carregar dados.', 'error');
     }
   }
 
   atualizarListaDeTurnosPorLocal() {
     if (this.todosOsTurnosConfig) {
-
-      // AGORA: Vamos buscar a lista E convertemos logo para texto (.map)
       const listaBruta = this.todosOsTurnosConfig[this.filtroLocal] || [];
-
-      // Extraímos apenas o 'nome' de cada objeto para ficar uma lista de strings
-      this.listaTurnos = listaBruta.map((t: any) => t.nome);
+      this.listaTurnos = listaBruta
+        .filter((t: any) => t.ativo === true)
+        .map((t: any) => t.nome);
 
       this.filtroTurno = '';
       this.atualizarFiltros();
     }
   }
 
+  // --- FILTROS E PESQUISA ---
+
   configurarFiltroAvancado() {
     this.dataSource.filterPredicate = (data: Inscricao, filter: string) => {
       const searchTerms = JSON.parse(filter);
 
-      // Mapeamento para bater com o campo 'local' do model
       const mapaLocais: any = {
         'quinta': 'Quinta',
         'costaCaparica': 'Costa da Caparica',
         'quiaios': 'Quiaios'
       };
 
-      const matchLocal = data.local === mapaLocais[this.filtroLocal];
-      const matchTexto = searchTerms.texto ?
-        data.participante.nomeCompleto.toLowerCase().includes(searchTerms.texto) ||
-        data.ee.nome.toLowerCase().includes(searchTerms.texto) : true;
-      const matchTurno = searchTerms.turno ? data.turnoEscolhido === searchTerms.turno : true;
-      const matchEstado = searchTerms.estado ? data.estadoPagamento === searchTerms.estado : true;
+      const localData = (data.local || '').toLowerCase();
+      const localFiltro = (mapaLocais[this.filtroLocal] || '').toLowerCase();
+      const matchLocal = localData === localFiltro;
+
+      const texto = searchTerms.texto;
+      const matchTexto = !texto ||
+        (data.participante?.nomeCompleto || '').toLowerCase().includes(texto) ||
+        (data.ee?.nome || '').toLowerCase().includes(texto);
+
+      const matchTurno = !searchTerms.turno || data.turnoEscolhido === searchTerms.turno;
+      const matchEstado = !searchTerms.estado || data.estadoPagamento === searchTerms.estado;
 
       return matchLocal && matchTexto && matchTurno && matchEstado;
     };
@@ -165,34 +164,23 @@ export class AdminComponent implements OnInit, AfterViewInit {
   atualizarKPIs(dados: Inscricao[]) {
     this.totalInscritos = dados.length;
     this.pendentes = dados.filter(i => i.estadoPagamento === 'pendente').length;
-    this.totalRapazes = dados.filter(i => i.participante.genero === 'M').length;
-    this.totalRaparigas = dados.filter(i => i.participante.genero === 'F').length;
+    this.totalRapazes = dados.filter(i => i.participante?.genero === 'M').length;
+    this.totalRaparigas = dados.filter(i => i.participante?.genero === 'F').length;
   }
 
   calcularOcupacao(dados: Inscricao[]) {
-    // 1. Contar quantos inscritos existem por turno
     const counts: any = {};
     dados.forEach(d => {
       counts[d.turnoEscolhido] = (counts[d.turnoEscolhido] || 0) + 1;
     });
 
-    // 2. Obter a configuração completa (Objetos com nome, limite, ativo)
-    const configLocal = this.todosOsTurnosConfig[this.filtroLocal] || [];
+    const configLocal = this.todosOsTurnosConfig ? (this.todosOsTurnosConfig[this.filtroLocal] || []) : [];
 
-    // 3. Mapear para o formato do Widget
     this.ocupacaoPorTurno = configLocal
-      .filter((t: any) => {
-        // LÓGICA DE EXIBIÇÃO:
-        // Mostra o turno se estiver 'Ativo' OU se tiver alguém inscrito (mesmo que inativo)
-        // Isto esconde turnos inativos que estão vazios (0 inscritos).
-        return t.ativo === true || (counts[t.nome] && counts[t.nome] > 0);
-      })
+      .filter((t: any) => t.ativo === true || (counts[t.nome] && counts[t.nome] > 0))
       .map((t: any) => {
         const count = counts[t.nome] || 0;
-        const limiteReal = t.limite || 80; // Usa o limite configurado ou 80 por defeito
-
-        // Limpeza visual do nome (remove datas longas se houver hífen)
-        // Ex: "1º Turno - 28 Junho..." vira "1º Turno" para caber na caixa pequena
+        const limiteReal = t.limite || 80;
         const nomeCurto = t.nome.includes('–') ? t.nome.split(' – ')[0] : t.nome.split('-')[0];
 
         return {
@@ -204,7 +192,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
       });
   }
 
-  // --- Ações de Tabela ---
+  // --- INTERAÇÕES UI ---
 
   isAllSelected() {
     return this.selection.selected.length === this.dataSource.filteredData.length;
@@ -219,31 +207,44 @@ export class AdminComponent implements OnInit, AfterViewInit {
   togglePagamento(inscricao: Inscricao) {
     if (!inscricao.id) return;
     const novo = inscricao.estadoPagamento === 'pago' ? 'pendente' : 'pago';
-    this.inscricaoService.updateInscricao(inscricao.id, { estadoPagamento: novo });
-    if (this.selectedInscricao?.id === inscricao.id) this.selectedInscricao.estadoPagamento = novo;
-    this.mostrarNotificacao(`Estado alterado para ${novo.toUpperCase()}`);
-  }
 
+    this.inscricaoService.updateInscricao(inscricao.id, { estadoPagamento: novo }).then(() => {
+      inscricao.estadoPagamento = novo;
+
+      // CORREÇÃO 1: Verificar se selectedInscricao existe antes de aceder
+      if (this.selectedInscricao && this.selectedInscricao.id === inscricao.id) {
+        this.selectedInscricao.estadoPagamento = novo;
+      }
+
+      this.mostrarNotificacao(`Estado alterado para ${novo.toUpperCase()}`);
+    });
+  }
 
   marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
     const selecionados = this.selection.selected;
     if (confirm(`Alterar ${selecionados.length} inscrições para ${novoEstado}?`)) {
-      selecionados.forEach(i => {
-        if (i.id) this.inscricaoService.updateInscricao(i.id, { estadoPagamento: novoEstado });
+      const updates = selecionados.map(i => ({ id: i.id!, estadoPagamento: novoEstado }));
+
+      this.inscricaoService.updateInscricaoBatch(updates).then(() => {
+        this.recarregarDadosCompletos();
+        this.selection.clear();
+        this.mostrarNotificacao('Atualizado com sucesso!');
       });
-      this.selection.clear();
     }
   }
 
   apagarSelecionados() {
     const selecionados = this.selection.selected;
     if (confirm(`Apagar ${selecionados.length} registos permanentemente?`)) {
-      selecionados.forEach(i => { if (i.id) this.inscricaoService.deleteInscricao(i.id); });
-      this.selection.clear();
+      const promessas = selecionados.map(i => i.id ? this.inscricaoService.deleteInscricao(i.id) : Promise.resolve());
+
+      Promise.all(promessas).then(() => {
+        this.recarregarDadosCompletos();
+        this.selection.clear();
+        this.mostrarNotificacao('Apagado.', 'error');
+      });
     }
   }
-
-  // --- Sidebar e Edição ---
 
   abrirDetalhes(row: Inscricao) {
     this.selectedInscricao = JSON.parse(JSON.stringify(row));
@@ -261,12 +262,22 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   async guardarEdicao() {
     if (!this.selectedInscricao?.id) return;
-    await this.inscricaoService.updateInscricao(this.selectedInscricao.id, this.selectedInscricao);
+
+    // CORREÇÃO 2: Usar 'any' para permitir a reatribuição de Date para string antes de enviar
+    const dados: any = { ...this.selectedInscricao };
+
+    if (dados.participante.dataNascimento instanceof Date) {
+      dados.participante.dataNascimento = dados.participante.dataNascimento.toISOString().split('T')[0];
+    }
+
+    await this.inscricaoService.updateInscricao(this.selectedInscricao.id, dados);
+
     this.isEditing = false;
     this.mostrarNotificacao('Dados atualizados!');
+    this.recarregarDadosCompletos();
   }
 
-  // --- PDF e Helpers ---
+  // --- PDF & HELPERS ---
 
   verificarTurnoParaCozinha() {
     this.acaoDialog = 'cozinha';
@@ -340,48 +351,46 @@ export class AdminComponent implements OnInit, AfterViewInit {
   apagarInscricao(id?: string) {
     if (!id) return;
     if (confirm('Eliminar permanentemente?')) {
-      this.inscricaoService.deleteInscricao(id);
-      this.fecharDetalhes(); this.mostrarNotificacao('Apagado.', 'error');
+      this.inscricaoService.deleteInscricao(id).then(() => {
+        this.recarregarDadosCompletos();
+        this.fecharDetalhes();
+        this.mostrarNotificacao('Apagado.', 'error');
+      });
     }
   }
 
   abrirConfigTurnos() {
-    const dialogRef = this.dialog.open(ConfigTurnosComponent, { width: '600px' });
-
+    const dialogRef = this.dialog.open(ConfigTurnosComponent, { width: '900px' });
     dialogRef.afterClosed().subscribe(async (result) => {
-      if (result) {
-        // Se houve alterações (result === true), recarregamos TUDO
-        await this.recarregarDadosCompletos();
-
-        // Notificação visual para confirmar a atualização
-      }
+      if (result) await this.recarregarDadosCompletos();
     });
   }
 
-  async recarregarDadosCompletos() {
-    try {
-      // 1. Buscar a configuração mais recente à base de dados
-      const config = await this.inscricaoService.getConfiguracoesTurnos();
-
-      if (config) {
-        this.todosOsTurnosConfig = config;
-
-        // 2. Atualizar a lista do dropdown (Filtrar apenas os ativos)
-        this.atualizarListaDeTurnosPorLocal();
-
-        // 3. Forçar o recálculo dos gráficos de ocupação com os novos limites
-        // (Nota: Chamamos atualizarFiltros porque ele invoca o calcularOcupacao internamente)
-        this.atualizarFiltros();
-      }
-    } catch (error) {
-      this.mostrarNotificacao('Erro ao atualizar dados.', 'error');
+  gerar() {
+    if (!this.filtroTurno) {
+      this.mostrarNotificacao('Por favor, selecione um turno primeiro.', 'error');
+      return;
     }
-  }
 
-  async carregarTurnosDoServidor() {
-    // AQUI ESTÁ O SEGREDO: Usamos o método getTurnosAtivos
-    // Assim, no dropdown só aparecem os que marcaste como "Ativo: true"
-    this.listaTurnos = await this.inscricaoService.getTurnosAtivos('quinta');
+    let nomeFinal = '';
+    if (this.todosOsTurnosConfig && this.todosOsTurnosConfig[this.filtroLocal]) {
+      const turnoObj = this.todosOsTurnosConfig[this.filtroLocal].find((t: any) => t.nome === this.filtroTurno);
+
+      if (turnoObj && turnoObj.coordenadores && Array.isArray(turnoObj.coordenadores)) {
+        nomeFinal = turnoObj.coordenadores
+          .filter((c: string) => c && c.trim() !== '')
+          .join(' & ');
+      }
+    }
+
+    this.dialog.open(DialogGerarAcessoComponent, {
+      width: '500px',
+      data: {
+        local: this.filtroLocal,
+        turno: this.filtroTurno,
+        nomePredefinido: nomeFinal
+      }
+    });
   }
 
   sair() { this.authService.logout(); }

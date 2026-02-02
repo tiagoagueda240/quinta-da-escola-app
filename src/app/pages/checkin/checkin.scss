@@ -183,3 +183,21 @@
     margin-top: 50px;
   }
 }
+
+.security-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: #f0f2f5; z-index: 9999;
+  display: flex; justify-content: center; align-items: center;
+}
+.pin-card {
+  background: white; padding: 40px; border-radius: 16px; text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 320px;
+}
+.lock-icon { font-size: 48px; height: 48px; width: 48px; color: #1976d2; margin-bottom: 20px; }
+.pin-field {
+  font-size: 32px; letter-spacing: 10px; text-align: center; width: 100%;
+  border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 20px 0;
+  outline: none;
+}
+.pin-field:focus { border-color: #1976d2; }
+.error-msg { color: #f44336; margin-top: 15px; font-weight: bold; }

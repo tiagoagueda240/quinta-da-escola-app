@@ -40,7 +40,6 @@ export const routes: Routes = [
   {
     path: 'checkin',
     component: CheckinComponent,
-    canActivate: [authGuard]
   },
   {
     path: 'grupos',

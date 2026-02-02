@@ -4,7 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { MonitorService } from '../../services/monitor.service';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
-import { Inscricao } from '../../models/inscricao.model';
+import { Inscricao, TurnoConfig } from '../../models/inscricao.model';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -17,8 +17,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatListModule } from '@angular/material/list';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatListModule, MatSelectionList, MatSelectionListChange, MatListOption } from '@angular/material/list';
+import { MatPaginatorModule } from '@angular/material/paginator';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import * as XLSX from 'xlsx-js-style';
 
@@ -48,12 +48,8 @@ export class MonitoresComponent implements OnInit {
   filtroFaltaContacto: boolean = false;
 
   listaFormacoes: string[] = [];
-  listaTurnos = [
-    '1º Turno – 28 Junho a 4 Julho', '2º Turno – 5 a 11 Julho', '3º Turno – 12 a 18 Julho',
-    '4º Turno – 19 a 25 Julho', '5º Turno – 26 Julho a 1 Agosto', '6º Turno – 2 a 8 Agosto',
-    '7º Turno – 9 a 15 Agosto', '8º Turno – 16 a 22 Agosto', '9º Turno – 23 a 29 Agosto',
-    '10º Turno – 30 Agosto a 5 Setembro'
-  ];
+  listaTurnos: string[] = [];
+  todosTurnosConfig: any = {};
 
   stats = { monitores: 0, totalCriancas: 0, racio: 0 };
   monitorForm!: FormGroup;
@@ -65,6 +61,7 @@ export class MonitoresComponent implements OnInit {
   @ViewChild('dialogMonitor') dialogMonitor!: TemplateRef<any>;
   @ViewChild('dialogTurnosMonitor') dialogTurnosMonitor!: TemplateRef<any>;
   @ViewChild('dialogImportar') dialogImportar!: TemplateRef<any>;
+  @ViewChild('turnosList') turnosList!: MatSelectionList;
 
   private monitorService = inject(MonitorService);
   private inscricaoService = inject(InscricaoService);
@@ -82,6 +79,8 @@ export class MonitoresComponent implements OnInit {
   };
 
   async ngOnInit() {
+    await this.carregarTurnosDoSistema();
+    await this.carregarConfiguracaoCompleta();
     await this.carregarDadosIniciais();
 
     this.monitorForm = this.fb.group({
@@ -99,16 +98,108 @@ export class MonitoresComponent implements OnInit {
     });
   }
 
-  /** Carrega a primeira página de monitores e extrai formações */
+  async carregarTurnosDoSistema() {
+    try {
+      const config = await this.inscricaoService.getConfiguracoesTurnos();
+      const todosTurnos = [
+        ...(config.quinta || []),
+        ...(config.costaCaparica || []),
+        ...(config.quiaios || [])
+      ];
+      this.listaTurnos = todosTurnos
+        .filter((t: any) => t.ativo === true)
+        .map((t: any) => t.nome);
+    } catch (e) {
+      console.error("Erro ao carregar turnos", e);
+      this.snackBar.open('Erro ao carregar lista de turnos.', 'OK');
+    }
+  }
+
+  async carregarConfiguracaoCompleta() {
+    this.todosTurnosConfig = await this.inscricaoService.getConfiguracoesTurnos();
+  }
+
+  // --- LÓGICA DE COORDENAÇÃO ---
+
+  isCoordenador(m: Monitor): boolean {
+    if (!this.turnoSelecionado) return false;
+    const turnoObj = this.encontrarTurnoNaConfig(this.turnoSelecionado);
+    if (!turnoObj || !turnoObj.coordenadores) return false;
+    const nome = m.nomeMonitor || m.nome;
+    return turnoObj.coordenadores.includes(nome);
+  }
+
+  async toggleCoordenador(m: Monitor) {
+    if (!this.turnoSelecionado) return;
+
+    const turnoObj = this.encontrarTurnoNaConfig(this.turnoSelecionado);
+    if (!turnoObj) return;
+
+    if (!turnoObj.coordenadores) turnoObj.coordenadores = [];
+
+    const nome = m.nomeMonitor || m.nome;
+    const index = turnoObj.coordenadores.indexOf(nome);
+
+    if (index > -1) {
+      // Remover
+      if (confirm(`⚠️ Remover ${nome} de Coordenador deste turno?`)) {
+        turnoObj.coordenadores.splice(index, 1);
+        this.snackBar.open(`${nome} removido de coordenador!`, 'OK', { duration: 2000 });
+      } else {
+        return;
+      }
+    } else {
+      // Adicionar
+      turnoObj.coordenadores.push(nome);
+      this.snackBar.open(`${nome} definido como coordenador!`, 'OK', { duration: 2000 });
+    }
+
+    try {
+      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
+    } catch (e) {
+      console.error(e);
+      this.snackBar.open('Erro ao gravar coordenador.', 'Fechar');
+    }
+  }
+
+  // Método auxiliar silencioso (para o botão X usar)
+  async removerCoordenadorSilenciosamente(m: Monitor) {
+    if (!this.turnoSelecionado) return;
+    const turnoObj = this.encontrarTurnoNaConfig(this.turnoSelecionado);
+    if (!turnoObj || !turnoObj.coordenadores) return;
+
+    const nome = (m.nomeMonitor || m.nome).toLowerCase().trim();
+
+    // Procura o índice ignorando maiúsculas/minúsculas
+    const index = turnoObj.coordenadores.findIndex((c: any) =>
+      c.toLowerCase().trim() === nome
+    );
+
+    if (index > -1) {
+      turnoObj.coordenadores.splice(index, 1);
+      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
+    }
+  }
+
+  private encontrarTurnoNaConfig(nomeTurno: string): TurnoConfig | undefined {
+    const locais = ['quinta', 'costaCaparica', 'quiaios'];
+    for (const local of locais) {
+      const lista = this.todosTurnosConfig[local] || [];
+      const encontrado = lista.find((t: any) => t.nome === nomeTurno);
+      if (encontrado) return encontrado;
+    }
+    return undefined;
+  }
+
+  // --- LÓGICA GERAL ---
+
   async carregarDadosIniciais() {
     this.monitores = await this.monitorService.getMonitoresOtimizados();
     this.extrairFormacoesUnicas();
     this.atualizarListas();
   }
 
-  /** Acionado pelo campo de pesquisa no HTML */
   async onSearchChange() {
-    // Busca no servidor conforme o utilizador digita
     this.monitores = await this.monitorService.getMonitoresOtimizados(this.pesquisa);
     this.atualizarListas();
   }
@@ -136,31 +227,23 @@ export class MonitoresComponent implements OnInit {
   toggleFiltroContacto(event: any) { this.filtroFaltaContacto = event.selected; this.atualizarListas(); }
 
   atualizarListas() {
-    // 1. Preparar o termo de pesquisa (minúsculas e sem espaços extra)
     const termo = this.pesquisa ? this.pesquisa.toLowerCase().trim() : '';
 
     const filtrados = this.monitores.filter(m => {
-      // --- LÓGICA DE PESQUISA (NOVO) ---
       const matchPesquisa = !termo ||
         m.nome.toLowerCase().includes(termo) ||
         (m.nomeMonitor && m.nomeMonitor.toLowerCase().includes(termo)) ||
         m.email.toLowerCase().includes(termo);
 
-      // --- FILTROS EXISTENTES ---
       const matchFormacao = this.filtroFormacao ? m.formacoes?.includes(this.filtroFormacao) : true;
       const matchFaltaAlcunha = this.filtroFaltaAlcunha ? (!m.nomeMonitor || m.nomeMonitor.trim() === '') : true;
       const matchFaltaContacto = this.filtroFaltaContacto ? (!m.telefone || m.telefone.trim() === '') : true;
 
-      // Só passa se cumprir TODOS os critérios
       return matchPesquisa && matchFormacao && matchFaltaAlcunha && matchFaltaContacto;
     });
 
-    // --- DIVISÃO POR TURNOS ---
     if (this.turnoSelecionado) {
       this.monitoresAtribuidos = this.monitores.filter(m => m.turnosAtribuidos?.includes(this.turnoSelecionado));
-
-      // Apenas aplicamos a pesquisa à lista de "Disponíveis" (lado direito)
-      // para não esconder quem já está na equipa confirmada (lado esquerdo)
       this.monitoresDisponiveis = filtrados.filter(m => !m.turnosAtribuidos?.includes(this.turnoSelecionado));
     } else {
       this.monitoresAtribuidos = [];
@@ -170,7 +253,6 @@ export class MonitoresComponent implements OnInit {
     this.atualizarStats();
   }
 
-  // --- IMPORTAÇÃO EXCEL (BATCH) ---
   abrirImportar() { this.dialog.open(this.dialogImportar, { width: '450px' }); }
   onFileOver(e: any) { e.preventDefault(); this.isDraggingFile = true; }
   onFileLeave(e: any) { e.preventDefault(); this.isDraggingFile = false; }
@@ -180,14 +262,12 @@ export class MonitoresComponent implements OnInit {
     const reader = new FileReader();
     reader.onload = async (e: any) => {
       const data = new Uint8Array(e.target.result);
-
-      // 1. ATENÇÃO: Adicionei 'cellStyles: true' para tentar ler as cores
       const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
 
       let mapMonitores = new Map<string, Monitor>();
       let novos = 0;
       let atualizados = 0;
-      let ignoradosPorCor = 0; // Contador para feedback
+      let ignoradosPorCor = 0;
 
       this.monitores.forEach(m => {
         const key = this.gerarChaveUnica(m.email, m.nome);
@@ -206,18 +286,13 @@ export class MonitoresComponent implements OnInit {
         if (mapColunas.get('nome') === undefined) continue;
 
         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-
-          // --- NOVO BLOCO DE VERIFICAÇÃO DE COR ---
-          // Obtemos o endereço da célula na Coluna A (índice 0) da linha atual (i)
           const cellAddress = XLSX.utils.encode_cell({ r: i, c: 0 });
           const cell = worksheet[cellAddress];
 
-          // Se a célula existir e for vermelha, ignoramos a linha inteira
           if (this.isCellRed(cell)) {
             ignoradosPorCor++;
             continue;
           }
-          // ----------------------------------------
 
           const row = jsonData[i];
           const nome = this.getVal(row, mapColunas, 'nome')?.toString().trim() || '';
@@ -265,10 +340,8 @@ export class MonitoresComponent implements OnInit {
         await this.monitorService.saveBulkMonitores(Array.from(mapMonitores.values()));
         await this.carregarDadosIniciais();
         this.dialog.closeAll();
-
-        // Feedback atualizado
         this.snackBar.open(
-          `Concluído: ${novos} novos, ${atualizados} atualizados. (${ignoradosPorCor} ignorados por estarem a vermelho)`,
+          `Concluído: ${novos} novos, ${atualizados} atualizados. (${ignoradosPorCor} ignorados)`,
           'OK',
           { duration: 5000 }
         );
@@ -298,7 +371,6 @@ export class MonitoresComponent implements OnInit {
   }
   private getVal(row: any[], map: Map<string, number>, key: string) { const idx = map.get(key); return idx !== undefined ? row[idx] : null; }
 
-  // --- CRUD e DRAG DROP ---
   drop(event: CdkDragDrop<Monitor[]>) {
     if (event.previousContainer === event.container) moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     else {
@@ -309,8 +381,49 @@ export class MonitoresComponent implements OnInit {
   }
 
   async adicionarAoTurno(m: Monitor) { if (m.id && !m.turnosAtribuidos?.includes(this.turnoSelecionado)) { await this.monitorService.updateMonitor(m.id, { turnosAtribuidos: [...(m.turnosAtribuidos || []), this.turnoSelecionado] }); m.turnosAtribuidos?.push(this.turnoSelecionado); this.atualizarStats(); } }
-  async removerDoTurno(m: Monitor) { if (m.id) { const novos = (m.turnosAtribuidos || []).filter(t => t !== this.turnoSelecionado); await this.monitorService.updateMonitor(m.id, { turnosAtribuidos: novos }); m.turnosAtribuidos = novos; this.atualizarStats(); } }
-  toggleTurno(m: Monitor) { m.turnosAtribuidos?.includes(this.turnoSelecionado) ? this.removerDoTurno(m) : this.adicionarAoTurno(m); }
+
+  async removerDoTurno(m: Monitor) {
+    if (m.id) {
+      const novos = (m.turnosAtribuidos || []).filter(t => t !== this.turnoSelecionado);
+
+      await this.monitorService.updateMonitor(m.id, { turnosAtribuidos: novos });
+
+      // Atualiza o objeto local
+      m.turnosAtribuidos = novos;
+
+      // ATENÇÃO: Isto é crucial para o monitor desaparecer visualmente da lista
+      this.atualizarListas();
+    }
+  }
+
+  // AÇÃO DO BOTÃO "X" (REMOVER)
+  async toggleTurno(m: Monitor) {
+    const estaNoTurno = m.turnosAtribuidos?.includes(this.turnoSelecionado);
+
+    // CENÁRIO A: REMOVER DO TURNO
+    if (estaNoTurno) {
+      if (this.isCoordenador(m)) {
+        const nome = m.nomeMonitor || m.nome;
+
+        // Pede confirmação ÚNICA
+        if (confirm(`⚠️ ATENÇÃO: ${nome} é Coordenador(a)!\n\nAo remover deste turno, perderá também o estatuto de Coordenador.\n\nDeseja continuar?`)) {
+          // 1. Remove coordenação (BD Configurações)
+          await this.removerCoordenadorSilenciosamente(m);
+          // 2. Remove do turno (BD Monitores) + Atualiza Ecrã
+          await this.removerDoTurno(m);
+
+          this.snackBar.open(`${nome} removido da equipa e da coordenação.`, 'OK', { duration: 3000 });
+        }
+        return;
+      }
+      // Se não for coordenador, remove direto
+      this.removerDoTurno(m);
+    }
+    // CENÁRIO B: ADICIONAR AO TURNO
+    else {
+      this.adicionarAoTurno(m);
+    }
+  }
 
   atualizarStats() { if (!this.turnoSelecionado) return; const doTurno = this.inscricoes.filter(i => i.turnoEscolhido === this.turnoSelecionado); this.stats.totalCriancas = doTurno.length; this.stats.monitores = this.monitoresAtribuidos.length; this.stats.racio = this.stats.monitores > 0 ? Math.round(this.stats.totalCriancas / this.stats.monitores) : 0; }
 
@@ -320,32 +433,69 @@ export class MonitoresComponent implements OnInit {
   async apagarMonitor(id?: string) { if (id && confirm('Apagar?')) { await this.monitorService.deleteMonitor(id); await this.carregarDadosIniciais(); } }
 
   abrirGestaoTurnos(m: Monitor) { this.selectedMonitor = m; this.dialog.open(this.dialogTurnosMonitor, { width: '400px' }); }
-  async atualizarSelecaoTurnos(e: any, sel: any[]) { if (this.selectedMonitor?.id) { const novos = sel.map(o => o.value); await this.monitorService.updateMonitor(this.selectedMonitor.id, { turnosAtribuidos: novos }); this.selectedMonitor.turnosAtribuidos = novos; } }
+
+  async atualizarSelecaoTurnos(event: MatSelectionListChange) {
+    if (!this.selectedMonitor?.id) return;
+
+    const option = event.options[0];
+    const turnoNome = option.value;
+    const isSelected = option.selected;
+
+    // Deselect Scenario: Removing Turn
+    if (!isSelected) {
+      if (this.isCoordenadorDoTurno(this.selectedMonitor, turnoNome)) {
+        const nome = this.selectedMonitor.nomeMonitor || this.selectedMonitor.nome;
+        if (confirm(`⚠️ ${nome} é Coordenador em "${turnoNome}".\n\nAo sair deste turno, perderá a coordenação.\nPretende continuar?`)) {
+          await this.removerCoordenadorDoTurno(this.selectedMonitor, turnoNome);
+          this.snackBar.open('Coordenação removida.', 'OK', { duration: 2000 });
+        } else {
+          option.selected = true; // Revert checkbox
+          return;
+        }
+      }
+    }
+
+    const novosTurnos = this.turnosList.selectedOptions.selected.map((o: MatListOption) => o.value);
+
+    await this.monitorService.updateMonitor(this.selectedMonitor.id, { turnosAtribuidos: novosTurnos });
+    this.selectedMonitor.turnosAtribuidos = novosTurnos;
+
+    if (this.turnoSelecionado) this.atualizarStats();
+  }
+
   isMonitorNoTurno(t: string) { return this.selectedMonitor?.turnosAtribuidos?.includes(t); }
 
-
-  /**
- * Verifica se a célula tem fundo vermelho (Estilos Excel)
- */
   private isCellRed(cell: any): boolean {
     if (!cell || !cell.s || !cell.s.fgColor) return false;
-
-    // O Excel guarda as cores hexadecimais (muitas vezes em ARGB: Alpha, Red, Green, Blue)
-    // Ex: FFFF0000 é vermelho puro.
     const color = cell.s.fgColor.rgb;
-
     if (!color) return false;
-
-    // Lista de códigos Hex comuns para vermelho no Excel
-    const vermelhos = [
-      'FFFF0000', // Vermelho Standard
-      'FF0000',   // Vermelho Curto
-      'FFC00000', // Vermelho Escuro
-      'FFCC0000',
-      'FFFFC7CE', // Fundo Rosa/Vermelho claro (comum em validação de dados/erros)
-      'FFFF9999'  // Vermelho claro
-    ];
-
+    const vermelhos = ['FFFF0000', 'FF0000', 'FFC00000', 'FFCC0000', 'FFFFC7CE', 'FFFF9999'];
     return vermelhos.includes(color.toUpperCase());
+  }
+
+  private isCoordenadorDoTurno(monitor: Monitor, nomeTurno: string): boolean {
+    const turnoObj = this.encontrarTurnoNaConfig(nomeTurno);
+    if (!turnoObj || !turnoObj.coordenadores) return false;
+
+    const lista = turnoObj.coordenadores.map((c: any) => c.toLowerCase().trim());
+    const nome = (monitor.nomeMonitor || monitor.nome).toLowerCase().trim();
+    const nomeCompleto = (monitor.nome || '').toLowerCase().trim();
+
+    return lista.includes(nome) || lista.includes(nomeCompleto);
+  }
+
+  private async removerCoordenadorDoTurno(monitor: Monitor, nomeTurno: string) {
+    const turnoObj = this.encontrarTurnoNaConfig(nomeTurno);
+    if (!turnoObj || !turnoObj.coordenadores) return;
+
+    const nome = monitor.nomeMonitor || monitor.nome;
+    const nomeCompleto = monitor.nome || '';
+
+    turnoObj.coordenadores = turnoObj.coordenadores.filter((c: any) =>
+      c.toLowerCase().trim() !== nome.toLowerCase().trim() &&
+      c.toLowerCase().trim() !== nomeCompleto.toLowerCase().trim()
+    );
+
+    await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
   }
 }

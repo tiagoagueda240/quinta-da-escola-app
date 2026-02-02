@@ -10,10 +10,10 @@ import { ConfigTurnos, Inscricao } from '../models/inscricao.model';
 export class InscricaoService {
   private http = inject(HttpClient);
 
-  // Caminho relativo (funciona porque estás no subdomínio turnos.dominio.com)
+  // URL base da API
   private apiUrl = 'https://turnos.quintadaescola.com/api/inscricoes.php';
 
-  // Helper para Autenticação (JWT)
+  // --- 1. HEADERS ADMIN (JWT) ---
   private getHeaders() {
     const token = localStorage.getItem('auth_token');
     return {
@@ -24,81 +24,39 @@ export class InscricaoService {
     };
   }
 
+  // ==========================================================
+  //     ADAPTADOR (TRADUTOR DE DADOS)
+  // ==========================================================
+
   /**
-   * Obtém todas as inscrições e converte as datas (String MySQL -> Date JS)
+   * Converte os nomes das colunas da Nova BD para o formato que o Angular espera.
+   */
+  private adaptarInscricao(row: any): Inscricao {
+    return {
+      ...row,
+      // Mapeia as novas colunas da BD para as propriedades antigas do Frontend
+      camarata: row.camarata_atribuida || row.camarata,
+      grupo: row.grupo_atribuido || row.grupo,
+      // Garante que transporte não vem null
+      transporte: row.transporte || ''
+    } as Inscricao;
+  }
+
+  // ==========================================================
+  //     MÉTODOS DE LEITURA (ADMIN & GERAL)
+  // ==========================================================
+
+  /**
+   * Admin: Obtém todas as inscrições (autenticado por JWT)
    */
   getInscricoes(): Observable<Inscricao[]> {
-    return this.http.get<Inscricao[]>(`${this.apiUrl}?acao=listar`, this.getHeaders()).pipe(
-      map((lista) => {
-        return lista.map(item => {
-          // Converter strings de data do MySQL para Objetos Date reais
-          if (item.dataCriacao) item.dataCriacao = new Date(item.dataCriacao);
-
-          if (item.participante && item.participante.dataNascimento) {
-            item.participante.dataNascimento = new Date(item.participante.dataNascimento);
-          }
-
-          // Converter booleans que podem vir como 0/1 do PHP
-          item.autorizaFotoVideo = !!item.autorizaFotoVideo;
-
-          return item;
-        });
-      })
+    return this.http.get<any[]>(`${this.apiUrl}?acao=listar`, this.getHeaders()).pipe(
+      map(rows => rows.map(r => this.adaptarInscricao(r)))
     );
   }
 
   /**
-   * Adiciona nova inscrição (Site Público - sem necessidade de Token geralmente, 
-   * mas se for backoffice usa getHeaders)
-   */
-  async addInscricao(inscricao: Inscricao) {
-    // action=nova está definido no teu PHP
-    const res = await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=nova`, inscricao)
-    );
-
-    // Envio de email continua a ser feito via script externo ou pode ser movido para a API
-    this.enviarEmailSeguro(inscricao);
-    return res;
-  }
-
-  enviarEmailSeguro(dados: Inscricao) {
-    // Podes manter este script separado ou integrar na API PHP (recomendado integrar futuramente)
-    const url = 'https://turnos.quintadaescola.com/send-email.php';
-    const payload = {
-      nome: dados.ee.nome,
-      email: dados.ee.email,
-      turno: dados.turnoEscolhido,
-      valor: dados.valorTotal
-    };
-    this.http.post(url, payload).subscribe({
-      error: (err) => console.error('Erro email:', err)
-    });
-  }
-
-  /**
-   * Batch Update para Logística (Grupos e Camaratas)
-   */
-  async updateBatch(updates: { id: string | number, data: any }[]) {
-    return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders())
-    );
-  }
-
-  updateInscricao(id: string, dados: Partial<Inscricao>) {
-    // Para updates individuais, usamos a mesma lógica de batch ou criamos um endpoint PUT
-    // Aqui reutilizo o batch para simplificar, pois já tens o código PHP pronto para isso
-    return this.updateBatch([{ id, data: dados }]);
-  }
-
-  deleteInscricao(id: string) {
-    // Se quiseres implementar delete, precisas de adicionar a ação no PHP
-    // return this.http.delete(`${this.apiUrl}?id=${id}`, this.getHeaders());
-    console.warn('Delete ainda não implementado no PHP');
-  }
-
-  /**
-   * Obtém a lista de turnos da tabela 'configuracoes'
+   * Admin: Obtém configurações de turnos
    */
   async getConfiguracoesTurnos(): Promise<ConfigTurnos> {
     return await lastValueFrom(
@@ -106,18 +64,139 @@ export class InscricaoService {
     );
   }
 
-  // 2. Ler APENAS Turnos Ativos (Para Dropdowns de seleção)
-  // Este método filtra automaticamente para não mostrar turnos antigos
-  async getTurnosAtivos(local: 'quinta' | 'costaCaparica' | 'quiaios'): Promise<string[]> {
-    const config = await this.getConfiguracoesTurnos();
-    const lista = config[local] || [];
-    return lista.filter(t => t.ativo).map(t => t.nome);
-  }
-
-  // 3. Gravar Alterações
+  /**
+   * Admin: Grava configurações de turnos
+   */
   async saveConfiguracoesTurnos(config: ConfigTurnos) {
     return await lastValueFrom(
       this.http.post(`${this.apiUrl}?acao=salvar_config_turnos`, config, this.getHeaders())
     );
+  }
+
+  // ==========================================================
+  //     MÉTODOS DE LEITURA (COORDENADOR / LINK)
+  // ==========================================================
+
+  /**
+   * Coordenador: Tenta obter inscrições apenas com o Token da URL.
+   */
+  getInscricoesComToken(token: string): Observable<Inscricao[]> {
+    return this.http.get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`).pipe(
+      map(rows => rows.map(r => this.adaptarInscricao(r)))
+    );
+  }
+
+  /**
+   * Coordenador: Obtém inscrições enviando Token + PIN (Header X-Access-Pin)
+   */
+  getInscricoesComTokenEPin(token: string, pin: string): Observable<Inscricao[]> {
+    const headers = new HttpHeaders({
+      'X-Access-Pin': pin
+    });
+    return this.http.get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`, { headers }).pipe(
+      map(rows => rows.map(r => this.adaptarInscricao(r)))
+    );
+  }
+
+  // ==========================================================
+  //     MÉTODOS DE ESCRITA / CRIAÇÃO
+  // ==========================================================
+
+  /**
+   * Cria nova inscrição (Usado no site público e na clonagem pelo Admin)
+   */
+  async createInscricao(inscricao: Partial<Inscricao>) {
+    const res = await lastValueFrom(
+      this.http.post(`${this.apiUrl}?acao=nova`, inscricao)
+    );
+    this.enviarEmailSeguro(inscricao);
+    return res;
+  }
+
+  // Alias
+  addInscricao(inscricao: Inscricao) {
+    return this.createInscricao(inscricao);
+  }
+
+  /**
+   * Admin: Atualiza várias inscrições ou campos específicos (Batch)
+   */
+  async updateInscricaoBatch(updates: { id: string | number, checkin?: any, [key: string]: any }[]) {
+    return await lastValueFrom(
+      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders())
+    );
+  }
+
+  // Alias para update individual
+  async updateInscricao(id: string, dados: any) {
+    return this.updateInscricaoBatch([{ id, ...dados }]);
+  }
+
+  /**
+   * Coordenador: Faz Check-in/out enviando Token + PIN
+   */
+  updateCheckinComToken(payload: any, token: string, pin: string) {
+    const headers = new HttpHeaders({
+      'X-Access-Pin': pin,
+      'Content-Type': 'application/json'
+    });
+    const body = [payload];
+    return this.http.post(
+      `${this.apiUrl}?acao=batch_update&token=${token}`,
+      body,
+      { headers }
+    );
+  }
+
+  // ==========================================================
+  //     GERAR ACESSOS E EMAILS
+  // ==========================================================
+
+  async gerarLinkCoordenador(payload: any) {
+    const url = this.apiUrl.replace('inscricoes.php', 'gerar_acesso.php');
+    return await lastValueFrom(
+      this.http.post<any>(url, payload, this.getHeaders())
+    );
+  }
+
+  enviarEmailSeguro(dados: any) {
+    const url = 'https://turnos.quintadaescola.com/send-email.php';
+    const payload = {
+      nome: dados.ee?.nome || 'Enc. Educação',
+      email: dados.ee?.email,
+      turno: dados.turnoEscolhido,
+      valor: dados.valorTotal
+    };
+    this.http.post(url, payload).subscribe({
+      error: (err) => console.error('Erro envio email:', err)
+    });
+  }
+
+  // ==========================================================
+  //     LOGÍSTICA, APAGAR E AUXILIARES
+  // ==========================================================
+
+  async updateBatch(updates: { id: string | number, data: any }[]) {
+    return await lastValueFrom(
+      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders())
+    );
+  }
+
+  async deleteInscricao(id: string) {
+    return await lastValueFrom(
+      this.http.post(`${this.apiUrl}?acao=apagar`, { id }, this.getHeaders())
+    );
+  }
+
+  // --- RESTAURADO: Método auxiliar usado pelo Admin ---
+  async getTurnosAtivos(local: 'quinta' | 'costaCaparica' | 'quiaios'): Promise<string[]> {
+    const config = await this.getConfiguracoesTurnos();
+    // Acede à propriedade do local (ex: config.quinta)
+    const lista = config[local] || [];
+
+    // Filtra e devolve apenas os nomes
+    return lista
+      .filter((t: any) => t.ativo === true)
+      .map((t: any) => t.nome);
   }
 }

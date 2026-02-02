@@ -18,10 +18,10 @@ import { MatLuxonDateModule, MAT_LUXON_DATE_ADAPTER_OPTIONS } from '@angular/mat
 
 export const FORMATOS_PT_LUXON = {
   parse: {
-    dateInput: 'dd/MM/yyyy', // Como o Luxon interpreta a escrita
+    dateInput: 'dd/MM/yyyy',
   },
   display: {
-    dateInput: 'dd/MM/yyyy', // O que aparece no ecrã (EXATAMENTE O QUE PRECISAS)
+    dateInput: 'dd/MM/yyyy',
     monthYearLabel: 'MMM yyyy',
     dateA11yLabel: 'DD',
     monthYearA11yLabel: 'MMMM yyyy',
@@ -41,7 +41,6 @@ export const FORMATOS_PT_LUXON = {
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'pt-PT' },
     { provide: MAT_DATE_FORMATS, useValue: FORMATOS_PT_LUXON },
-    // Importante: garante que a data não muda de dia devido ao fuso horário (UTC)
     { provide: MAT_LUXON_DATE_ADAPTER_OPTIONS, useValue: { useUtc: true } }
   ]
 })
@@ -50,12 +49,12 @@ export class InscricaoComponent implements OnInit {
 
   // Variáveis Dinâmicas
   turnos: string[] = [];
-  localAtual: 'Quinta' | 'Costa da Caparica' | 'Quiaios' = 'Quinta';
+  localAtual: 'Quinta' | 'Costa da Caparica' | 'Quiaios' = 'Quinta'; // Podes mudar isto dinamicamente se tiveres um seletor
 
-  //valorBase = 395;
-  //valorTotal = 395;
+  // Preços
   valorBase = 300;
   valorTotal = 300;
+
   isSubmitting = false;
   mostrarSucesso = false;
 
@@ -82,20 +81,23 @@ export class InscricaoComponent implements OnInit {
     try {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
 
+      // Ajuste: Acede à propriedade 'quinta' (ou outra dependendo do local)
+      // e filtra apenas os turnos ativos.
       if (config && config.quinta) {
         this.turnos = (config.quinta || [])
-          .filter(t => t.ativo === true)
-          .map(t => t.nome);
+          .filter((t: any) => t.ativo === true) // Filtra inativos
+          .map((t: any) => t.nome); // Extrai apenas o nome
 
         // Lógica de Seleção Automática
         if (this.turnos.length === 1) {
-          // Se houver apenas 1 turno, seleciona-o automaticamente no formulário
           this.inscricaoForm.get('turnoEscolhido')?.patchValue(this.turnos[0]);
-          this.inscricaoForm.get('turnoEscolhido')?.disable();
+          // Não desativamos para permitir que o utilizador veja que está selecionado, 
+          // mas podes descomentar se preferires bloquear:
+          // this.inscricaoForm.get('turnoEscolhido')?.disable();
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar turnos do Firebase:', error);
+      console.error('Erro ao carregar turnos:', error);
     }
   }
 
@@ -111,7 +113,8 @@ export class InscricaoComponent implements OnInit {
         nif: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]],
         morada: ['', Validators.required],
         cc: ['', Validators.required],
-        sistemaSaude: ['']
+        sistemaSaude: [''],
+        tamanhoTshirt: ['S'] // Adicionado, pois a BD pede
       }),
       saude: this.fb.group({
         temAlergiaAlimentar: [false],
@@ -125,6 +128,7 @@ export class InscricaoComponent implements OnInit {
         nome: ['', Validators.required],
         email: ['', [Validators.required, Validators.email]],
         telefone: ['', [Validators.required, Validators.pattern(/^[0-9]{9}$/)]],
+        nif: [''], // Adicionado, útil para a BD
         contactoEmergencia: ['']
       }),
       autorizaFotoVideo: [false, Validators.requiredTrue],
@@ -148,29 +152,55 @@ export class InscricaoComponent implements OnInit {
       this.isSubmitting = true;
       const dadosForm = this.inscricaoForm.getRawValue();
 
-      // CONVERSÃO CRÍTICA: Se dataNascimento for Luxon, converte para JS Date
-      if (dadosForm.participante.dataNascimento && typeof dadosForm.participante.dataNascimento.toJSDate === 'function') {
-        dadosForm.participante.dataNascimento = dadosForm.participante.dataNascimento.toJSDate();
+      // CONVERSÃO CRÍTICA: Se dataNascimento for Luxon, converte para string YYYY-MM-DD
+      if (dadosForm.participante.dataNascimento) {
+        let data = dadosForm.participante.dataNascimento;
+        if (typeof data.toJSDate === 'function') {
+          data = data.toJSDate();
+        }
+        if (data instanceof Date) {
+          dadosForm.participante.dataNascimento = data.toISOString().split('T')[0];
+        }
       }
 
-      const novaInscricao: Inscricao = {
-        ...dadosForm,
+      // --- CORREÇÃO AQUI ---
+      // Mudámos o tipo para 'any' para permitir campos extra (alergiaDetalhes) 
+      // que o PHP espera mas que não estão estritamente na Interface Inscricao
+      const novaInscricao: any = {
+        turnoEscolhido: dadosForm.turnoEscolhido,
         local: this.localAtual,
-        dataCriacao: new Date(), // Date nativo
         valorTotal: this.valorTotal,
-        estadoPagamento: 'pendente',
-        transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido'
+        autorizaFotoVideo: dadosForm.autorizaFotoVideo,
+        transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido',
+
+        participante: {
+          ...dadosForm.participante,
+          genero: dadosForm.participante.genero || 'M',
+          tamanhoTshirt: dadosForm.participante.tamanhoTshirt || 'S'
+        },
+        ee: {
+          ...dadosForm.ee,
+          nif: dadosForm.ee.nif || ''
+        },
+        saude: {
+          // O TypeScript agora aceita isto porque novaInscricao é 'any'
+          alergiaDetalhes: (dadosForm.saude.detalheAlergiaAlimentar || '') +
+            (dadosForm.saude.detalheOutrasAlergias ? ' | ' + dadosForm.saude.detalheOutrasAlergias : ''),
+          medicacaoHabitual: dadosForm.saude.detalheMedicacao || ''
+        }
       };
 
       try {
         await this.inscricaoService.addInscricao(novaInscricao);
         this.mostrarSucesso = true;
       } catch (erro) {
-        console.error("Erro detalhado:", erro); // Muda o alert por isto para veres o erro real na consola
-        alert('Erro ao guardar inscrição. Vê a consola do navegador.');
+        console.error("Erro ao submeter inscrição:", erro);
+        alert('Ocorreu um erro ao processar a inscrição. Por favor, tente novamente.');
       } finally {
         this.isSubmitting = false;
       }
+    } else {
+      this.inscricaoForm.markAllAsTouched();
     }
   }
 

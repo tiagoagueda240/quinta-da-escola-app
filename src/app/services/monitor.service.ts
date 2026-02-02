@@ -77,16 +77,13 @@ export class MonitorService {
     );
   }
 
-  // Mantemos o método para compatibilidade, mas agora usa a API simples
-  async getMonitoresPaginados(termo: string = '', limite: number = 10, offset: number = 0) {
-    const url = `${this.apiUrl}?q=${termo}&limit=${limite}&offset=${offset}`;
-    const dados = await lastValueFrom(this.http.get<Monitor[]>(url, this.getHeaders()));
 
-    return {
-      dados: dados,
-      // API SQL não devolve cursor de documento, devolvemos apenas os dados
-      // Se precisares de paginação real, o PHP teria de devolver o "total"
-      ultimoDoc: null
-    };
+
+  async getTelefonesPorNomes(nomes: string[]): Promise<any[]> {
+    // Junta os nomes com vírgulas para enviar à API
+    const param = nomes.map(n => n.trim()).join(',');
+    return await lastValueFrom(
+      this.http.get<any[]>(`${this.apiUrl}?nomes=${encodeURIComponent(param)}`, this.getHeaders())
+    );
   }
 }
