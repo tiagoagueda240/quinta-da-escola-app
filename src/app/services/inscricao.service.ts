@@ -165,7 +165,7 @@ export class InscricaoService {
       nome: dados.ee?.nome || 'Enc. Educação',
       email: dados.ee?.email,
       turno: dados.turnoEscolhido,
-      valor: dados.valorTotal
+      valor: dados.valor_total
     };
     this.http.post(url, payload).subscribe({
       error: (err) => console.error('Erro envio email:', err)

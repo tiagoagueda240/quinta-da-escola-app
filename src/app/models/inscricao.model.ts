@@ -61,8 +61,8 @@ export interface Inscricao {
 
   autorizaFotoVideo: boolean;
   transporte: string;
-  valorTotal: number;
-  estadoPagamento: 'pendente' | 'pago';
+  valor_total: number;
+  estado_pagamento: 'pendente' | 'pago';
 }
 
 // Adiciona estas interfaces no fim do ficheiro ou num ficheiro de models

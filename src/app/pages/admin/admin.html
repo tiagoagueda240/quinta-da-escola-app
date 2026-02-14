@@ -127,10 +127,10 @@
         <ng-container matColumnDef="estado">
           <th mat-header-cell *matHeaderCellDef mat-sort-header> ESTADO </th>
           <td mat-cell *matCellDef="let row">
-            <span class="status-pill" [class.pago]="row.estadoPagamento === 'pago'"
-              [class.pendente]="row.estadoPagamento === 'pendente'"
+            <span class="status-pill" [class.pago]="row.estado_pagamento === 'pago'"
+              [class.pendente]="row.estado_pagamento === 'pendente'"
               (click)="togglePagamento(row); $event.stopPropagation()">
-              <span class="dot"></span> {{ row.estadoPagamento | uppercase }}
+              <span class="dot"></span> {{ row.estado_pagamento | uppercase }}
             </span>
           </td>
         </ng-container>
@@ -221,10 +221,10 @@
 
     <div class="section-box status-box">
       <div class="row-between">
-        <span>Valor Total: <strong>{{ selectedInscricao.valorTotal }}€</strong></span>
-        <button mat-stroked-button [color]="selectedInscricao.estadoPagamento === 'pago' ? 'primary' : 'warn'"
+        <span>Valor Total: <strong>{{ selectedInscricao.valor_total }}€</strong></span>
+        <button mat-stroked-button [color]="selectedInscricao.estado_pagamento === 'pago' ? 'primary' : 'warn'"
           (click)="togglePagamento(selectedInscricao)">
-          Status: {{ selectedInscricao.estadoPagamento | uppercase }}
+          Status: {{ selectedInscricao.estado_pagamento | uppercase }}
         </button>
       </div>
     </div>

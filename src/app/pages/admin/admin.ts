@@ -140,7 +140,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         (data.ee?.nome || '').toLowerCase().includes(texto);
 
       const matchTurno = !searchTerms.turno || data.turnoEscolhido === searchTerms.turno;
-      const matchEstado = !searchTerms.estado || data.estadoPagamento === searchTerms.estado;
+      const matchEstado = !searchTerms.estado || data.estado_pagamento === searchTerms.estado;
 
       return matchLocal && matchTexto && matchTurno && matchEstado;
     };
@@ -163,7 +163,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   atualizarKPIs(dados: Inscricao[]) {
     this.totalInscritos = dados.length;
-    this.pendentes = dados.filter(i => i.estadoPagamento === 'pendente').length;
+    this.pendentes = dados.filter(i => i.estado_pagamento === 'pendente').length;
     this.totalRapazes = dados.filter(i => i.participante?.genero === 'M').length;
     this.totalRaparigas = dados.filter(i => i.participante?.genero === 'F').length;
   }
@@ -206,14 +206,14 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   togglePagamento(inscricao: Inscricao) {
     if (!inscricao.id) return;
-    const novo = inscricao.estadoPagamento === 'pago' ? 'pendente' : 'pago';
+    const novo = inscricao.estado_pagamento === 'pago' ? 'pendente' : 'pago';
 
-    this.inscricaoService.updateInscricao(inscricao.id, { estadoPagamento: novo }).then(() => {
-      inscricao.estadoPagamento = novo;
+    this.inscricaoService.updateInscricao(inscricao.id, { estado_pagamento: novo }).then(() => {
+      inscricao.estado_pagamento = novo;
 
       // CORREÇÃO 1: Verificar se selectedInscricao existe antes de aceder
       if (this.selectedInscricao && this.selectedInscricao.id === inscricao.id) {
-        this.selectedInscricao.estadoPagamento = novo;
+        this.selectedInscricao.estado_pagamento = novo;
       }
 
       this.mostrarNotificacao(`Estado alterado para ${novo.toUpperCase()}`);
@@ -223,7 +223,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
     const selecionados = this.selection.selected;
     if (confirm(`Alterar ${selecionados.length} inscrições para ${novoEstado}?`)) {
-      const updates = selecionados.map(i => ({ id: i.id!, estadoPagamento: novoEstado }));
+      const updates = selecionados.map(i => ({ id: i.id!, estado_pagamento: novoEstado }));
 
       this.inscricaoService.updateInscricaoBatch(updates).then(() => {
         this.recarregarDadosCompletos();

@@ -30,7 +30,7 @@ exports.enviarEmailConfirmacao = functions.firestore
     const emailDestino = dados.ee.email;
     const nomeCrianca = dados.participante.nomeCompleto;
     const turno = dados.turnoEscolhido;
-    const valor = dados.valorTotal;
+    const valor = dados.valor_total;
 
     // 3. O Design do Email (HTML)
     const conteudoEmail = `

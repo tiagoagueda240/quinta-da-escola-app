@@ -53,7 +53,7 @@ export class InscricaoComponent implements OnInit {
 
   // Preços
   valorBase = 300;
-  valorTotal = 300;
+  valor_total = 300;
 
   isSubmitting = false;
   mostrarSucesso = false;
@@ -144,7 +144,7 @@ export class InscricaoComponent implements OnInit {
 
   calcularTotal() {
     const valorTransporte = this.inscricaoForm.get('transporte')?.value || 0;
-    this.valorTotal = this.valorBase + Number(valorTransporte);
+    this.valor_total = this.valorBase + Number(valorTransporte);
   }
 
   async onSubmit() {
@@ -169,7 +169,7 @@ export class InscricaoComponent implements OnInit {
       const novaInscricao: any = {
         turnoEscolhido: dadosForm.turnoEscolhido,
         local: this.localAtual,
-        valorTotal: this.valorTotal,
+        valor_total: this.valor_total,
         autorizaFotoVideo: dadosForm.autorizaFotoVideo,
         transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido',
 

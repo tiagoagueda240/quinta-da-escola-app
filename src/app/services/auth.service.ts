@@ -48,7 +48,7 @@ export class AuthService {
     const resultado = await lastValueFrom(chamada);
 
     // 3. Redireciona
-    this.router.navigate(['/monitores']); // Ou '/admin' ou onde quiseres ir
+    this.router.navigate(['/admin']); // Ou '/admin' ou onde quiseres ir
     return resultado;
   }
 
