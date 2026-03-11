@@ -305,3 +305,47 @@ td.mat-cell { padding: 16px 20px !important; border-bottom: 1px solid #f5f5f5; c
   .sidebar { width: 100%; right: -100%; }
   .turn-list { grid-template-columns: 1fr; }
 }
+
+/* ======================================================= */
+/* ESTILOS DA IMPORTAÇÃO EXCEL */
+/* ======================================================= */
+.import-summary {
+  display: flex;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.summary-box {
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #eee;
+}
+
+.summary-box h3 {
+  margin: 0 0 10px 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #666;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+}
+
+.summary-box .big-num {
+  font-size: 2.5rem;
+  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.summary-box.success {
+  background-color: #f1f8e9;
+  border-color: #c8e6c9;
+}
+.summary-box.success .big-num { color: #2e7d32; }
+
+.summary-box.warn {
+  background-color: #fff8e1;
+  border-color: #ffecb3;
+}
+.summary-box.warn .big-num { color: #f57f17; }

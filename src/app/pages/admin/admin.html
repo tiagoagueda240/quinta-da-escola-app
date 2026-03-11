@@ -23,6 +23,11 @@
         <mat-icon color="warn">settings</mat-icon> Gerar link coordenação
       </button>
 
+      <input type="file" #fileInput (change)="importarExcel($event)" accept=".xlsx, .xls, .csv" style="display: none;">
+      <button mat-stroked-button color="primary" (click)="fileInput.click()" [disabled]="estaAImportar">
+        <mat-icon>upload_file</mat-icon> Importar Inscrições
+      </button>
+
       <button mat-stroked-button color="warn" (click)="sair()">
         <mat-icon>logout</mat-icon> Sair
       </button>
@@ -84,11 +89,9 @@
           <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Turnos"
             class="minimal-select">
             <mat-option value="">Todos os Turnos</mat-option>
-
             <mat-option *ngFor="let t of listaTurnos" [value]="t">
               {{ t }}
             </mat-option>
-
           </mat-select>
 
           <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado">
@@ -217,8 +220,6 @@
       </div>
     </div>
 
-
-
     <div class="section-box status-box">
       <div class="row-between">
         <span>Valor Total: <strong>{{ selectedInscricao.valor_total }}€</strong></span>
@@ -329,6 +330,7 @@
 
   </div>
 </div>
+
 <ng-template #dialogTurno>
   <h2 mat-dialog-title>Gerar Relatório</h2>
   <mat-dialog-content>
@@ -343,5 +345,38 @@
     <button mat-button mat-dialog-close>Cancelar</button>
     <button mat-flat-button color="primary" [disabled]="!turnoParaDialog" (click)="confirmarGeracaoPDF()">Gerar
       PDF</button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #dialogImportacao>
+  <h2 mat-dialog-title>Resumo da Importação</h2>
+  <mat-dialog-content>
+    <div *ngIf="dadosImportacao.total === 0" style="padding: 20px; text-align: center;">
+      A analisar ficheiro...
+      <mat-progress-bar mode="indeterminate" style="margin-top: 15px;"></mat-progress-bar>
+    </div>
+
+    <div *ngIf="dadosImportacao.total > 0" class="import-summary">
+      <div class="summary-box success">
+        <h3>Válidos para Importar</h3>
+        <span class="big-num">{{ dadosImportacao.validos.length }}</span>
+      </div>
+      <div class="summary-box warn">
+        <h3>Duplicados (Ignorados)</h3>
+        <span class="big-num">{{ dadosImportacao.duplicados }}</span>
+      </div>
+    </div>
+    <p *ngIf="dadosImportacao.total > 0" style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+      O algoritmo corrigiu colunas mal escritas, detetou dados em falta (deixando-os em branco) e associou as abas do
+      Excel aos turnos atuais de forma automática.
+    </p>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close (click)="cancelarImportacao()">Cancelar</button>
+    <button mat-flat-button color="primary" [disabled]="dadosImportacao.validos.length === 0 || estaAImportar"
+      (click)="confirmarImportacao()">
+      <span *ngIf="!estaAImportar">Confirmar e Gravar</span>
+      <span *ngIf="estaAImportar">A Gravar...</span>
+    </button>
   </mat-dialog-actions>
 </ng-template>

@@ -22,6 +22,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+
 import { ConfigTurnosComponent } from '../../components/config-turnos.component';
 import { DialogGerarAcessoComponent } from '../../components/gerar-acesso.component';
 
@@ -65,6 +67,24 @@ export class AdminComponent implements OnInit, AfterViewInit {
   acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
   turnoParaDialog: string = '';
   linkGerado: string = '';
+
+  // Variáveis para Importação de Excel
+  @ViewChild('fileInput') fileInput!: any;
+  @ViewChild('dialogImportacao') dialogImportacao!: TemplateRef<any>;
+  estaAImportar = false;
+  dadosImportacao = { validos: [] as any[], duplicados: 0, total: 0 };
+
+  private dicionarioCampos: { [key: string]: string[] } = {
+    nome: ['nome', 'participante', 'crianca', 'aluno', 'nomecompleto'],
+    nascimento: ['datanascimento', 'nascimento', 'idade', 'data'],
+    genero: ['genero', 'sexo'],
+    transporte: ['transporte', 'transfer', 'autocarro'],
+    email: ['email', 'e-mail', 'correio', 'contactoemail'],
+    telefone: ['telefone', 'telemovel', 'contato', 'celular', 'contacto'],
+    alergias: ['alergias', 'medicacao', 'observacoes', 'saude', 'alergiasmedicacao'],
+    nif: ['nif', 'contribuinte', 'nifee', 'contribuinteee'],
+    preco: ['preco', 'precototal', 'valor', 'valortotal']
+  };
 
   @ViewChild('dialogTurno') dialogTurno!: TemplateRef<any>;
   @ViewChild(MatSort) sort!: MatSort;
@@ -211,7 +231,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.inscricaoService.updateInscricao(inscricao.id, { estado_pagamento: novo }).then(() => {
       inscricao.estado_pagamento = novo;
 
-      // CORREÇÃO 1: Verificar se selectedInscricao existe antes de aceder
       if (this.selectedInscricao && this.selectedInscricao.id === inscricao.id) {
         this.selectedInscricao.estado_pagamento = novo;
       }
@@ -263,7 +282,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
   async guardarEdicao() {
     if (!this.selectedInscricao?.id) return;
 
-    // CORREÇÃO 2: Usar 'any' para permitir a reatribuição de Date para string antes de enviar
     const dados: any = { ...this.selectedInscricao };
 
     if (dados.participante.dataNascimento instanceof Date) {
@@ -276,6 +294,211 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.mostrarNotificacao('Dados atualizados!');
     this.recarregarDadosCompletos();
   }
+
+  // --- IMPORTAÇÃO INTELIGENTE EXCEL ---
+
+  importarExcel(event: any) {
+    const target: DataTransfer = <DataTransfer>(event.target);
+    if (target.files.length !== 1) return;
+
+    this.estaAImportar = false;
+    this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
+    this.dialog.open(this.dialogImportacao, { width: '500px', disableClose: true });
+
+    const reader: FileReader = new FileReader();
+    reader.onload = (e: any) => {
+      const bstr: string = e.target.result;
+      const wb: XLSX.WorkBook = XLSX.read(bstr, { type: 'binary' });
+
+      let inscricoesProcessadas: any[] = [];
+      let duplicadosContador = 0;
+
+      // 1. Iterar por todas as abas (Sheets)
+      wb.SheetNames.forEach(sheetName => {
+        const ws: XLSX.WorkSheet = wb.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        if (rawData.length < 2) return; // Aba vazia
+
+        // 2. Mapeamento Inteligente de Cabeçalhos
+        const cabecalhosRaw = rawData[0];
+        const mapaIndex = this.mapearCabecalhos(cabecalhosRaw);
+
+        // 3. Advinhar o Turno com base no nome da Aba
+        const turnoAdivinhado = this.adivinharTurnoDaAba(sheetName);
+
+        // 4. Processar linhas
+        for (let i = 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          if (!row || row.length === 0 || !row[mapaIndex.nome]) continue; // Ignora linhas vazias
+
+          const nomeInscrito = String(row[mapaIndex.nome]).trim();
+          if (nomeInscrito.length < 2) continue;
+
+          // 5. Verificar Duplicados (Na BD e no Array atual de processamento)
+          const isDuplicado = this.verificarDuplicadoGlobal(nomeInscrito, turnoAdivinhado, inscricoesProcessadas);
+
+          if (isDuplicado) {
+            duplicadosContador++;
+            continue;
+          }
+
+          // 6. Construir objeto resiliente (sem fallbacks fantasmas)
+          const nova = this.construirObjetoInscricao(row, mapaIndex, turnoAdivinhado);
+          inscricoesProcessadas.push(nova);
+        }
+      });
+
+      this.dadosImportacao = {
+        validos: inscricoesProcessadas,
+        duplicados: duplicadosContador,
+        total: inscricoesProcessadas.length + duplicadosContador
+      };
+
+      // Reset ao input type=file
+      if (this.fileInput && this.fileInput.nativeElement) {
+        this.fileInput.nativeElement.value = '';
+      }
+    };
+    reader.readAsBinaryString(target.files[0]);
+  }
+
+  private mapearCabecalhos(cabecalhos: string[]): any {
+    const mapa: any = {};
+    cabecalhos.forEach((cab, index) => {
+      if (!cab) return;
+      const cabNormalizado = this.normalizarTexto(cab);
+
+      for (const [chave, sinonimos] of Object.entries(this.dicionarioCampos)) {
+        if (sinonimos.some(s => cabNormalizado.includes(s))) {
+          if (mapa[chave] === undefined) mapa[chave] = index; // Pega o primeiro match
+        }
+      }
+    });
+    // Se não encontrou o nome, assume que é a 2ª coluna (índice 1) baseando nos excels de exemplo
+    if (mapa.nome === undefined) mapa.nome = 1;
+    return mapa;
+  }
+
+  private adivinharTurnoDaAba(sheetName: string): string {
+    const nomeNorm = this.normalizarTexto(sheetName);
+
+    // Tenta encontrar match perfeito ou substring com as listas de turnos atuais
+    for (let t of this.listaTurnos) {
+      if (this.normalizarTexto(t).includes(nomeNorm) || nomeNorm.includes(this.normalizarTexto(t))) {
+        return t;
+      }
+    }
+
+    // Tenta detetar números (ex: "1º turno" -> "1º Turno")
+    const matchNumero = sheetName.match(/(\d+)º/);
+    if (matchNumero) {
+      const t = this.listaTurnos.find(turno => turno.includes(`${matchNumero[1]}º`));
+      if (t) return t;
+    }
+
+    // Tenta encontrar palavras chaves como Pascoa ou Natal
+    if (nomeNorm.includes('pascoa')) return this.listaTurnos.find(t => this.normalizarTexto(t).includes('pascoa')) || this.listaTurnos[0];
+    if (nomeNorm.includes('natal')) return this.listaTurnos.find(t => this.normalizarTexto(t).includes('natal')) || this.listaTurnos[0];
+
+    // Fallback absoluto
+    return this.listaTurnos.length > 0 ? this.listaTurnos[0] : 'Turno Importado';
+  }
+
+  private verificarDuplicadoGlobal(nome: string, turno: string, filaProcessamento: any[]): boolean {
+    const nomeNorm = this.normalizarTexto(nome);
+
+    // Verifica na BD
+    const existeBD = this.dataSource.data.some(i =>
+      this.normalizarTexto(i.participante.nomeCompleto) === nomeNorm && i.turnoEscolhido === turno
+    );
+    if (existeBD) return true;
+
+    // Verifica na fila atual (mesmo excel com abas repetidas)
+    const existeFila = filaProcessamento.some(i =>
+      this.normalizarTexto(i.participante.nomeCompleto) === nomeNorm && i.turnoEscolhido === turno
+    );
+    return existeFila;
+  }
+
+  private construirObjetoInscricao(row: any[], mapa: any, turno: string): any {
+    // Parser inteligente de data (Excel serial para YYYY-MM-DD)
+    let dataNasc = '';
+    if (mapa.nascimento !== undefined && row[mapa.nascimento]) {
+      const val = row[mapa.nascimento];
+      if (typeof val === 'number') {
+        const dataExcel = new Date((val - (25567 + 2)) * 86400 * 1000);
+        dataNasc = dataExcel.toISOString().split('T')[0];
+      } else {
+        // Tenta fazer o parse de uma string DD/MM/YYYY ou YYYY-MM-DD
+        dataNasc = val;
+      }
+    }
+
+    return {
+      turnoEscolhido: turno,
+      local: this.filtroLocal,
+      valor_total: (mapa.preco !== undefined && row[mapa.preco]) ? Number(row[mapa.preco]) : 300,
+      transporte: (mapa.transporte !== undefined && row[mapa.transporte]) ? String(row[mapa.transporte]) : '',
+      autorizaFotoVideo: false, // Default false se o excel não disser
+      estado_pagamento: 'pendente',
+
+      participante: {
+        nomeCompleto: String(row[mapa.nome]).trim(),
+        genero: (mapa.genero !== undefined && row[mapa.genero]) ? String(row[mapa.genero]).toUpperCase().charAt(0) : '',
+        dataNascimento: dataNasc,
+        nif: '', // Deixa vazio em vez de colocar lixo
+        morada: '',
+        cc: '',
+        sistemaSaude: '',
+        tamanhoTshirt: ''
+      },
+      ee: {
+        nome: (mapa.ee !== undefined && row[mapa.ee]) ? String(row[mapa.ee]).trim() : 'EE de ' + String(row[mapa.nome]).trim(),
+        email: (mapa.email !== undefined && row[mapa.email]) ? String(row[mapa.email]).trim() : '',
+        telefone: (mapa.telefone !== undefined && row[mapa.telefone]) ? String(row[mapa.telefone]).replace(/\D/g, '') : '',
+        nif: (mapa.nif !== undefined && row[mapa.nif]) ? String(row[mapa.nif]) : '',
+        contactoEmergencia: ''
+      },
+      saude: {
+        temAlergiaAlimentar: false,
+        temOutrasAlergias: false,
+        tomaMedicacao: false,
+        alergiaDetalhes: (mapa.alergias !== undefined && row[mapa.alergias]) ? String(row[mapa.alergias]) : '',
+        medicacaoHabitual: ''
+      }
+    };
+  }
+
+  private normalizarTexto(texto: string): string {
+    if (!texto) return '';
+    return texto.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+  }
+
+  async confirmarImportacao() {
+    this.estaAImportar = true;
+
+    try {
+      // Processamento sequencial/batch para não sobrecarregar o PHP
+      for (const inscricao of this.dadosImportacao.validos) {
+        await this.inscricaoService.addInscricao(inscricao);
+      }
+
+      this.mostrarNotificacao(`${this.dadosImportacao.validos.length} Inscrições importadas com sucesso!`);
+      this.recarregarDadosCompletos();
+    } catch (error) {
+      console.error(error);
+      this.mostrarNotificacao('Ocorreu um erro na importação de algumas linhas.', 'error');
+    } finally {
+      this.estaAImportar = false;
+      this.dialog.closeAll();
+    }
+  }
+
+  cancelarImportacao() {
+    this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
+    if (this.fileInput && this.fileInput.nativeElement) this.fileInput.nativeElement.value = '';
+  }
+
 
   // --- PDF & HELPERS ---
 
@@ -324,6 +547,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   abrirWhatsApp(tel: string) {
+    if (!tel) return;
     const n = tel.replace(/\s/g, '');
     window.open(`https://wa.me/351${n}`, '_blank');
   }
