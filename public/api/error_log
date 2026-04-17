@@ -1,0 +1,25 @@
+[16-Mar-2026 20:34:46 Europe/Lisbon] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.nif_ee' in 'SELECT' in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php:90
+Stack trace:
+#0 /home/quinta/turnos.quintadaescola.com/api/inscricoes.php(90): PDOStatement->execute()
+#1 {main}
+  thrown in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php on line 90
+[17-Mar-2026 15:13:55 Europe/Lisbon] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.nif_ee' in 'SELECT' in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php:90
+Stack trace:
+#0 /home/quinta/turnos.quintadaescola.com/api/inscricoes.php(90): PDOStatement->execute()
+#1 {main}
+  thrown in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php on line 90
+[17-Mar-2026 15:14:04 Europe/Lisbon] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.nif_ee' in 'SELECT' in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php:90
+Stack trace:
+#0 /home/quinta/turnos.quintadaescola.com/api/inscricoes.php(90): PDOStatement->execute()
+#1 {main}
+  thrown in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php on line 90
+[17-Mar-2026 15:15:54 Europe/Lisbon] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.nif_ee' in 'SELECT' in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php:90
+Stack trace:
+#0 /home/quinta/turnos.quintadaescola.com/api/inscricoes.php(90): PDOStatement->execute()
+#1 {main}
+  thrown in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php on line 90
+[17-Mar-2026 15:17:27 Europe/Lisbon] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'p.nif_ee' in 'SELECT' in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php:90
+Stack trace:
+#0 /home/quinta/turnos.quintadaescola.com/api/inscricoes.php(90): PDOStatement->execute()
+#1 {main}
+  thrown in /home/quinta/turnos.quintadaescola.com/api/inscricoes.php on line 90

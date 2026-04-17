@@ -212,10 +212,17 @@ display: flex; flex-direction: column; line-height: 1; width: 100%;
 }
 
 // --- COLUNAS ---
-.columns-area { flex: 1; display: flex; gap: 15px; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
-
+.columns-area { 
+    flex: 1; 
+    display: flex; 
+    gap: 15px; 
+    overflow: auto; /* Permite scroll vertical E horizontal */
+    align-items: flex-start; /* VOLTA A COLOCAR: Faz com que as colunas cresçam apenas o necessário */
+    height: 100%; 
+    padding-bottom: 20px; /* Um pouco mais de margem em baixo para ficar bonito */
+}
 .group-column {
-min-width: 260px; max-width: 260px; background: #ebecf0; border-radius: 6px; display: flex; flex-direction: column; max-height: 100%;
+min-width: 260px; max-width: 260px; background: #ebecf0; border-radius: 6px; display: flex; flex-direction: column; 
 
 // --- CORES & DROPDOWN STYLE ---
 // Default (Vazio): Fundo Cinza, Texto Escuro
@@ -296,12 +303,30 @@ height: 4px; border-radius: 2px; overflow: hidden;
 }
 .count-text { font-size: 0.7rem; text-align: right; margin-top: 2px; opacity: 0.9; }
 }
-.col-list { padding: 8px; overflow-y: auto; flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 6px; }
+.col-list { 
+    padding: 8px; 
+    /* REMOVE O overflow-y: auto; */
+    /* REMOVE O min-height: 0; */
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 6px; 
+}
 }
 
 // --- CARTÃO DO ALUNO ---
 .student-card {
-background: white; padding: 8px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: grab; position: relative; overflow: hidden; transition: all 0.2s;
+background: white; 
+    padding: 8px; 
+    border-radius: 4px; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+    cursor: grab; 
+    position: relative; 
+    overflow: hidden; 
+    transition: all 0.2s;
+    
+    /* ADICIONA ESTA LINHA: Impede o flexbox de esmagar o cartão na vertical */
+    flex-shrink: 0;
 &:hover { background: #fdfdfd; }
 // Highlight Pesquisa
 &.highlight { border: 2px solid #ff9800; background: #fff3e0; box-shadow: 0 0 10px rgba(255, 152, 0, 0.5); }

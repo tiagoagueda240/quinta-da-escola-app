@@ -6,31 +6,64 @@
       <span>Dashboard Admin</span>
     </div>
 
-    <div class="actions-area" style="display: flex; gap: 10px;">
+    <div class="actions-area" style="display: flex; align-items: center; gap: 8px;">
+
+      <button mat-stroked-button color="primary" (click)="abrirModoExcel()">
+        <mat-icon>grid_on</mat-icon> Vista Excel
+      </button>
+
+      <button mat-flat-button color="primary" (click)="adicionarNovaInscricao()">
+        <mat-icon>add</mat-icon> Adicionar Manual
+      </button>
+
+      <div class="divider-vertical" style="height: 30px; margin: 0 5px;"></div>
+
       <ng-container *ngIf="filtroLocal === 'quinta'">
-        <button mat-stroked-button (click)="verificarTurnoParaTransporte()">
-          <mat-icon color="primary">directions_bus</mat-icon> Transportes
+        <button mat-button [matMenuTriggerFor]="menuRelatorios">
+          <mat-icon>assessment</mat-icon> Relatórios <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
         </button>
-        <button mat-stroked-button (click)="verificarTurnoParaCozinha()">
-          <mat-icon color="warn">restaurant</mat-icon> Cozinha
-        </button>
+        <mat-menu #menuRelatorios="matMenu">
+          <button mat-menu-item (click)="verificarTurnoParaTransporte()">
+            <mat-icon color="primary">directions_bus</mat-icon> <span>Lista de Transportes</span>
+          </button>
+          <button mat-menu-item (click)="verificarTurnoParaCozinha()">
+            <mat-icon color="warn">restaurant</mat-icon> <span>Alergias / Cozinha</span>
+          </button>
+        </mat-menu>
       </ng-container>
-      <button mat-stroked-button (click)="abrirConfigTurnos()">
-        <mat-icon color="warn">settings</mat-icon> Configurar Turnos
+
+      <button mat-button [matMenuTriggerFor]="menuDados">
+        <mat-icon>import_export</mat-icon> Dados <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
+      </button>
+      <mat-menu #menuDados="matMenu">
+        <input type="file" #fileInput (change)="importarExcel($event)" accept=".xlsx, .xls, .csv"
+          style="display: none;">
+        <button mat-menu-item (click)="fileInput.click()" [disabled]="estaAImportar">
+          <mat-icon color="primary">upload_file</mat-icon> <span>Importar Inscrições</span>
+        </button>
+        <button mat-menu-item (click)="exportarParaExcel()">
+          <mat-icon color="primary">download</mat-icon> <span>Exportar para Excel</span>
+        </button>
+      </mat-menu>
+
+      <button mat-icon-button [matMenuTriggerFor]="menuConfig" matTooltip="Configurações do Sistema">
+        <mat-icon style="color: #666;">settings</mat-icon>
+      </button>
+      <mat-menu #menuConfig="matMenu">
+        <button mat-menu-item (click)="abrirConfigTurnos()">
+          <mat-icon color="accent">tune</mat-icon> <span>Configurar Turnos</span>
+        </button>
+        <button mat-menu-item (click)="gerar()">
+          <mat-icon color="accent">link</mat-icon> <span>Gerar Link Coordenação</span>
+        </button>
+      </mat-menu>
+
+      <div class="divider-vertical" style="height: 30px; margin: 0 5px;"></div>
+
+      <button mat-icon-button color="warn" (click)="sair()" matTooltip="Terminar Sessão">
+        <mat-icon>logout</mat-icon>
       </button>
 
-      <button mat-stroked-button (click)="gerar()">
-        <mat-icon color="warn">settings</mat-icon> Gerar link coordenação
-      </button>
-
-      <input type="file" #fileInput (change)="importarExcel($event)" accept=".xlsx, .xls, .csv" style="display: none;">
-      <button mat-stroked-button color="primary" (click)="fileInput.click()" [disabled]="estaAImportar">
-        <mat-icon>upload_file</mat-icon> Importar Inscrições
-      </button>
-
-      <button mat-stroked-button color="warn" (click)="sair()">
-        <mat-icon>logout</mat-icon> Sair
-      </button>
     </div>
   </header>
 
@@ -81,7 +114,7 @@
 
           <div class="search-box">
             <mat-icon>search</mat-icon>
-            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Nome ou EE...">
+            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Nome, EE ou Empresa...">
           </div>
 
           <div class="divider-vertical"></div>
@@ -106,7 +139,10 @@
         </div>
         <div class="turn-list">
           <div class="turn-item" *ngFor="let t of ocupacaoPorTurno">
-            <div class="turn-label"><span>{{ t.nome }}</span><span>{{ t.count }}/80</span></div>
+            <div class="turn-label">
+              <span>{{ t.nome }}</span>
+              <span>{{ t.count }}/{{ t.total }}</span>
+            </div>
             <mat-progress-bar mode="determinate" [value]="t.percent" class="custom-progress"></mat-progress-bar>
           </div>
         </div>
@@ -145,7 +181,9 @@
               <div class="avatar-small">{{ row.participante.nomeCompleto.charAt(0) }}</div>
               <div class="text-data">
                 <span class="name">{{ row.participante.nomeCompleto }}</span>
-                <span class="meta">{{ row.participante.dataNascimento | date:'dd/MM/yyyy' }}</span>
+                <span class="meta">
+                  {{ row.participante.dataNascimento | date:'dd/MM/yyyy' }}
+                </span>
               </div>
             </div>
           </td>
@@ -154,6 +192,23 @@
         <ng-container matColumnDef="turno">
           <th mat-header-cell *matHeaderCellDef mat-sort-header> TURNO </th>
           <td mat-cell *matCellDef="let row"> <span class="turno-text">{{ row.turnoEscolhido }}</span> </td>
+        </ng-container>
+
+        <ng-container matColumnDef="empresa">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> EMPRESA </th>
+          <td mat-cell *matCellDef="let row">
+            <span *ngIf="row.nomeInstituicao" class="company-badge" style="margin-left: 0;">
+              <mat-icon>business</mat-icon> {{ row.nomeInstituicao }}
+            </span>
+            <span *ngIf="!row.nomeInstituicao" style="color: #bbb; font-size: 0.8rem;">-</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="transporte">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> TRANSPORTE </th>
+          <td mat-cell *matCellDef="let row">
+            <span style="font-size: 0.85rem; color: #555;">{{ row.transporte || '-' }}</span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="contacto">
@@ -190,8 +245,9 @@
   <div class="sidebar-header" *ngIf="selectedInscricao">
     <div style="display:flex; align-items:center; gap:10px;">
       <button mat-icon-button (click)="fecharDetalhes()"><mat-icon>close</mat-icon></button>
-      <h2 *ngIf="!isEditing">Ficha Técnica</h2>
-      <h2 *ngIf="isEditing" style="color:#2e7d32">Modo de Edição</h2>
+      <h2 *ngIf="!isEditing && !isCreating">Ficha Técnica</h2>
+      <h2 *ngIf="isEditing && !isCreating" style="color:#2e7d32">Modo de Edição</h2>
+      <h2 *ngIf="isCreating" style="color:#1976d2">Nova Inscrição</h2>
     </div>
     <div class="actions">
       <button mat-stroked-button *ngIf="!isEditing" (click)="ativarEdicao()"><mat-icon>edit</mat-icon> Editar</button>
@@ -203,20 +259,35 @@
   <div class="sidebar-content" *ngIf="selectedInscricao">
 
     <div class="student-profile">
-      <div class="avatar-large">{{ selectedInscricao.participante.nomeCompleto.charAt(0) }}</div>
+      <div class="avatar-large">{{ selectedInscricao.participante.nomeCompleto ?
+        selectedInscricao.participante.nomeCompleto.charAt(0) : '?' }}</div>
       <div style="width: 100%">
         <h3 *ngIf="!isEditing">{{ selectedInscricao.participante.nomeCompleto }}</h3>
         <mat-form-field *ngIf="isEditing" appearance="outline" class="edit-field full">
-          <mat-label>Nome Completo</mat-label>
+          <mat-label>Nome Completo do Participante</mat-label>
           <input matInput [(ngModel)]="selectedInscricao.participante.nomeCompleto">
         </mat-form-field>
-        <p class="chip-turno" *ngIf="!isEditing">{{ selectedInscricao.turnoEscolhido }}</p>
-        <mat-form-field *ngIf="isEditing" appearance="outline" class="edit-field full">
-          <mat-label>Mudar Turno</mat-label>
-          <mat-select [(ngModel)]="selectedInscricao.turnoEscolhido">
-            <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+
+        <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;" *ngIf="!isEditing">
+          <p class="chip-turno" style="margin: 0;">{{ selectedInscricao.turnoEscolhido }}</p>
+          <p class="chip-company" style="margin: 0;" *ngIf="selectedInscricao.nomeInstituicao">
+            <mat-icon>business</mat-icon> {{ selectedInscricao.nomeInstituicao }}
+          </p>
+        </div>
+
+        <div *ngIf="isEditing" style="display: flex; gap: 10px; margin-top: 10px;">
+          <mat-form-field appearance="outline" class="edit-field" style="flex: 1;">
+            <mat-label>Turno</mat-label>
+            <mat-select [(ngModel)]="selectedInscricao.turnoEscolhido">
+              <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="edit-field" style="flex: 1;">
+            <mat-label>Empresa (Opcional)</mat-label>
+            <input matInput [(ngModel)]="selectedInscricao.nomeInstituicao" placeholder="Ex: Câmara">
+          </mat-form-field>
+        </div>
       </div>
     </div>
 
@@ -291,6 +362,11 @@
           'Não' }}</div>
       </div>
       <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full"><mat-label>Transporte</mat-label>
+          <mat-select [(ngModel)]="selectedInscricao.transporte">
+            <mat-option *ngFor="let op of opcoesTransporte" [value]="op.label">{{ op.label }}</mat-option>
+          </mat-select>
+        </mat-form-field>
         <mat-checkbox [(ngModel)]="selectedInscricao.autorizaFotoVideo">Autoriza Fotos?</mat-checkbox>
       </div>
     </div>
@@ -312,7 +388,7 @@
       </div>
     </div>
 
-    <div class="section-box" style="border-color: #bbdefb; background: #e3f2fd;">
+    <div class="section-box" style="border-color: #bbdefb; background: #e3f2fd;" *ngIf="!isCreating">
       <h4 style="color: #1976d2;"><mat-icon>mail</mat-icon> Comunicação</h4>
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span style="font-size:0.85rem; color:#555">O pai não recebeu o comprovativo?</span>
@@ -322,7 +398,7 @@
       </div>
     </div>
 
-    <div class="delete-area" *ngIf="isEditing">
+    <div class="delete-area" *ngIf="isEditing && !isCreating">
       <button mat-button color="warn" (click)="apagarInscricao(selectedInscricao.id)" style="width:100%">
         <mat-icon>delete_forever</mat-icon> Apagar Inscrição Definitivamente
       </button>
@@ -366,6 +442,16 @@
         <span class="big-num">{{ dadosImportacao.duplicados }}</span>
       </div>
     </div>
+
+    <div *ngIf="dadosImportacao.total > 0" style="margin-top: 20px;">
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Nome da Empresa / Instituição (Opcional)</mat-label>
+        <mat-icon matPrefix>business</mat-icon>
+        <input matInput [(ngModel)]="empresaImportacao" placeholder="Ex: Câmara Municipal, Empresa X...">
+        <mat-hint>Se preenchido, todos os inscritos deste Excel serão associados a esta entidade.</mat-hint>
+      </mat-form-field>
+    </div>
+
     <p *ngIf="dadosImportacao.total > 0" style="margin-top: 15px; font-size: 0.9rem; color: #666;">
       O algoritmo corrigiu colunas mal escritas, detetou dados em falta (deixando-os em branco) e associou as abas do
       Excel aos turnos atuais de forma automática.
@@ -379,4 +465,392 @@
       <span *ngIf="estaAImportar">A Gravar...</span>
     </button>
   </mat-dialog-actions>
+</ng-template>
+
+<ng-template #dialogModoExcel>
+
+  <div class="excel-modal-container">
+
+    <div class="excel-header">
+
+
+
+      <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+
+        <div style="display: flex; align-items: center; gap: 8px;" *ngIf="!modoFaturacao">
+
+          <mat-icon style="color: #1d6f42;">grid_on</mat-icon>
+
+          <h2 style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #333;">
+
+            Modo Excel ({{ dadosExcelFiltrados.length }})
+
+          </h2>
+
+        </div>
+
+
+
+        <div style="display: flex; align-items: center; gap: 8px;" *ngIf="modoFaturacao">
+
+          <mat-icon style="color: #1976d2;">receipt_long</mat-icon>
+
+          <h2 style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #333;">
+
+            Modo Faturação ({{ dadosExcelFiltrados.length }})
+
+          </h2>
+
+        </div>
+
+
+
+        <div class="excel-divider-vertical"></div>
+
+
+
+        <select class="excel-filter" [(ngModel)]="filtroExcelTurno">
+
+          <option value="">Todos os Turnos</option>
+
+          <option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</option>
+
+        </select>
+
+
+
+        <select class="excel-filter" [(ngModel)]="filtroExcelEmpresa">
+
+          <option value="">Todas as Empresas</option>
+
+          <option value="SEM_EMPRESA">Sem Empresa / Individual</option>
+
+          <option *ngFor="let e of empresasUnicas" [value]="e">{{ e }}</option>
+
+        </select>
+
+      </div>
+
+
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+
+
+
+        <button mat-stroked-button *ngIf="!modoFaturacao" (click)="abrirModoFaturacao()"
+          style="color: #1976d2; border-color: #1976d2; font-weight: 600;">
+
+          <mat-icon>receipt_long</mat-icon> Faturação
+
+        </button>
+
+
+
+        <button mat-stroked-button *ngIf="modoFaturacao" (click)="fecharModoFaturacao()"
+          style="color: #1d6f42; border-color: #1d6f42; font-weight: 600;">
+
+          <mat-icon>grid_on</mat-icon> Voltar ao Excel
+
+        </button>
+
+
+
+        <button mat-flat-button color="primary" [disabled]="linhasModificadas.size === 0"
+          (click)="guardarTodasAlteracoesExcel()" style="font-weight: 700;">
+
+          <mat-icon>save</mat-icon> Guardar Alterações ({{ linhasModificadas.size }})
+
+        </button>
+
+
+
+        <button mat-stroked-button (click)="adicionarLinhaExcel()"
+          style="color: #f57c00; border-color: #f57c00; font-weight: 600;" *ngIf="!modoFaturacao">
+
+          <mat-icon>add</mat-icon> Nova Linha
+
+        </button>
+
+
+
+        <div class="excel-divider-vertical"></div>
+
+
+
+        <button mat-icon-button (click)="fecharModoExcel()" color="warn">
+
+          <mat-icon>close</mat-icon>
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+
+    <div class="excel-table-wrapper" *ngIf="!modoFaturacao">
+
+      <table class="excel-style-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width: 100px;">ESTADO</th>
+
+            <th style="width: 200px;">NOME PARTICIPANTE</th>
+
+            <th style="width: 90px;">GÉNERO</th>
+
+            <th style="width: 140px;">NASCIMENTO</th>
+
+            <th style="width: 110px;">NIF</th>
+
+            <th style="width: 110px;">CC</th>
+
+            <th style="width: 150px;">TURNO</th>
+
+            <th style="width: 180px;">EMPRESA</th>
+
+            <th style="width: 200px;">TRANSPORTE</th>
+
+            <th style="width: 180px;">ENC. EDUCAÇÃO</th>
+
+            <th style="width: 120px;">CONTACTO</th>
+
+            <th style="width: 180px;">EMAIL (EE)</th>
+
+            <th style="width: 150px;">ALERGIAS</th>
+
+            <th style="width: 150px;">MEDICAÇÃO</th>
+
+            <th style="width: 80px;">VALOR</th>
+
+            <th style="width: 50px;"></th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr *ngFor="let row of dadosExcelFiltrados; trackBy: trackByFn" [class.new-row]="!row.id"
+            [class.modified-row]="linhasModificadas.has(row) && row.id">
+
+
+
+            <td [ngClass]="row.estado_pagamento === 'pago' ? 'bg-pago' : 'bg-pendente'">
+
+              <select class="excel-input status-select" [(ngModel)]="row.estado_pagamento"
+                (ngModelChange)="marcarComoModificada(row)">
+
+                <option value="pendente">PENDENTE</option>
+
+                <option value="pago">PAGO</option>
+
+              </select>
+
+            </td>
+
+
+
+            <td><input class="excel-input bold-input" [(ngModel)]="row.participante.nomeCompleto"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="Nome (Obrigatório)..."></td>
+
+
+            <td>
+              <select class="excel-input" [(ngModel)]="row.participante.genero"
+                (ngModelChange)="marcarComoModificada(row)">
+                <option value="M">Masculino</option>
+                <option value="F">Feminino</option>
+              </select>
+            </td>
+
+            <td>
+
+              <input class="excel-input" [matDatepicker]="picker" [(ngModel)]="row.participante.dataNascimento"
+                (dateChange)="marcarComoModificada(row)" (click)="picker.open()" (focus)="picker.open()"
+                placeholder="DD/MM/AAAA" readonly style="cursor: pointer;">
+
+              <mat-datepicker #picker></mat-datepicker>
+
+            </td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.participante.nif"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="-"></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.participante.cc" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="-"></td>
+
+
+
+            <td>
+
+              <select class="excel-input" [(ngModel)]="row.turnoEscolhido" (ngModelChange)="marcarComoModificada(row)">
+
+                <option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</option>
+
+              </select>
+
+            </td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.nomeInstituicao" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="-"></td>
+
+
+
+            <td>
+
+              <select class="excel-input" [(ngModel)]="row.transporte" (ngModelChange)="marcarComoModificada(row)">
+
+                <option value="Não (Entregue pelos pais)">Não (Entregue pelos pais)</option>
+
+                <option *ngFor="let op of opcoesTransporte" [value]="op.label">{{ op.label }}</option>
+
+              </select>
+
+            </td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.ee.nome" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Nome EE..."></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.ee.telefone" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Tel..."></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.ee.email" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Email..."></td>
+
+
+
+            <td><input class="excel-input text-danger" [(ngModel)]="row.saude.detalheAlergiaAlimentar"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="-"></td>
+
+
+
+            <td><input class="excel-input text-danger" [(ngModel)]="row.saude.detalheMedicacao"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="-"></td>
+
+
+
+            <td><input type="number" class="excel-input bold-input align-right" [(ngModel)]="row.valor_total"
+                (ngModelChange)="marcarComoModificada(row)"></td>
+
+
+
+            <td style="text-align: center; padding: 0;">
+
+              <button mat-icon-button color="warn" style="transform: scale(0.8);" (click)="apagarLinhaExcel(row)">
+
+                <mat-icon>delete</mat-icon>
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+
+
+    <div class="excel-table-wrapper" *ngIf="modoFaturacao">
+
+      <table class="excel-style-table">
+
+        <thead>
+
+          <tr>
+
+            <th style="width: 200px;">NOME PARTICIPANTE </th>
+
+            <th style="width: 120px;">Código Postal</th>
+
+            <th style="width: 120px;">NIF</th>
+
+            <th style="width: 200px;">eMail</th>
+
+            <th style="width: 150px;">Data de Pagamento</th>
+
+            <th style="width: 200px;">Nome de Pagamento</th>
+
+            <th style="width: 150px;">Nº da Fatura</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr *ngFor="let row of dadosExcelFiltrados; trackBy: trackByFn"
+            [class.modified-row]="linhasModificadas.has(row)">
+
+
+
+            <td><input class="excel-input bold-input" [(ngModel)]="row.participante.nomeCompleto"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="Nome (Obrigatório)..."></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.participante.codigoPostal"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="-"></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.participante.nif"
+                (ngModelChange)="marcarComoModificada(row)" placeholder="-"></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.ee.email" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Email..."></td>
+
+
+
+            <td>
+
+              <input class="excel-input" [matDatepicker]="pickerPagamento" [(ngModel)]="row.dataPagamento"
+                (dateChange)="marcarComoModificada(row)" (click)="pickerPagamento.open()"
+                (focus)="pickerPagamento.open()" placeholder="DD/MM/AAAA" readonly style="cursor: pointer;">
+
+              <mat-datepicker #pickerPagamento></mat-datepicker>
+
+            </td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.nomePagamento" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Nome Pagamento..."></td>
+
+
+
+            <td><input class="excel-input" [(ngModel)]="row.numeroFatura" (ngModelChange)="marcarComoModificada(row)"
+                placeholder="Nº Fatura..."></td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
 </ng-template>

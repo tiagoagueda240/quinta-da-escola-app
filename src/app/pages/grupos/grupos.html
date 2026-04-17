@@ -82,8 +82,9 @@
                         </div>
                     </div>
 
-                    <div class="divider-vertical"></div>
-                    <button mat-flat-button color="accent" (click)="distribuirNasCamaratas()">Auto-Distribuir</button>
+                    <div class="divider-vertical" *ngIf="colunasCamaratas.length > 0"></div>
+                    <button mat-flat-button color="accent" *ngIf="colunasCamaratas.length > 0"
+                        (click)="distribuirNasCamaratas()">Auto-Distribuir</button>
                 </div>
             </mat-tab>
 
@@ -104,6 +105,10 @@
                         <button mat-stroked-button (click)="adicionarColunaIndividual('atividade')">+ Novo
                             Grupo</button>
                     </div>
+
+                    <div class="divider-vertical" *ngIf="colunasAtividades.length > 0"></div>
+                    <button mat-flat-button color="accent" *ngIf="colunasAtividades.length > 0"
+                        (click)="distribuirNasAtividades()">Auto-Distribuir</button>
                 </div>
             </mat-tab>
         </mat-tab-group>
@@ -277,7 +282,8 @@
                 <input type="text" matInput [formControl]="controlMonitor" [matAutocomplete]="auto">
                 <mat-autocomplete #auto="matAutocomplete"
                     (optionSelected)="adicionarMonitorAEquipa($event.option.value)">
-                    <mat-option *ngFor="let m of monitoresFiltrados | async" [value]="m">{{ m.nome }}</mat-option>
+                    <mat-option *ngFor="let m of monitoresFiltrados | async" [value]="m">{{ m.nomeMonitor
+                        }}</mat-option>
                 </mat-autocomplete>
             </mat-form-field>
             <button mat-button color="warn" (click)="exibirBusca = false" style="width: 100%;">Cancelar</button>

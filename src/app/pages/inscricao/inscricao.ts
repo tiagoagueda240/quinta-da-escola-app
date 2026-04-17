@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { InscricaoService } from '../../services/inscricao.service';
 import { Inscricao } from '../../models/inscricao.model';
+import { lastValueFrom } from 'rxjs'; // Adicionado para lidar com chamadas async/await
 
 // Angular Material Imports
 import { MatInputModule } from '@angular/material/input';
@@ -48,12 +49,13 @@ export class InscricaoComponent implements OnInit {
   inscricaoForm!: FormGroup;
 
   // Variáveis Dinâmicas
-  turnos: string[] = [];
+  // MUDANÇA: turnos agora é um array de objetos com as propriedades nome e precoBase
+  turnos: { nome: string, precoBase: number, vagasRestantes?: number }[] = [];
   localAtual: 'Quinta' | 'Costa da Caparica' | 'Quiaios' = 'Quinta'; // Podes mudar isto dinamicamente se tiveres um seletor
 
   // Preços
-  valorBase = 300;
-  valor_total = 300;
+  valorBase = 0; // Começa a 0 e será atualizado ao escolher o turno
+  valor_total = 0;
 
   isSubmitting = false;
   mostrarSucesso = false;
@@ -72,29 +74,35 @@ export class InscricaoComponent implements OnInit {
     this.criarFormulario();
     this.carregarDadosIniciais();
 
+    // 1. Escuta mudanças no Transporte
     this.inscricaoForm.get('transporte')?.valueChanges.subscribe(() => {
+      this.calcularTotal();
+    });
+
+    // 2. Escuta mudanças no Turno para atualizar o Valor Base
+    this.inscricaoForm.get('turnoEscolhido')?.valueChanges.subscribe(turnoNome => {
+      const turnoSelecionado = this.turnos.find(t => t.nome === turnoNome);
+      if (turnoSelecionado) {
+        this.valorBase = turnoSelecionado.precoBase;
+      } else {
+        this.valorBase = 0;
+      }
       this.calcularTotal();
     });
   }
 
   async carregarDadosIniciais() {
     try {
-      const config = await this.inscricaoService.getConfiguracoesTurnos();
+      // Mapeia o nome do local para a key usada na API/Config ('quinta', 'costaCaparica', 'quiaios')
+      const localApi = this.localAtual.toLowerCase() === 'quinta' ? 'quinta' :
+        this.localAtual === 'Costa da Caparica' ? 'costaCaparica' : 'quiaios';
 
-      // Ajuste: Acede à propriedade 'quinta' (ou outra dependendo do local)
-      // e filtra apenas os turnos ativos.
-      if (config && config.quinta) {
-        this.turnos = (config.quinta || [])
-          .filter((t: any) => t.ativo === true) // Filtra inativos
-          .map((t: any) => t.nome); // Extrai apenas o nome
+      // Chama o novo endpoint que traz preço e ignora turnos esgotados
+      this.turnos = await lastValueFrom(this.inscricaoService.getTurnosPublicos(localApi));
 
-        // Lógica de Seleção Automática
-        if (this.turnos.length === 1) {
-          this.inscricaoForm.get('turnoEscolhido')?.patchValue(this.turnos[0]);
-          // Não desativamos para permitir que o utilizador veja que está selecionado, 
-          // mas podes descomentar se preferires bloquear:
-          // this.inscricaoForm.get('turnoEscolhido')?.disable();
-        }
+      // Lógica de Seleção Automática se só existir 1 turno
+      if (this.turnos.length === 1) {
+        this.inscricaoForm.get('turnoEscolhido')?.patchValue(this.turnos[0].nome);
       }
     } catch (error) {
       console.error('Erro ao carregar turnos:', error);
@@ -163,15 +171,17 @@ export class InscricaoComponent implements OnInit {
         }
       }
 
-      // --- CORREÇÃO AQUI ---
-      // Mudámos o tipo para 'any' para permitir campos extra (alergiaDetalhes) 
-      // que o PHP espera mas que não estão estritamente na Interface Inscricao
+      // Preparar os dados para o envio
       const novaInscricao: any = {
         turnoEscolhido: dadosForm.turnoEscolhido,
         local: this.localAtual,
         valor_total: this.valor_total,
         autorizaFotoVideo: dadosForm.autorizaFotoVideo,
         transporte: this.opcoesTransporte.find(t => t.valor === dadosForm.transporte)?.label || 'Não definido',
+
+        // Tipo de Cliente
+        tipoCliente: dadosForm.tipoCliente,
+        nomeInstituicao: dadosForm.nomeInstituicao,
 
         participante: {
           ...dadosForm.participante,
@@ -180,10 +190,10 @@ export class InscricaoComponent implements OnInit {
         },
         ee: {
           ...dadosForm.ee,
-          nif: dadosForm.ee.nif || ''
+          nif: dadosForm.ee.nif || '',
+          contactoEmergencia: dadosForm.ee.contactoEmergencia || ''
         },
         saude: {
-          // O TypeScript agora aceita isto porque novaInscricao é 'any'
           alergiaDetalhes: (dadosForm.saude.detalheAlergiaAlimentar || '') +
             (dadosForm.saude.detalheOutrasAlergias ? ' | ' + dadosForm.saude.detalheOutrasAlergias : ''),
           medicacaoHabitual: dadosForm.saude.detalheMedicacao || ''

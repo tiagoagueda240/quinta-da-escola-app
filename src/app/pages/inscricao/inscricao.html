@@ -40,9 +40,13 @@
             <mat-label>Selecione o Turno</mat-label>
             <mat-select formControlName="turnoEscolhido">
               @for (turno of turnos; track $index) {
-              <mat-option [value]="turno">
-                {{ turno }}
+              <mat-option [value]="turno.nome">
+                {{ turno.nome }}
               </mat-option>
+              }
+
+              @if (turnos.length === 0) {
+              <mat-option disabled>Não existem turnos com vagas disponíveis.</mat-option>
               }
 
             </mat-select>
@@ -136,7 +140,6 @@
           </mat-form-field>
           }
 
-
           <div class="checkbox-group">
             <mat-checkbox formControlName="temOutrasAlergias">Possui outras alergias?</mat-checkbox>
           </div>
@@ -147,7 +150,6 @@
             <textarea matInput formControlName="detalheOutrasAlergias" rows="2"></textarea>
           </mat-form-field>
           }
-
 
           <mat-form-field appearance="outline" class="full-width" style="margin-top: 20px;">
             <mat-label>Toma medicação regular?</mat-label>

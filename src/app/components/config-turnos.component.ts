@@ -9,23 +9,23 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { InscricaoService } from '../services/inscricao.service';
 import { TurnoConfig } from '../models/inscricao.model';
 import { MonitorService } from '../services/monitor.service';
 import { Monitor } from '../models/monitor.model';
 
 @Component({
-    selector: 'app-config-turnos',
-    standalone: true,
-    imports: [
-        CommonModule, FormsModule, MatDialogModule, MatButtonModule,
-        MatIconModule, MatInputModule, MatSlideToggleModule, MatTabsModule,
-        MatTooltipModule, MatAutocompleteModule
-    ],
-    template: `
+  selector: 'app-config-turnos',
+  standalone: true,
+  imports: [
+    CommonModule, FormsModule, MatDialogModule, MatButtonModule,
+    MatIconModule, MatInputModule, MatSlideToggleModule, MatTabsModule,
+    MatTooltipModule, MatAutocompleteModule, MatSnackBarModule
+  ],
+  template: `
     <h2 mat-dialog-title>⚙️ Configuração de Turnos</h2>
     
     <mat-dialog-content>
@@ -34,315 +34,200 @@ import { Monitor } from '../models/monitor.model';
           <div class="turnos-list">
             
             <div class="turno-row header">
-              <span style="flex: 2; padding-left: 10px;">Nome do Turno</span>
-              <span style="flex: 2; padding-left: 5px;">Coordenadores</span>
-              <span style="width: 80px; text-align: center;">Vagas</span> <span style="width: 50px; text-align: center;">Ativo</span>
-              <span style="width: 40px;"></span>
+              <span class="col-nome">Nome do Turno</span>
+              <span class="col-coords">Coordenadores</span>
+              <span class="col-num">Preço (€)</span>
+              <span class="col-num">Vagas</span> 
+              <span class="col-toggle">Ativo</span>
+              <span class="col-actions"></span>
             </div>
 
-            <div class="turno-row" *ngFor="let t of config[local]; let i = index">
+            <div class="turno-row" *ngFor="let t of config[local]; let i = index; trackBy: trackByIndex">
               
-              <mat-form-field appearance="outline" class="compact-input name-input" subscriptSizing="dynamic">
-                <input matInput [(ngModel)]="t.nome" placeholder="Nome do Turno">
-              </mat-form-field>
+              <div class="col-nome">
+                <mat-form-field appearance="outline" class="compact-input" subscriptSizing="dynamic">
+                  <input matInput [(ngModel)]="t.nome" placeholder="Ex: Turno Páscoa">
+                </mat-form-field>
+              </div>
               
-              <div class="coords-container">
-                <div class="coord-item" *ngFor="let coord of t.coordenadores; let j = index; trackBy: trackByIndex">
-                  <mat-icon class="tiny-icon">person</mat-icon>
-                  
-                  <input class="bare-input" 
-                         type="text"
-                         placeholder="Escreva o nome..."
-                         [(ngModel)]="t.coordenadores[j]"
-                         [matAutocomplete]="auto"
-                         #trigger="matAutocompleteTrigger" 
-                         (focus)="trigger.openPanel()" 
-                         (click)="trigger.openPanel()">
-                  
-                  <mat-autocomplete #auto="matAutocomplete">
-                    <mat-option *ngFor="let monitor of filtrarMonitores(t.coordenadores[j])" [value]="monitor">
-                      {{ monitor }}
-                    </mat-option>
-                  </mat-autocomplete>
-
-                  <mat-icon class="delete-coord" (click)="removeCoordenador(t, j)">close</mat-icon>
+              <div class="col-coords">
+                <div class="coords-container">
+                  <div class="coord-item" *ngFor="let coord of t.coordenadores; let j = index; trackBy: trackByIndex">
+                    <input class="bare-input" 
+                           type="text"
+                           placeholder="Nome..."
+                           [(ngModel)]="t.coordenadores[j]"
+                           [matAutocomplete]="auto"
+                           #trigger="matAutocompleteTrigger" 
+                           (focus)="trigger.openPanel()" 
+                           (click)="trigger.openPanel()">
+                    
+                    <mat-autocomplete #auto="matAutocomplete">
+                      <mat-option *ngFor="let monitor of filtrarMonitores(t.coordenadores[j])" [value]="monitor">
+                        {{ monitor }}
+                      </mat-option>
+                    </mat-autocomplete>
+                    <mat-icon class="delete-coord" (click)="removeCoordenador(t, j)">close</mat-icon>
+                  </div>
+                  <button class="btn-add-coord" (click)="addCoordenador(t)">+ Adicionar</button>
                 </div>
-                
-                <button class="btn-add-coord" (click)="addCoordenador(t)">
-                  + Adicionar Coordenador
-                </button>
               </div>
 
-              <mat-form-field appearance="outline" class="compact-input limit-input" subscriptSizing="dynamic">
-                <input matInput type="number" [(ngModel)]="t.limite" placeholder="80" min="0">
-              </mat-form-field>
+              <div class="col-num">
+                <mat-form-field appearance="outline" class="compact-input" subscriptSizing="dynamic">
+                  <input matInput type="number" [(ngModel)]="t.precoBase" placeholder="300">
+                </mat-form-field>
+              </div>
+
+              <div class="col-num">
+                <mat-form-field appearance="outline" class="compact-input" subscriptSizing="dynamic">
+                  <input matInput type="number" [(ngModel)]="t.limite" placeholder="80">
+                </mat-form-field>
+              </div>
               
-              <div class="toggle-wrapper">
+              <div class="col-toggle">
                 <mat-slide-toggle [(ngModel)]="t.ativo" color="primary"></mat-slide-toggle>
               </div>
               
-              <button mat-icon-button color="warn" (click)="removerTurno(local, i)">
-                <mat-icon>delete</mat-icon>
-              </button>
+              <div class="col-actions">
+                <button mat-icon-button color="warn" (click)="removerTurno(local, i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
             </div>
 
             <button mat-stroked-button color="primary" class="btn-add" (click)="adicionarTurno(local)">
               <mat-icon>add</mat-icon> Adicionar Novo Turno
             </button>
-
-            <div class="empty-state" *ngIf="config[local]?.length === 0">
-               Sem turnos neste local.
-            </div>
           </div>
         </mat-tab>
       </mat-tab-group>
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" (click)="guardar()">Guardar Alterações</button>
+      <button mat-button mat-dialog-close [disabled]="estaAGravar">Cancelar</button>
+      <button mat-flat-button color="primary" (click)="guardar()" [disabled]="estaAGravar">
+        {{ estaAGravar ? 'A Gravar...' : 'Guardar Alterações' }}
+      </button>
     </mat-dialog-actions>
   `,
-    styles: [`
-    h2 { margin-bottom: 0; }
-    mat-dialog-content { max-height: 70vh; min-height: 400px; padding-top: 10px; }
+  styles: [`
+    mat-dialog-content { min-width: 900px; max-height: 80vh; }
+    .turnos-list { display: flex; flex-direction: column; gap: 8px; padding: 15px 0; }
     
-    .turnos-list { display: flex; flex-direction: column; gap: 15px; padding-top: 15px; padding-bottom: 20px; }
+    /* Sistema de Colunas Fixo */
+    .turno-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .header { font-weight: bold; font-size: 11px; color: #666; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 12px; }
     
-    .turno-row { 
-      display: flex; align-items: flex-start; gap: 10px; 
-      background: #fff; border-bottom: 1px solid #eee; padding-bottom: 10px;
-    }
-    .turno-row.header { 
-      font-weight: 600; color: #666; font-size: 0.75rem; 
-      text-transform: uppercase; margin-bottom: 0; border: none; align-items: center;
-    }
+    .col-nome { flex: 3; }
+    .col-coords { flex: 4; }
+    .col-num { width: 85px; } /* Largura fixa para inputs numéricos */
+    .col-toggle { width: 60px; display: flex; justify-content: center; }
+    .col-actions { width: 45px; }
 
-    .compact-input { font-size: 0.9rem; }
-    .name-input { flex: 2; } 
-    
-    /* CORREÇÃO CSS: Aumentei para 80px e removi setas do input number */
-    .limit-input { width: 80px; text-align: center; } 
-    .limit-input ::ng-deep input { text-align: center; padding: 0 !important; }
-    
-    /* Remove as setas de incremento (spinners) no Chrome/Safari/Edge/Firefox */
-    .limit-input ::ng-deep input::-webkit-outer-spin-button,
-    .limit-input ::ng-deep input::-webkit-inner-spin-button {
-      -webkit-appearance: none; margin: 0;
-    }
-    .limit-input ::ng-deep input[type=number] { -moz-appearance: textfield; }
+    .compact-input { width: 100%; font-size: 13px; }
+    .compact-input ::ng-deep .mat-mdc-text-field-wrapper { padding: 0 8px; }
 
-    .coords-container {
-      flex: 2; display: flex; flex-direction: column; gap: 4px;
-      border: 1px solid #e0e0e0; border-radius: 4px; padding: 4px;
-      background: #fafafa;
+    .coords-container { 
+        border: 1px solid #ddd; border-radius: 4px; padding: 4px; background: #fafafa; 
+        display: flex; flex-direction: column; gap: 4px;
     }
-    .coord-item {
-      display: flex; align-items: center; gap: 5px; background: white;
-      border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px;
+    .coord-item { 
+        display: flex; align-items: center; background: white; border: 1px solid #eee; 
+        border-radius: 3px; padding: 2px 6px;
     }
-    
-    .bare-input {
-      border: none; outline: none; width: 100%; font-size: 0.9rem;
-      background: transparent; padding: 5px 0;
-    }
-    
-    .tiny-icon { font-size: 16px; height: 16px; width: 16px; color: #999; }
-    .delete-coord { font-size: 16px; height: 16px; width: 16px; color: #ff5252; cursor: pointer; opacity: 0.6; }
-    .delete-coord:hover { opacity: 1; }
-    
-    .btn-add-coord {
-      background: none; border: 1px dashed #ccc; cursor: pointer;
-      font-size: 0.75rem; color: #1976d2; padding: 4px; border-radius: 4px; width: 100%;
-    }
-    .btn-add-coord:hover { background: #e3f2fd; border-color: #2196f3; }
+    .bare-input { border: none; outline: none; width: 100%; font-size: 12px; }
+    .delete-coord { font-size: 14px; width: 14px; height: 14px; cursor: pointer; color: #f44336; }
+    .btn-add-coord { background: none; border: 1px dashed #ccc; font-size: 10px; color: #1976d2; cursor: pointer; padding: 2px; }
 
-    .toggle-wrapper { width: 50px; display: flex; justify-content: center; padding-top: 10px; }
-    .btn-add { margin-top: 10px; width: 100%; border-style: dashed; padding: 15px 0; }
-    .empty-state { padding: 20px; text-align: center; color: #999; }
+    .btn-add { margin-top: 20px; width: 100%; border-style: dashed; }
   `]
 })
 export class ConfigTurnosComponent implements OnInit {
-    locais = ['quinta', 'costaCaparica', 'quiaios'];
-    config: any = { quinta: [], costaCaparica: [], quiaios: [] };
-    listaMonitores: string[] = [];
-    monitoresCache: Monitor[] = [];
+  locais = ['quinta', 'costaCaparica', 'quiaios'];
+  config: any = { quinta: [], costaCaparica: [], quiaios: [] };
+  listaMonitores: string[] = [];
+  monitoresCache: Monitor[] = [];
+  estaAGravar = false;
 
-    private inscricaoService = inject(InscricaoService);
-    private monitoresService = inject(MonitorService);
+  private inscricaoService = inject(InscricaoService);
+  private monitoresService = inject(MonitorService);
+  private dialogRef = inject(MatDialogRef<ConfigTurnosComponent>);
+  private snack = inject(MatSnackBar);
 
-    private dialogRef = inject(MatDialogRef<ConfigTurnosComponent>);
-    private snack = inject(MatSnackBar);
-
-    async ngOnInit() {
-        try {
-            const dados = await this.inscricaoService.getConfiguracoesTurnos();
-            this.config = {
-                quinta: this.normalizarDados(dados.quinta),
-                costaCaparica: this.normalizarDados(dados.costaCaparica),
-                quiaios: this.normalizarDados(dados.quiaios)
-            };
-
-            await this.carregarListaMonitores();
-
-        } catch (e) {
-            this.snack.open('Erro ao carregar dados', 'Fechar');
-        }
+  async ngOnInit() {
+    try {
+      const dados = await this.inscricaoService.getConfiguracoesTurnos();
+      this.config = {
+        quinta: this.normalizarDados(dados.quinta),
+        costaCaparica: this.normalizarDados(dados.costaCaparica),
+        quiaios: this.normalizarDados(dados.quiaios)
+      };
+      await this.carregarListaMonitores();
+    } catch (e) {
+      this.snack.open('Erro ao carregar dados', 'Fechar', { duration: 3000 });
     }
+  }
 
-    async carregarListaMonitores() {
-        try {
-            // Trazemos todos os monitores
-            const listaObjetos = await this.monitoresService.getMonitoresOtimizados('', 2000);
+  async carregarListaMonitores() {
+    try {
+      const lista = await this.monitoresService.getMonitoresOtimizados('', 2000);
+      this.monitoresCache = lista;
+      this.listaMonitores = [...new Set(lista.map(m => m.nomeMonitor || m.nome))].sort();
+    } catch (e) { }
+  }
 
-            // 1. Guardamos os objetos reais para usar no Guardar()
-            this.monitoresCache = listaObjetos;
+  filtrarMonitores(termo: string) {
+    if (!termo) return this.listaMonitores.slice(0, 10);
+    const f = termo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return this.listaMonitores.filter(m => m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(f));
+  }
 
-            // 2. Lógica antiga para o Autocomplete (apenas nomes)
-            const todosNomes = listaObjetos.map(m => m.nomeMonitor || m.nome);
-            this.listaMonitores = [...new Set(todosNomes)]
-                .filter(n => n && n.trim() !== '')
-                .sort();
+  normalizarDados(lista: any[]): any[] {
+    if (!lista) return [];
+    return lista.map(item => ({
+      ...item,
+      precoBase: item.precoBase || 300,
+      limite: item.limite || 80,
+      ativo: item.ativo !== undefined ? item.ativo : true,
+      coordenadores: item.coordenadores || []
+    }));
+  }
 
-        } catch (e) {
-            console.error('Erro ao buscar monitores', e);
-        }
+  getLabel(key: string) {
+    const map: any = { quinta: 'Quinta da Escola', costaCaparica: 'Costa da Caparica', quiaios: 'Quiaios' };
+    return map[key] || key;
+  }
+
+  adicionarTurno(local: string) {
+    this.config[local].push({ id: Date.now(), nome: '', ativo: true, limite: 80, precoBase: 300, coordenadores: [] });
+  }
+
+  removerTurno(local: string, index: number) {
+    if (confirm('Remover turno?')) this.config[local].splice(index, 1);
+  }
+
+  addCoordenador(turno: any) {
+    if (!turno.coordenadores) turno.coordenadores = [];
+    turno.coordenadores.push('');
+  }
+
+  removeCoordenador(turno: any, index: number) {
+    turno.coordenadores.splice(index, 1);
+  }
+
+  trackByIndex(index: number) { return index; }
+
+  async guardar() {
+    this.estaAGravar = true;
+    try {
+      await this.inscricaoService.saveConfiguracoesTurnos(this.config);
+      this.dialogRef.close(true);
+      this.snack.open('Configurações guardadas!', 'OK', { duration: 2000 });
+    } catch (e) {
+      this.snack.open('Erro ao guardar', 'Fechar');
+    } finally {
+      this.estaAGravar = false;
     }
-
-    // --- CORREÇÃO: Função de pesquisa insensível a acentos ---
-    filtrarMonitores(termoAtual: string): string[] {
-        if (!termoAtual || typeof termoAtual !== 'string' || termoAtual.trim() === '') {
-            return this.listaMonitores;
-        }
-
-        // 1. Normaliza o termo de pesquisa (remove acentos e põe minúsculas)
-        const filtro = this.normalizarTexto(termoAtual);
-
-        return this.listaMonitores.filter(m => {
-            // 2. Normaliza cada nome da lista antes de comparar
-            return this.normalizarTexto(m).includes(filtro);
-        });
-    }
-
-    // Função auxiliar para remover acentos (Águeda -> agueda)
-    normalizarTexto(texto: string): string {
-        return texto
-            .normalize("NFD") // Separa acentos das letras (ex: 'Á' vira 'A' + '´')
-            .replace(/[\u0300-\u036f]/g, "") // Remove os acentos
-            .toLowerCase(); // Tudo em minúsculas
-    }
-    // ---------------------------------------------------------
-
-    normalizarDados(lista: any[]): TurnoConfig[] {
-        if (!lista) return [];
-        return lista.map(item => ({
-            ...item,
-            limite: item.limite || 80,
-            coordenadores: item.coordenadores ||
-                ([item.coord1, item.coord2].filter(c => c && c.trim() !== ''))
-        }));
-    }
-
-    getLabel(key: string) {
-        const map: any = { quinta: 'Quinta da Escola', costaCaparica: 'Costa da Caparica', quiaios: 'Quiaios' };
-        return map[key] || key;
-    }
-
-    adicionarTurno(local: string) {
-        this.config[local].push({
-            id: Date.now(),
-            nome: '',
-            ativo: true,
-            limite: 80,
-            coordenadores: []
-        });
-    }
-
-    removerTurno(local: string, index: number) {
-        if (confirm('Remover turno?')) this.config[local].splice(index, 1);
-    }
-
-    addCoordenador(turno: TurnoConfig) {
-        if (!turno.coordenadores) turno.coordenadores = [];
-        turno.coordenadores.push('');
-    }
-
-    removeCoordenador(turno: TurnoConfig, index: number) {
-        turno.coordenadores.splice(index, 1);
-    }
-
-    trackByIndex(index: number, obj: any): any {
-        return index;
-    }
-
-    async guardar() {
-        this.snack.open('A gravar configurações...', '', { duration: 1000 });
-
-        try {
-            // 1. Gravar a Configuração Global (Turnos, Vagas, Nomes dos Coordenadores)
-            await this.inscricaoService.saveConfiguracoesTurnos(this.config);
-
-            // 2. SINCRONIZAÇÃO: Atribuir o turno aos monitores que são coordenadores
-            const updatesPromessas: Promise<any>[] = [];
-
-            // Percorre todos os locais (quinta, costa, etc.)
-            for (const local of this.locais) {
-                const turnosDoLocal = this.config[local] || [];
-
-                for (const turno of turnosDoLocal) {
-                    if (!turno.coordenadores || turno.coordenadores.length === 0) continue;
-
-                    // Para cada coordenador deste turno...
-                    for (const nomeCoord of turno.coordenadores) {
-                        if (!nomeCoord) continue;
-
-                        // Procura o monitor na nossa cache (por alcunha ou nome)
-                        const monitor = this.encontrarMonitorPorNome(nomeCoord);
-
-                        if (monitor && monitor.id) {
-                            // Verifica se ele já tem este turno na lista dele
-                            const jaTemTurno = monitor.turnosAtribuidos?.includes(turno.nome);
-
-                            if (!jaTemTurno) {
-                                // Se não tem, adicionamos!
-                                const turnosAtualizados = [...(monitor.turnosAtribuidos || []), turno.nome];
-
-                                // Atualiza na memória para não repetir
-                                monitor.turnosAtribuidos = turnosAtualizados;
-
-                                // Prepara o pedido à API
-                                updatesPromessas.push(
-                                    this.monitoresService.updateMonitor(monitor.id, {
-                                        turnosAtribuidos: turnosAtualizados
-                                    })
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Executa todas as atualizações de monitores em paralelo
-            if (updatesPromessas.length > 0) {
-                await Promise.all(updatesPromessas);
-                console.log(`${updatesPromessas.length} monitores atualizados com novos turnos.`);
-            }
-
-            this.dialogRef.close(true);
-            this.snack.open('Configurações e Monitores atualizados!', 'OK', { duration: 3000 });
-
-        } catch (e) {
-            console.error(e);
-            this.snack.open('Erro ao gravar.', 'Fechar');
-        }
-    }
-
-    // Helper para achar o monitor no array
-    private encontrarMonitorPorNome(nomeProcurado: string): Monitor | undefined {
-        const termo = nomeProcurado.toLowerCase().trim();
-        return this.monitoresCache.find(m =>
-            (m.nomeMonitor && m.nomeMonitor.toLowerCase().trim() === termo) ||
-            (m.nome && m.nome.toLowerCase().trim() === termo)
-        );
-    }
+  }
 }

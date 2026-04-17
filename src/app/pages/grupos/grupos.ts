@@ -83,13 +83,11 @@ export class GruposComponent implements OnInit {
   colunasAtividades: ColunaGrupo[] = [];
   poolVisual: Inscricao[] = [];
 
-  // Configuração inicial (pode ser trocada)
   configQuinta = {
     ladoEsquerdo: 'M' as 'M' | 'F',
     ladoDireito: 'F' as 'M' | 'F'
   };
 
-  // Variável que armazena o Layout JSON vindo da BD
   layoutAtualBD: any[] = [];
   quartosDisponiveisSelect: any[] = [];
 
@@ -144,8 +142,8 @@ export class GruposComponent implements OnInit {
   private _filterMonitores(value: string): Monitor[] {
     const filterValue = value.toLowerCase();
     return this.monitoresGlobais.filter(m =>
-      m.nome.toLowerCase().includes(filterValue) &&
-      !this.equipaMonitores.includes(m.nome)
+      (m.nomeMonitor || '').toLowerCase().includes(filterValue) &&
+      !this.equipaMonitores.includes(m.nomeMonitor)
     );
   }
 
@@ -156,15 +154,13 @@ export class GruposComponent implements OnInit {
     }
     this.equipaMonitores = this.monitoresGlobais
       .filter(m => m.turnosAtribuidos?.includes(this.turnoSelecionado))
-      .map(m => m.nome)
+      .map(m => m.nomeMonitor)
       .sort();
   }
 
-  // === 1. Carregar Template Dinâmico ===
   async mudarTurno() {
     this.vincularMonitoresAoTurno();
 
-    // 1. Carrega o Layout Visual (Template) da BD para este Local
     try {
       this.layoutAtualBD = await this.logisticaService.getLayoutTemplate(this.filtroLocal);
     } catch (e) {
@@ -172,7 +168,6 @@ export class GruposComponent implements OnInit {
       this.layoutAtualBD = [];
     }
 
-    // 2. Carrega os Quartos já guardados (Dados)
     try {
       const logistica = await this.logisticaService.getLogistica(this.turnoSelecionado, this.filtroLocal);
 
@@ -189,7 +184,7 @@ export class GruposComponent implements OnInit {
           genero: item.genero,
           capacidade: item.capacidade,
           lista: [],
-          lado: this.getLadoPeloNome(item.titulo) // Procura no layout carregado
+          lado: this.getLadoPeloNome(item.titulo)
         };
         if (item.tipo === 'camarata') this.colunasCamaratas.push(col);
         else this.colunasAtividades.push(col);
@@ -217,11 +212,15 @@ export class GruposComponent implements OnInit {
     if (!this.turnoSelecionado) return;
 
     const mapaLocais: any = { 'quinta': 'Quinta', 'costaCaparica': 'Costa da Caparica', 'quiaios': 'Quiaios' };
-    const localDb = mapaLocais[this.filtroLocal] || 'Quinta';
+    const localDbFiltro = (mapaLocais[this.filtroLocal] || 'Quinta').toLowerCase();
 
-    const criancasTurno = this.todosRegistos.filter(i =>
-      i.local === localDb && i.turnoEscolhido === this.turnoSelecionado
-    );
+    const criancasTurno = this.todosRegistos.filter(i => {
+      const localRegisto = (i.local || '').toLowerCase();
+      // Assim apanha quer esteja gravado como "quinta", "Quinta", "costaCaparica" ou "Costa da Caparica"
+      const matchLocal = (localRegisto === localDbFiltro || localRegisto === this.filtroLocal.toLowerCase());
+
+      return matchLocal && i.turnoEscolhido === this.turnoSelecionado;
+    });
 
     [...this.colunasCamaratas, ...this.colunasAtividades].forEach(c => c.lista = []);
     const atribuidosIds = new Set<string>();
@@ -254,19 +253,15 @@ export class GruposComponent implements OnInit {
     this.poolVisual = criancasTurno.filter(k => k.id && !atribuidosIds.has(k.id));
   }
 
-  // === 2. Inicialização Dinâmica ===
   inicializarQuartos() {
     if (this.colunasCamaratas.length > 0 && !confirm('Reiniciar estrutura? Dados não guardados serão perdidos.')) return;
 
     this.colunasCamaratas.forEach(col => this.poolVisual.push(...col.lista));
     this.colunasCamaratas = [];
 
-    // Se existe um layout na BD, usa-o
     if (this.layoutAtualBD && this.layoutAtualBD.length > 0) {
-
-      // Prepara seleção
       this.quartosDisponiveisSelect = this.layoutAtualBD
-        .filter(item => item.tipo === 'room') // Ignora estáticos
+        .filter(item => item.tipo === 'room')
         .map(q => ({ ...q, selecionado: false }));
 
       this.dialog.open(this.dialogSelecaoQuartos, {
@@ -276,7 +271,6 @@ export class GruposComponent implements OnInit {
       });
 
     } else {
-      // Fallback manual se não houver template na BD
       for (let i = 1; i <= this.qtdQuartosM; i++) this.adicionarColuna('camarata', 'M', `Quarto M ${i}`);
       for (let i = 1; i <= this.qtdQuartosF; i++) this.adicionarColuna('camarata', 'F', `Quarto F ${i}`);
       this.atualizarVista();
@@ -299,8 +293,6 @@ export class GruposComponent implements OnInit {
         generoDestino = this.configQuinta.ladoDireito;
       }
 
-      console.log(`Criando: ${q.titulo} -> Lado ${q.lado} -> Género ${generoDestino}`);
-
       this.colunasCamaratas.push({
         id: `temp-${q.titulo}`,
         titulo: q.titulo,
@@ -318,7 +310,6 @@ export class GruposComponent implements OnInit {
     this.snackBar.open(`${selecionados.length} quartos adicionados!`, 'OK', { duration: 2000 });
   }
 
-  // === 3. Helper para o HTML calcular a posição na Grelha ===
   getGridStyle(item: any): any {
     return {
       'grid-column': `${item.gCol} / span ${item.gSpan}`,
@@ -352,7 +343,6 @@ export class GruposComponent implements OnInit {
   }
 
   trocarLados() {
-    // Agora funciona para qualquer layout que tenha "Esq/Dir"
     if (this.filtroLocal !== 'quinta' && !this.layoutAtualBD.length) return;
 
     this.trocarConfiguracaoLados();
@@ -369,7 +359,6 @@ export class GruposComponent implements OnInit {
     else this.snackBar.open(`Lados trocados!`, 'OK', { duration: 2000 });
   }
 
-
   gerarGruposAtividade() {
     if (this.colunasAtividades.length > 0 && !confirm('Reiniciar grupos?')) return;
     this.colunasAtividades.forEach(col => this.poolVisual.push(...col.lista));
@@ -379,12 +368,7 @@ export class GruposComponent implements OnInit {
       this.adicionarColuna('atividade', 'Misto', `Grupo ${i}`, 12);
     }
 
-    const sorted = [...this.poolVisual].sort((a, b) => this.getIdade(a) - this.getIdade(b));
-    this.poolVisual = [];
-    sorted.forEach((c, idx) => {
-      const alvo = this.colunasAtividades[idx % this.colunasAtividades.length];
-      alvo.lista.push(c);
-    });
+    this.distribuirNasAtividades();
   }
 
   adicionarColunaIndividual(tipo: 'camarata' | 'atividade', genero: 'M' | 'F' | 'Misto' = 'Misto') {
@@ -515,29 +499,186 @@ export class GruposComponent implements OnInit {
     }
   }
 
-  distribuirNasCamaratas() {
-    if (this.colunasCamaratas.length === 0) return;
-    const rapazes = this.poolVisual.filter(i => this.getGenero(i) === 'M');
-    const raparigas = this.poolVisual.filter(i => this.getGenero(i) === 'F');
-    this.poolVisual = [];
-    this._distribuir(rapazes, this.colunasCamaratas.filter(c => c.genero === 'M'));
-    this._distribuir(raparigas, this.colunasCamaratas.filter(c => c.genero === 'F'));
+  // =========================================================================
+  // --- IDENTIFICAÇÃO DE IRMÃOS (FAMILY ID) ---
+  // =========================================================================
+
+  // Tenta extrair um identificador único para a família (ex: NIF, Email EE ou Apelidos)
+  getFamilyId(i: Inscricao): string {
+    const encarregado = (i as any).encarregadoEducacao || (i as any).encarregado;
+
+    // 1ª Opção: Email do Encarregado de Educação (Muito forte)
+    if (encarregado && encarregado.email) return encarregado.email.toLowerCase().trim();
+
+    // 2ª Opção: NIF ou Telefone
+    if (encarregado && encarregado.nif) return encarregado.nif;
+    if (encarregado && encarregado.telefone) return encarregado.telefone;
+
+    // 3ª Opção (Fallback): Usar os dois últimos nomes (Apelidos) da criança
+    // Nota: Pode agrupar primos ou nomes comuns (ex: "Silva Santos"), mas é o melhor fallback possível.
+    if (i.participante && i.participante.nomeCompleto) {
+      const nomes = i.participante.nomeCompleto.trim().split(' ');
+      if (nomes.length > 1) {
+        return nomes.slice(-2).join(' ').toLowerCase();
+      }
+      return nomes[0].toLowerCase();
+    }
+
+    return Math.random().toString(); // Se não tiver dados nenhuns, não agrupa com ninguém
   }
 
-  private _distribuir(lista: Inscricao[], alvos: ColunaGrupo[]) {
+  // Verifica se uma dada criança tem um irmão na lista fornecida
+  temIrmaoNaLista(crianca: Inscricao, lista: Inscricao[]): boolean {
+    const meuFamilyId = this.getFamilyId(crianca);
+    return lista.some(outra => this.getFamilyId(outra) === meuFamilyId);
+  }
+
+
+  // =========================================================================
+  // --- LÓGICAS DE DISTRIBUIÇÃO ---
+  // =========================================================================
+
+  distribuirNasCamaratas() {
+    if (this.colunasCamaratas.length === 0) return;
+
+    const rapazes = this.poolVisual
+      .filter(i => this.getGenero(i) === 'M')
+      .sort((a, b) => this.getIdade(a) - this.getIdade(b));
+
+    const raparigas = this.poolVisual
+      .filter(i => this.getGenero(i) === 'F')
+      .sort((a, b) => this.getIdade(a) - this.getIdade(b));
+
+    this.poolVisual = [];
+
+    this._distribuirAgrupadoEEquilibrado(rapazes, this.colunasCamaratas.filter(c => c.genero === 'M'));
+    this._distribuirAgrupadoEEquilibrado(raparigas, this.colunasCamaratas.filter(c => c.genero === 'F'));
+  }
+
+  distribuirNasAtividades() {
+    if (this.colunasAtividades.length === 0) return;
+
+    // 1º Passo: Separar por género e ordenar por idade
+    const rapazes = this.poolVisual
+      .filter(i => this.getGenero(i) === 'M')
+      .sort((a, b) => this.getIdade(a) - this.getIdade(b));
+
+    const raparigas = this.poolVisual
+      .filter(i => this.getGenero(i) === 'F')
+      .sort((a, b) => this.getIdade(a) - this.getIdade(b));
+
+    this.poolVisual = [];
+
+    // 2º Passo: Distribuir géneros em listas separadas
+    this._distribuirAVez(rapazes, this.colunasAtividades);
+    this._distribuirAVez(raparigas, this.colunasAtividades);
+
+    // 3º Passo (NOVO): Ordenar cada grupo final por idade
+    this.colunasAtividades.forEach(grupo => {
+      grupo.lista.sort((a, b) => this.getIdade(a) - this.getIdade(b));
+    });
+  }
+
+  // --- ALGORITMO CAMARATAS (Equilíbrio Numérico, Idades Crescentes, Separação de Irmãos) ---
+  private _distribuirAgrupadoEEquilibrado(lista: Inscricao[], alvos: ColunaGrupo[]) {
     if (alvos.length === 0) { this.poolVisual.push(...lista); return; }
-    lista.forEach((c, idx) => {
-      const alvo = alvos[idx % alvos.length];
-      if (alvo.lista.length < alvo.capacidade) alvo.lista.push(c);
-      else this.poolVisual.push(c);
+
+    let remainingKids = [...lista];
+
+    for (let i = 0; i < alvos.length; i++) {
+      const quarto = alvos[i];
+      const remainingRooms = alvos.length - i;
+
+      let espacoFuturo = 0;
+      for (let j = i + 1; j < alvos.length; j++) {
+        espacoFuturo += alvos[j].capacidade - alvos[j].lista.length;
+      }
+
+      const minNecessario = Math.max(0, remainingKids.length - espacoFuturo);
+      let targetCount = Math.floor(remainingKids.length / remainingRooms);
+      targetCount = Math.max(targetCount, minNecessario);
+
+      const espacoLivre = quarto.capacidade - quarto.lista.length;
+      let amountToTake = Math.min(targetCount, espacoLivre);
+
+      if (amountToTake > 0) {
+        // Nova Lógica Anti-Irmãos: Em vez de cortar a lista cegamente, 
+        // vamos procurar os "amountToTake" primeiros que NÃO tenham irmãos já neste quarto
+        const toAdd: Inscricao[] = [];
+        const indicesToRemove: number[] = [];
+
+        for (let k = 0; k < remainingKids.length && toAdd.length < amountToTake; k++) {
+          const candidato = remainingKids[k];
+
+          // Verifica se já adicionámos um irmão ao quarto atual
+          if (!this.temIrmaoNaLista(candidato, quarto.lista) && !this.temIrmaoNaLista(candidato, toAdd)) {
+            toAdd.push(candidato);
+            indicesToRemove.push(k);
+          }
+        }
+
+        // Se não conseguimos encher o "amountToTake" porque a regra dos irmãos barrou,
+        // relaxamos a regra e enchemos com quem sobrar (melhor irmãos juntos do que fora do quarto)
+        if (toAdd.length < amountToTake) {
+          for (let k = 0; k < remainingKids.length && toAdd.length < amountToTake; k++) {
+            if (!indicesToRemove.includes(k)) {
+              toAdd.push(remainingKids[k]);
+              indicesToRemove.push(k);
+            }
+          }
+        }
+
+        quarto.lista.push(...toAdd);
+
+        // Remove os que foram adicionados da lista remainingKids
+        remainingKids = remainingKids.filter((_, idx) => !indicesToRemove.includes(idx));
+      }
+    }
+
+    if (remainingKids.length > 0) {
+      this.poolVisual.push(...remainingKids);
+    }
+  }
+
+  // --- ALGORITMO ATIVIDADES (Mistura Idades, Géneros Equilibrados, Separação de Irmãos) ---
+  private _distribuirAVez(lista: Inscricao[], alvos: ColunaGrupo[]) {
+    lista.forEach((c) => {
+      // 1. Encontra os grupos que ainda têm capacidade
+      let gruposComVaga = alvos.filter(a => a.lista.length < a.capacidade);
+
+      // Se estiverem todos cheios, a criança volta para a lista de espera
+      if (gruposComVaga.length === 0) {
+        this.poolVisual.push(c);
+        return;
+      }
+
+      // 2. O SEGRED0: Ordena os grupos para os mais vazios ficarem em primeiro lugar
+      gruposComVaga.sort((a, b) => a.lista.length - b.lista.length);
+
+      let placed = false;
+
+      // 3. Tenta colocar a criança no grupo mais vazio que NÃO tenha lá um irmão
+      for (let alvo of gruposComVaga) {
+        if (!this.temIrmaoNaLista(c, alvo.lista)) {
+          alvo.lista.push(c);
+          placed = true;
+          break; // Conseguiu colocar, passa para a próxima criança
+        }
+      }
+
+      // 4. PLANO B: Se todos os grupos com vaga já tiverem lá um irmão, 
+      // somos obrigados a juntá-los. Coloca no grupo que estiver mais vazio de todos.
+      if (!placed) {
+        gruposComVaga[0].lista.push(c);
+      }
     });
   }
 
   adicionarMonitorAEquipa(monitor: Monitor) {
-    if (!this.equipaMonitores.includes(monitor.nome)) {
-      this.equipaMonitores.push(monitor.nome);
+    if (!this.equipaMonitores.includes(monitor.nomeMonitor)) {
+      this.equipaMonitores.push(monitor.nomeMonitor);
       this.equipaMonitores.sort();
-      this.snackBar.open(`${monitor.nome} adicionado!`, 'OK', { duration: 2000 });
+      this.snackBar.open(`${monitor.nomeMonitor} adicionado!`, 'OK', { duration: 2000 });
     }
     this.controlMonitor.setValue('');
     this.exibirBusca = false;

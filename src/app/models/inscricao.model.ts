@@ -63,6 +63,9 @@ export interface Inscricao {
   transporte: string;
   valor_total: number;
   estado_pagamento: 'pendente' | 'pago';
+  dataPagamento?: Date | string;
+  nomePagamento?: string;
+  numeroFatura?: string;
 }
 
 // Adiciona estas interfaces no fim do ficheiro ou num ficheiro de models

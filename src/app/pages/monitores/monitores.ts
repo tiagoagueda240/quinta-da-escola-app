@@ -275,7 +275,7 @@ export class MonitoresComponent implements OnInit {
       });
 
       for (const sheetName of workbook.SheetNames) {
-        if (sheetName.trim() === 'Fev 2026') break;
+
         if (this.isAbaIrrelevante(sheetName)) continue;
 
         const worksheet = workbook.Sheets[sheetName];

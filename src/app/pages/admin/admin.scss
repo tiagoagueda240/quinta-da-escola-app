@@ -168,11 +168,12 @@
 
 /* --- TABELA --- */
 .table-wrapper {
-  background: white; border-radius: 20px; overflow: hidden;
+  background: white; border-radius: 20px; overflow-x: auto;
   border: 1px solid #f0f0f0; box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  width: 100%;
 }
 
-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1100px; }
 
 th.mat-header-cell {
   background: #fbfbfb; color: #8898aa; font-size: 0.75rem; font-weight: 700;
@@ -288,8 +289,8 @@ td.mat-cell { padding: 16px 20px !important; border-bottom: 1px solid #f5f5f5; c
 .edit-group { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 .delete-area { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; }
 
-::ng-deep .snackbar-success { background: #212121 !important; color: #fff !important; border-radius: 8px !important; }
-::ng-deep .snackbar-success .mat-mdc-snack-bar-action { color: #81c784 !important; font-weight: 700; }
+::ng-deep .snackbar-success { background: #2e7d32 !important; color: #fff !important; border-radius: 8px !important; }
+::ng-deep .snackbar-success .mat-mdc-snack-bar-action { color: #c8e6c9 !important; font-weight: 700; }
 ::ng-deep .snackbar-error { background: #c62828 !important; color: #fff !important; border-radius: 8px !important; }
 ::ng-deep .snackbar-error .mat-mdc-snack-bar-action { color: #ffcdd2 !important; font-weight: 700; }
 
@@ -349,3 +350,193 @@ td.mat-cell { padding: 16px 20px !important; border-bottom: 1px solid #f5f5f5; c
   border-color: #ffecb3;
 }
 .summary-box.warn .big-num { color: #f57f17; }
+
+
+/* --- ETIQUETAS DE EMPRESA --- */
+.company-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.company-badge mat-icon {
+  font-size: 11px;
+  width: 11px;
+  height: 11px;
+}
+
+.chip-company {
+  font-size: 0.85rem;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.chip-company mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+/* ======================================================= */
+/* ESTILOS DO MODO EXCEL (FULL SCREEN EDITÁVEL)            */
+/* ======================================================= */
+
+::ng-deep .full-screen-excel-dialog .mdc-dialog__surface {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+.excel-modal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: #fff;
+}
+
+.excel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+.excel-divider-vertical {
+  width: 1px;
+  height: 20px;
+  background-color: #ccc;
+  margin: 0 10px;
+}
+
+.excel-filter {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  background: white;
+}
+
+.excel-table-wrapper {
+  flex: 1;
+  overflow: auto; 
+  background-color: #e6e6e6; 
+  padding: 0;
+}
+
+.excel-style-table {
+  width: max-content; 
+  min-width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-family: 'Calibri', 'Lato', sans-serif; 
+  font-size: 0.85rem;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+}
+
+.excel-style-table thead th {
+  position: sticky;
+  top: 0; 
+  background-color: #f1f1f1;
+  border: 1px solid #ccc;
+  padding: 8px 10px;
+  color: #333;
+  font-weight: bold;
+  text-align: left;
+  z-index: 10;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  box-sizing: border-box;
+}
+
+.excel-style-table tbody td {
+  border: 1px solid #d4d4d4;
+  padding: 0; 
+  color: #000;
+  white-space: nowrap; 
+  box-sizing: border-box;
+}
+
+/* Destaque de Novas Linhas e Linhas Modificadas */
+.excel-style-table tbody tr.new-row td {
+  background-color: #fffde7; /* Amarelo muito clarinho */
+}
+.excel-style-table tbody tr.new-row td:first-child {
+  box-shadow: inset 4px 0 0 #f57f17; /* Fita laranja à esquerda */
+}
+
+.excel-style-table tbody tr.modified-row td:first-child {
+  box-shadow: inset 4px 0 0 #2196f3; /* Fita azul à esquerda para editadas */
+}
+
+/* FUNDOS COLORIDOS PARA OS ESTADOS */
+.bg-pago {
+  background-color: #e8f5e9 !important;
+}
+.bg-pago .status-select {
+  color: #1b5e20;
+  font-weight: 800;
+}
+
+.bg-pendente {
+  background-color: #fff3e0 !important;
+}
+.bg-pendente .status-select {
+  color: #e65100;
+  font-weight: 800;
+}
+
+/* INPUTS "INVISÍVEIS" TIPO EXCEL */
+.excel-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  outline: none;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  transition: background 0.1s;
+}
+
+.excel-input:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #1d6f42; /* Borda verde típica do Excel ao editar */
+}
+
+/* Para garantir que o focus laranja sobrepõe na nova linha */
+.excel-style-table tbody tr.new-row .excel-input:focus {
+  box-shadow: inset 0 0 0 2px #f57f17; 
+}
+
+/* Utilidades para a Tabela Excel */
+.bold-input { font-weight: 600; }
+.align-right { text-align: right; }
+.text-danger { color: #c62828 !important; }
+
+.excel-style-table tbody tr:hover td:not(.bg-pago):not(.bg-pendente) {
+  background-color: #eef7f2; 
+}
+.excel-style-table tbody tr:hover .excel-input:not(:focus) {
+  background-color: transparent;
+}

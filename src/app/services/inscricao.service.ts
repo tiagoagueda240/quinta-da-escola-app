@@ -38,7 +38,10 @@ export class InscricaoService {
       camarata: row.camarata_atribuida || row.camarata,
       grupo: row.grupo_atribuido || row.grupo,
       // Garante que transporte não vem null
-      transporte: row.transporte || ''
+      transporte: row.transporte || '',
+      dataPagamento: row.dataPagamento || '',
+      nomePagamento: row.nomePagamento || '',
+      numeroFatura: row.numeroFatura || ''
     } as Inscricao;
   }
 
@@ -198,5 +201,9 @@ export class InscricaoService {
     return lista
       .filter((t: any) => t.ativo === true)
       .map((t: any) => t.nome);
+  }
+
+  getTurnosPublicos(local: string): Observable<{ nome: string, precoBase: number, vagasRestantes: number }[]> {
+    return this.http.get<any[]>(`${this.apiUrl}?acao=turnos_publicos&local=${local}`);
   }
 }
