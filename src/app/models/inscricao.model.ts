@@ -42,14 +42,14 @@ export interface Inscricao {
   saude: {
     temAlergiaAlimentar: boolean;
     detalheAlergiaAlimentar?: string; // Mapeado do PHP 'intolerancias'
-    alergiaDetalhes?: string;         // Alias visual
+    alergiaDetalhes?: string; // Alias visual
 
     temOutrasAlergias?: boolean;
     detalheOutrasAlergias?: string;
 
     tomaMedicacao: boolean;
-    detalheMedicacao?: string;        // Mapeado do PHP 'medicacao'
-    medicacaoHabitual?: string;       // Alias visual necessário para o template
+    detalheMedicacao?: string; // Mapeado do PHP 'medicacao'
+    medicacaoHabitual?: string; // Alias visual necessário para o template
   };
 
   checkin?: {
@@ -62,6 +62,7 @@ export interface Inscricao {
   autorizaFotoVideo: boolean;
   transporte: string;
   valor_total: number;
+  observacoes?: string;
   estado_pagamento: 'pendente' | 'pago';
   dataPagamento?: Date | string;
   nomePagamento?: string;
@@ -73,6 +74,7 @@ export interface TurnoConfig {
   id: number;
   nome: string;
   ativo: boolean;
+  esgotado?: boolean;
   limite?: number;
   coordenadores: string[];
 }

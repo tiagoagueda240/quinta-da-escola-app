@@ -1,11 +1,11 @@
-import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { Observable, lastValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ConfigTurnos, Inscricao } from '../models/inscricao.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class InscricaoService {
   private http = inject(HttpClient);
@@ -18,9 +18,9 @@ export class InscricaoService {
     const token = localStorage.getItem('auth_token');
     return {
       headers: new HttpHeaders({
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      })
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }),
     };
   }
 
@@ -41,7 +41,7 @@ export class InscricaoService {
       transporte: row.transporte || '',
       dataPagamento: row.dataPagamento || '',
       nomePagamento: row.nomePagamento || '',
-      numeroFatura: row.numeroFatura || ''
+      numeroFatura: row.numeroFatura || '',
     } as Inscricao;
   }
 
@@ -53,9 +53,9 @@ export class InscricaoService {
    * Admin: Obtém todas as inscrições (autenticado por JWT)
    */
   getInscricoes(): Observable<Inscricao[]> {
-    return this.http.get<any[]>(`${this.apiUrl}?acao=listar`, this.getHeaders()).pipe(
-      map(rows => rows.map(r => this.adaptarInscricao(r)))
-    );
+    return this.http
+      .get<any[]>(`${this.apiUrl}?acao=listar`, this.getHeaders())
+      .pipe(map((rows) => rows.map((r) => this.adaptarInscricao(r))));
   }
 
   /**
@@ -63,7 +63,7 @@ export class InscricaoService {
    */
   async getConfiguracoesTurnos(): Promise<ConfigTurnos> {
     return await lastValueFrom(
-      this.http.get<ConfigTurnos>(`${this.apiUrl}?acao=config_turnos`, this.getHeaders())
+      this.http.get<ConfigTurnos>(`${this.apiUrl}?acao=config_turnos`, this.getHeaders()),
     );
   }
 
@@ -72,7 +72,7 @@ export class InscricaoService {
    */
   async saveConfiguracoesTurnos(config: ConfigTurnos) {
     return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=salvar_config_turnos`, config, this.getHeaders())
+      this.http.post(`${this.apiUrl}?acao=salvar_config_turnos`, config, this.getHeaders()),
     );
   }
 
@@ -84,9 +84,9 @@ export class InscricaoService {
    * Coordenador: Tenta obter inscrições apenas com o Token da URL.
    */
   getInscricoesComToken(token: string): Observable<Inscricao[]> {
-    return this.http.get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`).pipe(
-      map(rows => rows.map(r => this.adaptarInscricao(r)))
-    );
+    return this.http
+      .get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`)
+      .pipe(map((rows) => rows.map((r) => this.adaptarInscricao(r))));
   }
 
   /**
@@ -94,11 +94,11 @@ export class InscricaoService {
    */
   getInscricoesComTokenEPin(token: string, pin: string): Observable<Inscricao[]> {
     const headers = new HttpHeaders({
-      'X-Access-Pin': pin
+      'X-Access-Pin': pin,
     });
-    return this.http.get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`, { headers }).pipe(
-      map(rows => rows.map(r => this.adaptarInscricao(r)))
-    );
+    return this.http
+      .get<any[]>(`${this.apiUrl}?acao=listar&token=${token}`, { headers })
+      .pipe(map((rows) => rows.map((r) => this.adaptarInscricao(r))));
   }
 
   // ==========================================================
@@ -109,9 +109,7 @@ export class InscricaoService {
    * Cria nova inscrição (Usado no site público e na clonagem pelo Admin)
    */
   async createInscricao(inscricao: Partial<Inscricao>) {
-    const res = await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=nova`, inscricao)
-    );
+    const res = await lastValueFrom(this.http.post(`${this.apiUrl}?acao=nova`, inscricao));
     this.enviarEmailSeguro(inscricao);
     return res;
   }
@@ -124,9 +122,11 @@ export class InscricaoService {
   /**
    * Admin: Atualiza várias inscrições ou campos específicos (Batch)
    */
-  async updateInscricaoBatch(updates: { id: string | number, checkin?: any, [key: string]: any }[]) {
+  async updateInscricaoBatch(
+    updates: { id: string | number; checkin?: any; [key: string]: any }[],
+  ) {
     return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders())
+      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders()),
     );
   }
 
@@ -141,14 +141,10 @@ export class InscricaoService {
   updateCheckinComToken(payload: any, token: string, pin: string) {
     const headers = new HttpHeaders({
       'X-Access-Pin': pin,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     });
     const body = [payload];
-    return this.http.post(
-      `${this.apiUrl}?acao=batch_update&token=${token}`,
-      body,
-      { headers }
-    );
+    return this.http.post(`${this.apiUrl}?acao=batch_update&token=${token}`, body, { headers });
   }
 
   // ==========================================================
@@ -157,9 +153,7 @@ export class InscricaoService {
 
   async gerarLinkCoordenador(payload: any) {
     const url = this.apiUrl.replace('inscricoes.php', 'gerar_acesso.php');
-    return await lastValueFrom(
-      this.http.post<any>(url, payload, this.getHeaders())
-    );
+    return await lastValueFrom(this.http.post<any>(url, payload, this.getHeaders()));
   }
 
   enviarEmailSeguro(dados: any) {
@@ -168,10 +162,10 @@ export class InscricaoService {
       nome: dados.ee?.nome || 'Enc. Educação',
       email: dados.ee?.email,
       turno: dados.turnoEscolhido,
-      valor: dados.valor_total
+      valor: dados.valor_total,
     };
     this.http.post(url, payload).subscribe({
-      error: (err) => console.error('Erro envio email:', err)
+      error: (err) => console.error('Erro envio email:', err),
     });
   }
 
@@ -179,15 +173,15 @@ export class InscricaoService {
   //     LOGÍSTICA, APAGAR E AUXILIARES
   // ==========================================================
 
-  async updateBatch(updates: { id: string | number, data: any }[]) {
+  async updateBatch(updates: { id: string | number; data: any }[]) {
     return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders())
+      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders()),
     );
   }
 
   async deleteInscricao(id: string) {
     return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=apagar`, { id }, this.getHeaders())
+      this.http.post(`${this.apiUrl}?acao=apagar`, { id }, this.getHeaders()),
     );
   }
 
@@ -198,12 +192,12 @@ export class InscricaoService {
     const lista = config[local] || [];
 
     // Filtra e devolve apenas os nomes
-    return lista
-      .filter((t: any) => t.ativo === true)
-      .map((t: any) => t.nome);
+    return lista.filter((t: any) => t.ativo === true).map((t: any) => t.nome);
   }
 
-  getTurnosPublicos(local: string): Observable<{ nome: string, precoBase: number, vagasRestantes: number }[]> {
+  getTurnosPublicos(
+    local: string,
+  ): Observable<{ nome: string; precoBase: number; vagasRestantes: number; esgotado?: boolean }[]> {
     return this.http.get<any[]>(`${this.apiUrl}?acao=turnos_publicos&local=${local}`);
   }
 }

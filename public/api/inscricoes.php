@@ -92,23 +92,22 @@ if ($method === 'GET') {
         $stmtCount->execute([$localSql]);
         $contagens = $stmtCount->fetchAll(PDO::FETCH_KEY_PAIR); // Devolve array: ['Turno 1' => 45]
 
-        // 3. Filtrar turnos cheios e preparar dados de envio
+        // 3. Filtrar turnos passados e preparar dados de envio
         $turnosDisponiveis = [];
         foreach ($turnosLocal as $t) {
-            if (isset($t['ativo']) && $t['ativo']) {
-                $limite = $t['limite'] ?? 80; // Default 80
-                $precoBase = $t['precoBase'] ?? 300; // Default 300
-                $inscritos = $contagens[$t['nome']] ?? 0;
+            if (!isset($t['ativo']) || !$t['ativo']) continue;
 
-                // Só envia para o frontend se ainda houver vagas
-                if ($inscritos < $limite) {
-                    $turnosDisponiveis[] = [
-                        'nome' => $t['nome'],
-                        'precoBase' => (float)$precoBase,
-                        'vagasRestantes' => $limite - $inscritos
-                    ];
-                }
-            }
+            $limite = $t['limite'] ?? 80;
+            $precoBase = $t['precoBase'] ?? 300;
+            $inscritos = $contagens[$t['nome']] ?? 0;
+            $esgotado = !empty($t['esgotado']) || ($inscritos >= $limite);
+
+            $turnosDisponiveis[] = [
+                'nome'          => $t['nome'],
+                'precoBase'     => (float)$precoBase,
+                'vagasRestantes'=> max(0, $limite - $inscritos),
+                'esgotado'      => $esgotado
+            ];
         }
 
         echo json_encode($turnosDisponiveis);
@@ -177,7 +176,7 @@ if ($method === 'GET') {
                     'genero'         => $row['genero'],
                     'nif'            => $row['nif'] ?? '',
                     'cc'             => $row['cc'] ?? '',
-                    'morada'         => $row['morada'] ?? '',
+                    'codigoPostal'   => $row['morada'] ?? '',
                     'sistemaSaude'   => $row['sistema_saude'] ?? '',
                     'tamanhoTshirt'  => $row['tamanho_tshirt'] ?? 'S'
                 ];
@@ -204,6 +203,7 @@ if ($method === 'GET') {
 
                 $row['turnoEscolhido']  = $row['turno'];
                 $row['autorizaFotoVideo'] = (bool)$row['autoriza_foto_video'];
+                $row['observacoes'] = $row['observacoes'] ?? '';
                 
                 // Limpeza
                 unset($row['nome_completo'], $row['nome_ee'], $row['email_ee'], $row['telefone_ee'], $row['nif_ee'], $row['contacto_emergencia'],
@@ -259,7 +259,7 @@ if ($method === 'POST' || $method === 'PUT') {
                     $input['ee']['contactoEmergencia'] ?? '',
                     $input['saude']['alergiaDetalhes'] ?? '',
                     $input['saude']['medicacaoHabitual'] ?? '',
-                    $input['participante']['morada'] ?? '',
+                    $input['participante']['codigoPostal'] ?? '',
                     $input['participante']['cc'] ?? '',
                     $input['participante']['nif'] ?? '',
                     $input['participante']['sistemaSaude'] ?? '',
@@ -270,8 +270,8 @@ if ($method === 'POST' || $method === 'PUT') {
 
             // CORREÇÃO: Inserção da inscrição garantindo compatibilidade com colunas institucionais
             $sqlInsc = "INSERT INTO inscricoes 
-                (participante_id, turno, local, ano, valor_total, autoriza_foto_video, transporte, estado_pagamento, tipo_cliente, nome_instituicao, dataPagamento, nomePagamento, numeroFatura) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?)";
+                (participante_id, turno, local, ano, valor_total, autoriza_foto_video, transporte, estado_pagamento, tipo_cliente, nome_instituicao, dataPagamento, nomePagamento, numeroFatura, observacoes) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?)";
             
             $stmtInsc = $pdo->prepare($sqlInsc);
             $stmtInsc->execute([
@@ -286,7 +286,8 @@ if ($method === 'POST' || $method === 'PUT') {
                 $input['nomeInstituicao'] ?? null,
                 $input['dataPagamento'] ?? null,
                 $input['nomePagamento'] ?? null,
-                $input['numeroFatura'] ?? null
+                $input['numeroFatura'] ?? null,
+                $input['observacoes'] ?? null
             ]);
 
             $pdo->commit();
@@ -345,12 +346,14 @@ if ($method === 'POST' || $method === 'PUT') {
                 if (isset($dados['transporte'])) { $campos[] = "transporte = ?"; $valores[] = $dados['transporte']; }
                 if (isset($dados['autorizaFotoVideo'])) { $campos[] = "autoriza_foto_video = ?"; $valores[] = $dados['autorizaFotoVideo'] ? 1 : 0; }
                 if (isset($dados['turnoEscolhido'])) { $campos[] = "turno = ?"; $valores[] = $dados['turnoEscolhido']; }
+                if (isset($dados['valor_total'])) { $campos[] = "valor_total = ?"; $valores[] = (float)$dados['valor_total']; }
                 if (isset($dados['dataPagamento'])) { $campos[] = "dataPagamento = ?"; $valores[] = $dados['dataPagamento']; }
                 if (isset($dados['nomePagamento'])) { $campos[] = "nomePagamento = ?"; $valores[] = $dados['nomePagamento']; }
                 if (isset($dados['numeroFatura'])) { $campos[] = "numeroFatura = ?"; $valores[] = $dados['numeroFatura']; }
 
                 if (isset($dados['tipoCliente'])) { $campos[] = "tipo_cliente = ?"; $valores[] = $dados['tipoCliente']; }
                 if (isset($dados['nomeInstituicao'])) { $campos[] = "nome_instituicao = ?"; $valores[] = $dados['nomeInstituicao']; }
+                if (array_key_exists('observacoes', $dados)) { $campos[] = "observacoes = ?"; $valores[] = $dados['observacoes']; }
 
                 if (isset($dados['checkin'])) {
                     if (isset($dados['checkin']['status'])) { $campos[] = "checkin_status = ?"; $valores[] = $dados['checkin']['status']; }
@@ -379,7 +382,7 @@ if ($method === 'POST' || $method === 'PUT') {
                         
                         if (isset($dados['participante']['nif'])) { $camposPart[] = "nif = ?"; $valoresPart[] = $dados['participante']['nif']; }
                         if (isset($dados['participante']['cc'])) { $camposPart[] = "cc = ?"; $valoresPart[] = $dados['participante']['cc']; }
-                        if (isset($dados['participante']['morada'])) { $camposPart[] = "morada = ?"; $valoresPart[] = $dados['participante']['morada']; }
+                        if (isset($dados['participante']['codigoPostal'])) { $camposPart[] = "morada = ?"; $valoresPart[] = $dados['participante']['codigoPostal']; }
                         if (isset($dados['participante']['sistemaSaude'])) { $camposPart[] = "sistema_saude = ?"; $valoresPart[] = $dados['participante']['sistemaSaude']; }
                         if (isset($dados['participante']['dataNascimento'])) { $camposPart[] = "data_nascimento = ?"; $valoresPart[] = $dados['participante']['dataNascimento']; }
                         if (isset($dados['participante']['tamanhoTshirt'])) { $camposPart[] = "tamanho_tshirt = ?"; $valoresPart[] = $dados['participante']['tamanhoTshirt']; }

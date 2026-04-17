@@ -1,5 +1,4 @@
 <div class="main-wrapper">
-
   <div class="hero-section">
     <div class="hero-content">
       <h1>Turnos</h1>
@@ -9,7 +8,6 @@
 
   <div class="form-container">
     <form [formGroup]="inscricaoForm" (ngSubmit)="onSubmit()">
-
       <mat-card>
         <mat-card-header>
           <mat-card-title>
@@ -27,28 +25,34 @@
               </mat-select>
             </mat-form-field>
 
-            @if(inscricaoForm.get('tipoCliente')?.value === 'instituicao'){
-            <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Nome da Instituição</mat-label>
-              <input matInput formControlName="nomeInstituicao">
-            </mat-form-field>
+            @if (inscricaoForm.get('tipoCliente')?.value === 'instituicao') {
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Nome da Instituição</mat-label>
+                <input matInput formControlName="nomeInstituicao" />
+              </mat-form-field>
             }
-
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Selecione o Turno</mat-label>
             <mat-select formControlName="turnoEscolhido">
               @for (turno of turnos; track $index) {
-              <mat-option [value]="turno.nome">
-                {{ turno.nome }}
-              </mat-option>
+                <mat-option
+                  [value]="turno.nome"
+                  [disabled]="!!turno.esgotado"
+                  [class.option-esgotado]="turno.esgotado"
+                >
+                  @if (turno.esgotado) {
+                    {{ turno.nome }} &mdash; Esgotado
+                  } @else {
+                    {{ turno.nome }}
+                  }
+                </mat-option>
               }
 
               @if (turnos.length === 0) {
-              <mat-option disabled>Não existem turnos com vagas disponíveis.</mat-option>
+                <mat-option disabled>Não existem turnos disponíveis.</mat-option>
               }
-
             </mat-select>
           </mat-form-field>
         </mat-card-content>
@@ -64,14 +68,20 @@
         <mat-card-content>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nome Completo</mat-label>
-            <input matInput formControlName="nomeCompleto">
+            <input matInput formControlName="nomeCompleto" />
           </mat-form-field>
 
           <div class="row">
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Data de Nascimento</mat-label>
-              <input matInput [matDatepicker]="picker" formControlName="dataNascimento" (click)="picker.open()" readonly
-                style="cursor: pointer">
+              <input
+                matInput
+                [matDatepicker]="picker"
+                formControlName="dataNascimento"
+                (click)="picker.open()"
+                readonly
+                style="cursor: pointer"
+              />
               <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
               <mat-datepicker #picker></mat-datepicker>
             </mat-form-field>
@@ -86,36 +96,40 @@
 
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>NIF</mat-label>
-              <input matInput formControlName="nif" maxlength="9" (keypress)="permitirApenasNumeros($event)"
-                inputmode="numeric">
+              <input
+                matInput
+                formControlName="nif"
+                maxlength="9"
+                (keypress)="permitirApenasNumeros($event)"
+                inputmode="numeric"
+              />
 
-              @if (inscricaoForm.get('participante.nif')?.hasError('required') &&
-              inscricaoForm.get('participante.nif')?.touched) {
-              <mat-error>
-                O NIF é obrigatório.
-              </mat-error>
-              }@else if (inscricaoForm.get('participante.nif')?.hasError('pattern') &&
-              inscricaoForm.get('participante.nif')?.touched) {
-              <mat-error>
-                Deve conter exatamente 9 dígitos numéricos.
-              </mat-error>
+              @if (
+                inscricaoForm.get('participante.nif')?.hasError('required') &&
+                inscricaoForm.get('participante.nif')?.touched
+              ) {
+                <mat-error> O NIF é obrigatório. </mat-error>
+              } @else if (
+                inscricaoForm.get('participante.nif')?.hasError('pattern') &&
+                inscricaoForm.get('participante.nif')?.touched
+              ) {
+                <mat-error> Deve conter exatamente 9 dígitos numéricos. </mat-error>
               }
             </mat-form-field>
           </div>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Morada</mat-label>
-            <input matInput formControlName="morada">
-          </mat-form-field>
-
           <div class="row">
             <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Código Postal</mat-label>
+              <input matInput formControlName="codigoPostal" placeholder="0000-000" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="half-width">
               <mat-label>CC / Documento</mat-label>
-              <input matInput formControlName="cc">
+              <input matInput formControlName="cc" />
             </mat-form-field>
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Sistema de Saúde</mat-label>
-              <input matInput formControlName="sistemaSaude">
+              <input matInput formControlName="sistemaSaude" />
             </mat-form-field>
           </div>
         </mat-card-content>
@@ -130,14 +144,16 @@
         </mat-card-header>
         <mat-card-content>
           <div class="checkbox-group">
-            <mat-checkbox formControlName="temAlergiaAlimentar">Possui alergias alimentares?</mat-checkbox>
+            <mat-checkbox formControlName="temAlergiaAlimentar"
+              >Possui alergias alimentares?</mat-checkbox
+            >
           </div>
 
           @if (inscricaoForm.get('saude.temAlergiaAlimentar')?.value) {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Quais?</mat-label>
-            <textarea matInput formControlName="detalheAlergiaAlimentar" rows="2"></textarea>
-          </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Quais?</mat-label>
+              <textarea matInput formControlName="detalheAlergiaAlimentar" rows="2"></textarea>
+            </mat-form-field>
           }
 
           <div class="checkbox-group">
@@ -145,13 +161,13 @@
           </div>
 
           @if (inscricaoForm.get('saude.temOutrasAlergias')?.value) {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Quais?</mat-label>
-            <textarea matInput formControlName="detalheOutrasAlergias" rows="2"></textarea>
-          </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Quais?</mat-label>
+              <textarea matInput formControlName="detalheOutrasAlergias" rows="2"></textarea>
+            </mat-form-field>
           }
 
-          <mat-form-field appearance="outline" class="full-width" style="margin-top: 20px;">
+          <mat-form-field appearance="outline" class="full-width" style="margin-top: 20px">
             <mat-label>Toma medicação regular?</mat-label>
             <mat-select formControlName="tomaMedicacao">
               <mat-option value="nao">Não</mat-option>
@@ -160,12 +176,11 @@
           </mat-form-field>
 
           @if (inscricaoForm.get('saude.tomaMedicacao')?.value === 'sim') {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Qual medicação e horário?</mat-label>
-            <textarea matInput formControlName="detalheMedicacao" rows="2"></textarea>
-          </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Qual medicação e horário?</mat-label>
+              <textarea matInput formControlName="detalheMedicacao" rows="2"></textarea>
+            </mat-form-field>
           }
-
         </mat-card-content>
       </mat-card>
 
@@ -179,47 +194,59 @@
         <mat-card-content>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nome Completo</mat-label>
-            <input matInput formControlName="nome">
+            <input matInput formControlName="nome" />
           </mat-form-field>
 
           <div class="row">
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Email</mat-label>
-              <input matInput formControlName="email" type="email" placeholder="exemplo@gmail.com">
+              <input
+                matInput
+                formControlName="email"
+                type="email"
+                placeholder="exemplo@gmail.com"
+              />
 
-              @if (inscricaoForm.get('ee.email')?.hasError('required') && inscricaoForm.get('ee.email')?.touched) {
-              <mat-error>
-                O email é obrigatório.
-              </mat-error>
-              }@else if (inscricaoForm.get('ee.email')?.hasError('email') && inscricaoForm.get('ee.email')?.touched) {
-              <mat-error>
-                Por favor, insira um email válido.
-              </mat-error>
+              @if (
+                inscricaoForm.get('ee.email')?.hasError('required') &&
+                inscricaoForm.get('ee.email')?.touched
+              ) {
+                <mat-error> O email é obrigatório. </mat-error>
+              } @else if (
+                inscricaoForm.get('ee.email')?.hasError('email') &&
+                inscricaoForm.get('ee.email')?.touched
+              ) {
+                <mat-error> Por favor, insira um email válido. </mat-error>
               }
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Telemóvel</mat-label>
-              <input matInput formControlName="telefone" maxlength="9" (keypress)="permitirApenasNumeros($event)"
-                inputmode="numeric">
+              <input
+                matInput
+                formControlName="telefone"
+                maxlength="9"
+                (keypress)="permitirApenasNumeros($event)"
+                inputmode="numeric"
+              />
 
-              @if (inscricaoForm.get('ee.telefone')?.hasError('required') && inscricaoForm.get('ee.telefone')?.touched)
-              {
-              <mat-error>
-                O telemóvel é obrigatório.
-              </mat-error>
-              }@else if (inscricaoForm.get('ee.telefone')?.hasError('pattern') &&
-              inscricaoForm.get('ee.telefone')?.touched) {
-              <mat-error>
-                Deve conter 9 dígitos numéricos.
-              </mat-error>
+              @if (
+                inscricaoForm.get('ee.telefone')?.hasError('required') &&
+                inscricaoForm.get('ee.telefone')?.touched
+              ) {
+                <mat-error> O telemóvel é obrigatório. </mat-error>
+              } @else if (
+                inscricaoForm.get('ee.telefone')?.hasError('pattern') &&
+                inscricaoForm.get('ee.telefone')?.touched
+              ) {
+                <mat-error> Deve conter 9 dígitos numéricos. </mat-error>
               }
             </mat-form-field>
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Contacto de Emergência</mat-label>
-            <input matInput formControlName="contactoEmergencia">
+            <input matInput formControlName="contactoEmergencia" />
           </mat-form-field>
         </mat-card-content>
       </mat-card>
@@ -236,19 +263,43 @@
             <mat-label>Transporte</mat-label>
             <mat-select formControlName="transporte">
               @for (opcao of opcoesTransporte; track $index) {
-              <mat-option [value]="opcao.valor">
-                {{ opcao.label }}
-              </mat-option>
+                <mat-option [value]="opcao.valor">
+                  {{ opcao.label }}
+                </mat-option>
               }
             </mat-select>
           </mat-form-field>
 
           <div class="checkbox-group">
-            <mat-checkbox formControlName="autorizaFotoVideo">Autorizo captação de imagem nas atividades</mat-checkbox>
+            <mat-checkbox formControlName="autorizaFotoVideo"
+              >Autorizo captação de imagem nas atividades</mat-checkbox
+            >
           </div>
           <div class="checkbox-group">
-            <mat-checkbox formControlName="politicaPrivacidade">Aceito a política de privacidade</mat-checkbox>
+            <mat-checkbox formControlName="politicaPrivacidade"
+              >Aceito a política de privacidade</mat-checkbox
+            >
           </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>notes</mat-icon>
+            Observações
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Observações (opcional)</mat-label>
+            <textarea
+              matInput
+              formControlName="observacoes"
+              rows="4"
+              placeholder="Ex: Gostaríamos que ficasse no mesmo grupo que o João Silva..."
+            ></textarea>
+          </mat-form-field>
         </mat-card-content>
       </mat-card>
 
@@ -260,54 +311,55 @@
 
         <button mat-raised-button type="submit" [disabled]="!inscricaoForm.valid || isSubmitting">
           @if (!isSubmitting) {
-          <span>GARANTIR VAGA</span>
-          }@else {
-          <span>A ENVIAR...</span>
+            <span>GARANTIR VAGA</span>
+          } @else {
+            <span>A ENVIAR...</span>
           }
         </button>
       </div>
-
     </form>
   </div>
 </div>
 
 @if (mostrarSucesso) {
-<div class="success-overlay">
-  <div class="success-content">
-    <div class="checkmark-wrapper">
-      <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-        <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
-        <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
-      </svg>
-      <div class="confetti"></div>
-      <div class="confetti"></div>
-      <div class="confetti"></div>
-      <div class="confetti"></div>
-      <div class="confetti"></div>
-    </div>
-
-    <h1>Inscrição Confirmada!</h1>
-    <p class="subtitle">A vaga está reservada. Agora só falta o pagamento.</p>
-
-    <div class="payment-card">
-      <div class="pay-row">
-        <span>Valor Total:</span>
-        <span class="price">{{ valor_total }}€</span>
+  <div class="success-overlay">
+    <div class="success-content">
+      <div class="checkmark-wrapper">
+        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+          <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+          <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+        </svg>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
+        <div class="confetti"></div>
       </div>
-      <div class="divider"></div>
-      <div class="iban-box">
-        <small>IBAN para transferência</small>
-        <div class="iban-number">PT50 0045 5242 4038 3330 5293 2</div>
-        <small class="note">Por favor, envia o comprovativo para <strong>info@quintadaescola.com</strong> com o nome da
-          criança.</small>
-      </div>
-    </div>
 
-    <div class="success-actions">
-      <button mat-flat-button color="primary" class="btn-big" (click)="novaInscricao()">
-        <mat-icon>person_add</mat-icon> Inscrever Irmão/Amigo
-      </button>
+      <h1>Inscrição Confirmada!</h1>
+      <p class="subtitle">A vaga está reservada. Agora só falta o pagamento.</p>
+
+      <div class="payment-card">
+        <div class="pay-row">
+          <span>Valor Total:</span>
+          <span class="price">{{ valor_total }}€</span>
+        </div>
+        <div class="divider"></div>
+        <div class="iban-box">
+          <small>IBAN para transferência</small>
+          <div class="iban-number">PT50 0045 5242 4038 3330 5293 2</div>
+          <small class="note"
+            >Por favor, envia o comprovativo para <strong>info@quintadaescola.com</strong> com o
+            nome da criança.</small
+          >
+        </div>
+      </div>
+
+      <div class="success-actions">
+        <button mat-flat-button color="primary" class="btn-big" (click)="novaInscricao()">
+          <mat-icon>person_add</mat-icon> Inscrever Irmão/Amigo
+        </button>
+      </div>
     </div>
   </div>
-</div>
 }

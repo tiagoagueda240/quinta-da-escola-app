@@ -1,13 +1,33 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-html, body { 
-  height: 100%; 
-  margin: 0; 
-  background-color: #f0f4f1; 
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background-color: #f0f4f1;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #2e7d32; 
+  color: #2e7d32;
+}
+
+/* Turnos esgotados no select de inscrição */
+.cdk-overlay-container .mat-mdc-option.option-esgotado,
+.mat-mdc-option.option-esgotado {
+  opacity: 1 !important;
+  pointer-events: none;
+  cursor: default;
+}
+.cdk-overlay-container .mat-mdc-option.option-esgotado .mdc-list-item__primary-text,
+.mat-mdc-option.option-esgotado .mdc-list-item__primary-text {
+  color: #c62828 !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
 }

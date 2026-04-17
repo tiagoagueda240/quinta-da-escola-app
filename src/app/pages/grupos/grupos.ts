@@ -1,25 +1,30 @@
-import { Component, OnInit, inject, ViewChild, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { InscricaoService } from '../../services/inscricao.service';
-import { MonitorService } from '../../services/monitor.service';
-import { LogisticaService } from '../../services/logistica.service';
+import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Inscricao } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
+import { InscricaoService } from '../../services/inscricao.service';
+import { LogisticaService } from '../../services/logistica.service';
+import { MonitorService } from '../../services/monitor.service';
 
 // Material & CDK
+import {
+  CdkDragDrop,
+  DragDropModule,
+  moveItemInArray,
+  transferArrayItem,
+} from '@angular/cdk/drag-drop';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatMenuModule } from '@angular/material/menu';
-import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -43,13 +48,24 @@ interface ColunaGrupo {
   selector: 'app-grupos',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, ReactiveFormsModule, MatButtonModule, MatIconModule,
-    MatInputModule, MatSelectModule, MatTabsModule, MatSnackBarModule,
-    MatTooltipModule, MatDialogModule, MatChipsModule, DragDropModule,
-    MatAutocompleteModule, MatMenuModule
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatTabsModule,
+    MatSnackBarModule,
+    MatTooltipModule,
+    MatDialogModule,
+    MatChipsModule,
+    DragDropModule,
+    MatAutocompleteModule,
+    MatMenuModule,
   ],
   templateUrl: './grupos.html',
-  styleUrls: ['./grupos.scss']
+  styleUrls: ['./grupos.scss'],
 })
 export class GruposComponent implements OnInit {
   private inscricaoService = inject(InscricaoService);
@@ -77,7 +93,9 @@ export class GruposComponent implements OnInit {
   todosOsTurnosConfig: any = null;
   listaTurnos: string[] = [];
 
-  qtdQuartosM = 2; qtdQuartosF = 3; qtdGruposAtiv = 5;
+  qtdQuartosM = 2;
+  qtdQuartosF = 3;
+  qtdGruposAtiv = 5;
 
   colunasCamaratas: ColunaGrupo[] = [];
   colunasAtividades: ColunaGrupo[] = [];
@@ -85,7 +103,7 @@ export class GruposComponent implements OnInit {
 
   configQuinta = {
     ladoEsquerdo: 'M' as 'M' | 'F',
-    ladoDireito: 'F' as 'M' | 'F'
+    ladoDireito: 'F' as 'M' | 'F',
   };
 
   layoutAtualBD: any[] = [];
@@ -95,10 +113,10 @@ export class GruposComponent implements OnInit {
     this.carregarDadosIniciais();
     this.monitoresFiltrados = this.controlMonitor.valueChanges.pipe(
       startWith(''),
-      map(value => {
+      map((value) => {
         const name = typeof value === 'string' ? value : '';
         return this._filterMonitores(name);
-      })
+      }),
     );
   }
 
@@ -116,12 +134,12 @@ export class GruposComponent implements OnInit {
   }
 
   carregarDados() {
-    this.inscricaoService.getInscricoes().subscribe(dados => {
+    this.inscricaoService.getInscricoes().subscribe((dados) => {
       this.todosRegistos = dados;
       if (this.turnoSelecionado) this.atualizarVista();
     });
 
-    this.monitorService.getMonitores().subscribe(monitores => {
+    this.monitorService.getMonitores().subscribe((monitores) => {
       this.monitoresGlobais = monitores;
       this.vincularMonitoresAoTurno();
     });
@@ -129,9 +147,7 @@ export class GruposComponent implements OnInit {
 
   atualizarListaTurnos() {
     const turnosDoLocal = this.todosOsTurnosConfig[this.filtroLocal] || [];
-    this.listaTurnos = turnosDoLocal
-      .filter((t: any) => t.ativo === true)
-      .map((t: any) => t.nome);
+    this.listaTurnos = turnosDoLocal.map((t: any) => t.nome);
 
     this.turnoSelecionado = '';
     this.colunasCamaratas = [];
@@ -141,9 +157,10 @@ export class GruposComponent implements OnInit {
 
   private _filterMonitores(value: string): Monitor[] {
     const filterValue = value.toLowerCase();
-    return this.monitoresGlobais.filter(m =>
-      (m.nomeMonitor || '').toLowerCase().includes(filterValue) &&
-      !this.equipaMonitores.includes(m.nomeMonitor)
+    return this.monitoresGlobais.filter(
+      (m) =>
+        (m.nomeMonitor || '').toLowerCase().includes(filterValue) &&
+        !this.equipaMonitores.includes(m.nomeMonitor),
     );
   }
 
@@ -153,8 +170,8 @@ export class GruposComponent implements OnInit {
       return;
     }
     this.equipaMonitores = this.monitoresGlobais
-      .filter(m => m.turnosAtribuidos?.includes(this.turnoSelecionado))
-      .map(m => m.nomeMonitor)
+      .filter((m) => m.turnosAtribuidos?.includes(this.turnoSelecionado))
+      .map((m) => m.nomeMonitor)
       .sort();
   }
 
@@ -169,12 +186,15 @@ export class GruposComponent implements OnInit {
     }
 
     try {
-      const logistica = await this.logisticaService.getLogistica(this.turnoSelecionado, this.filtroLocal);
+      const logistica = await this.logisticaService.getLogistica(
+        this.turnoSelecionado,
+        this.filtroLocal,
+      );
 
       this.colunasCamaratas = [];
       this.colunasAtividades = [];
 
-      logistica.forEach(item => {
+      logistica.forEach((item) => {
         const col: ColunaGrupo = {
           id: 'db-' + item.id,
           dbId: item.id,
@@ -184,12 +204,11 @@ export class GruposComponent implements OnInit {
           genero: item.genero,
           capacidade: item.capacidade,
           lista: [],
-          lado: this.getLadoPeloNome(item.titulo)
+          lado: this.getLadoPeloNome(item.titulo),
         };
         if (item.tipo === 'camarata') this.colunasCamaratas.push(col);
         else this.colunasAtividades.push(col);
       });
-
     } catch (e) {
       console.error('Erro ao carregar logística', e);
       this.snackBar.open('Erro ao carregar estrutura do turno', 'Fechar');
@@ -199,7 +218,7 @@ export class GruposComponent implements OnInit {
 
   getLadoPeloNome(nome: string): 'Esq' | 'Dir' | undefined {
     if (!this.layoutAtualBD) return undefined;
-    const match = this.layoutAtualBD.find(q => q.titulo === nome);
+    const match = this.layoutAtualBD.find((q) => q.titulo === nome);
     return match ? match.lado : undefined;
   }
 
@@ -211,25 +230,30 @@ export class GruposComponent implements OnInit {
   atualizarVista() {
     if (!this.turnoSelecionado) return;
 
-    const mapaLocais: any = { 'quinta': 'Quinta', 'costaCaparica': 'Costa da Caparica', 'quiaios': 'Quiaios' };
+    const mapaLocais: any = {
+      quinta: 'Quinta',
+      costaCaparica: 'Costa da Caparica',
+      quiaios: 'Quiaios',
+    };
     const localDbFiltro = (mapaLocais[this.filtroLocal] || 'Quinta').toLowerCase();
 
-    const criancasTurno = this.todosRegistos.filter(i => {
+    const criancasTurno = this.todosRegistos.filter((i) => {
       const localRegisto = (i.local || '').toLowerCase();
       // Assim apanha quer esteja gravado como "quinta", "Quinta", "costaCaparica" ou "Costa da Caparica"
-      const matchLocal = (localRegisto === localDbFiltro || localRegisto === this.filtroLocal.toLowerCase());
+      const matchLocal =
+        localRegisto === localDbFiltro || localRegisto === this.filtroLocal.toLowerCase();
 
       return matchLocal && i.turnoEscolhido === this.turnoSelecionado;
     });
 
-    [...this.colunasCamaratas, ...this.colunasAtividades].forEach(c => c.lista = []);
+    [...this.colunasCamaratas, ...this.colunasAtividades].forEach((c) => (c.lista = []));
     const atribuidosIds = new Set<string>();
 
-    criancasTurno.forEach(crianca => {
+    criancasTurno.forEach((crianca) => {
       let atribuida = false;
 
       if (crianca.camarata_id) {
-        const col = this.colunasCamaratas.find(c => c.dbId == crianca.camarata_id);
+        const col = this.colunasCamaratas.find((c) => c.dbId == crianca.camarata_id);
         if (col) {
           col.lista.push(crianca);
           atribuida = true;
@@ -237,55 +261,62 @@ export class GruposComponent implements OnInit {
       }
 
       if (this.modoVisualizacao === 'atividade' && crianca.grupo_id) {
-        const col = this.colunasAtividades.find(c => c.dbId == crianca.grupo_id);
+        const col = this.colunasAtividades.find((c) => c.dbId == crianca.grupo_id);
         if (col) {
           col.lista.push(crianca);
         }
       }
 
-      const temQuarto = crianca.camarata_id && this.colunasCamaratas.some(c => c.dbId == crianca.camarata_id);
-      const temGrupo = crianca.grupo_id && this.colunasAtividades.some(c => c.dbId == crianca.grupo_id);
+      const temQuarto =
+        crianca.camarata_id && this.colunasCamaratas.some((c) => c.dbId == crianca.camarata_id);
+      const temGrupo =
+        crianca.grupo_id && this.colunasAtividades.some((c) => c.dbId == crianca.grupo_id);
 
       if (this.modoVisualizacao === 'camarata' && temQuarto) atribuidosIds.add(crianca.id!);
       if (this.modoVisualizacao === 'atividade' && temGrupo) atribuidosIds.add(crianca.id!);
     });
 
-    this.poolVisual = criancasTurno.filter(k => k.id && !atribuidosIds.has(k.id));
+    this.poolVisual = criancasTurno.filter((k) => k.id && !atribuidosIds.has(k.id));
   }
 
   inicializarQuartos() {
-    if (this.colunasCamaratas.length > 0 && !confirm('Reiniciar estrutura? Dados não guardados serão perdidos.')) return;
+    if (
+      this.colunasCamaratas.length > 0 &&
+      !confirm('Reiniciar estrutura? Dados não guardados serão perdidos.')
+    )
+      return;
 
-    this.colunasCamaratas.forEach(col => this.poolVisual.push(...col.lista));
+    this.colunasCamaratas.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasCamaratas = [];
 
     if (this.layoutAtualBD && this.layoutAtualBD.length > 0) {
       this.quartosDisponiveisSelect = this.layoutAtualBD
-        .filter(item => item.tipo === 'room')
-        .map(q => ({ ...q, selecionado: false }));
+        .filter((item) => item.tipo === 'room')
+        .map((q) => ({ ...q, selecionado: false }));
 
       this.dialog.open(this.dialogSelecaoQuartos, {
         width: '95vw',
         maxWidth: '98vw',
-        panelClass: 'full-width-dialog'
+        panelClass: 'full-width-dialog',
       });
-
     } else {
-      for (let i = 1; i <= this.qtdQuartosM; i++) this.adicionarColuna('camarata', 'M', `Quarto M ${i}`);
-      for (let i = 1; i <= this.qtdQuartosF; i++) this.adicionarColuna('camarata', 'F', `Quarto F ${i}`);
+      for (let i = 1; i <= this.qtdQuartosM; i++)
+        this.adicionarColuna('camarata', 'M', `Quarto M ${i}`);
+      for (let i = 1; i <= this.qtdQuartosF; i++)
+        this.adicionarColuna('camarata', 'F', `Quarto F ${i}`);
       this.atualizarVista();
     }
   }
 
   confirmarSelecaoQuartos() {
-    const selecionados = this.quartosDisponiveisSelect.filter(q => q.selecionado);
+    const selecionados = this.quartosDisponiveisSelect.filter((q) => q.selecionado);
 
     if (selecionados.length === 0) {
       this.snackBar.open('Selecione pelo menos um quarto.', 'Erro');
       return;
     }
 
-    selecionados.forEach(q => {
+    selecionados.forEach((q) => {
       let generoDestino: 'M' | 'F' | 'Misto' = 'Misto';
       if (q.lado === 'Esq') {
         generoDestino = this.configQuinta.ladoEsquerdo;
@@ -301,7 +332,7 @@ export class GruposComponent implements OnInit {
         capacidade: q.capacidade,
         lado: q.lado as 'Esq' | 'Dir',
         genero: generoDestino,
-        lista: []
+        lista: [],
       });
     });
 
@@ -313,13 +344,13 @@ export class GruposComponent implements OnInit {
   getGridStyle(item: any): any {
     return {
       'grid-column': `${item.gCol} / span ${item.gSpan}`,
-      'grid-row': `${item.gRow}`
+      'grid-row': `${item.gRow}`,
     };
   }
 
   get capacidadeSelecionadaTotal() {
     return this.quartosDisponiveisSelect
-      .filter(q => q.selecionado)
+      .filter((q) => q.selecionado)
       .reduce((acc, q) => acc + q.capacidade, 0);
   }
 
@@ -348,20 +379,23 @@ export class GruposComponent implements OnInit {
     this.trocarConfiguracaoLados();
 
     let conflitos = 0;
-    this.colunasCamaratas.forEach(col => {
+    this.colunasCamaratas.forEach((col) => {
       if (col.lado === 'Esq') col.genero = this.configQuinta.ladoEsquerdo;
       if (col.lado === 'Dir') col.genero = this.configQuinta.ladoDireito;
 
-      if (col.lista.some(c => this.getGenero(c) !== col.genero)) conflitos++;
+      if (col.lista.some((c) => this.getGenero(c) !== col.genero)) conflitos++;
     });
 
-    if (conflitos > 0) this.snackBar.open(`Atenção: ${conflitos} quartos com género trocado!`, 'OK', { duration: 5000 });
+    if (conflitos > 0)
+      this.snackBar.open(`Atenção: ${conflitos} quartos com género trocado!`, 'OK', {
+        duration: 5000,
+      });
     else this.snackBar.open(`Lados trocados!`, 'OK', { duration: 2000 });
   }
 
   gerarGruposAtividade() {
     if (this.colunasAtividades.length > 0 && !confirm('Reiniciar grupos?')) return;
-    this.colunasAtividades.forEach(col => this.poolVisual.push(...col.lista));
+    this.colunasAtividades.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasAtividades = [];
 
     for (let i = 1; i <= this.qtdGruposAtiv; i++) {
@@ -374,13 +408,24 @@ export class GruposComponent implements OnInit {
   adicionarColunaIndividual(tipo: 'camarata' | 'atividade', genero: 'M' | 'F' | 'Misto' = 'Misto') {
     const lista = tipo === 'camarata' ? this.colunasCamaratas : this.colunasAtividades;
     const num = lista.length + 1;
-    const titulo = tipo === 'camarata' ? `Novo Quarto ${genero === 'M' ? 'M' : 'F'} ${num}` : `Novo Grupo ${num}`;
+    const titulo =
+      tipo === 'camarata'
+        ? `Novo Quarto ${genero === 'M' ? 'M' : 'F'} ${num}`
+        : `Novo Grupo ${num}`;
     const cap = tipo === 'camarata' ? 10 : 12;
     this.adicionarColuna(tipo, genero, titulo, cap);
-    setTimeout(() => { const c = document.querySelector('.columns-area'); if (c) c.scrollLeft = c.scrollWidth; }, 100);
+    setTimeout(() => {
+      const c = document.querySelector('.columns-area');
+      if (c) c.scrollLeft = c.scrollWidth;
+    }, 100);
   }
 
-  private adicionarColuna(tipo: 'camarata' | 'atividade', genero: 'M' | 'F' | 'Misto', titulo: string, cap: number = 10) {
+  private adicionarColuna(
+    tipo: 'camarata' | 'atividade',
+    genero: 'M' | 'F' | 'Misto',
+    titulo: string,
+    cap: number = 10,
+  ) {
     const novaColuna: ColunaGrupo = {
       id: `temp-${tipo}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       titulo: titulo,
@@ -388,7 +433,7 @@ export class GruposComponent implements OnInit {
       tipo: tipo,
       genero: genero,
       capacidade: cap,
-      lista: []
+      lista: [],
     };
     if (tipo === 'camarata') this.colunasCamaratas.push(novaColuna);
     else this.colunasAtividades.push(novaColuna);
@@ -396,45 +441,51 @@ export class GruposComponent implements OnInit {
 
   removerColuna(col: ColunaGrupo) {
     if (col.lista.length > 0) {
-      if (!confirm(`Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`)) return;
+      if (
+        !confirm(
+          `Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`,
+        )
+      )
+        return;
       this.poolVisual.push(...col.lista);
     }
-    if (col.tipo === 'camarata') this.colunasCamaratas = this.colunasCamaratas.filter(c => c.id !== col.id);
-    else this.colunasAtividades = this.colunasAtividades.filter(c => c.id !== col.id);
+    if (col.tipo === 'camarata')
+      this.colunasCamaratas = this.colunasCamaratas.filter((c) => c.id !== col.id);
+    else this.colunasAtividades = this.colunasAtividades.filter((c) => c.id !== col.id);
   }
 
   async guardarAlteracoes() {
     this.snackBar.open('A guardar...', '');
 
-    const itensLogistica = [...this.colunasCamaratas, ...this.colunasAtividades].map(c => ({
+    const itensLogistica = [...this.colunasCamaratas, ...this.colunasAtividades].map((c) => ({
       id: c.id,
       dbId: c.dbId,
       tipo: c.tipo,
       titulo: c.titulo,
       monitor: c.monitor,
       capacidade: c.capacidade,
-      genero: c.genero
+      genero: c.genero,
     }));
 
     const payloadEstrutura = {
       turno: this.turnoSelecionado,
       local: this.filtroLocal,
-      items: itensLogistica
+      items: itensLogistica,
     };
 
     try {
       const res = await this.logisticaService.saveLogistica(payloadEstrutura);
       const idsMap = res.ids;
 
-      [...this.colunasCamaratas, ...this.colunasAtividades].forEach(col => {
+      [...this.colunasCamaratas, ...this.colunasAtividades].forEach((col) => {
         if (idsMap[col.id]) col.dbId = idsMap[col.id];
       });
 
       const updatesCriancas: any[] = [];
 
-      this.colunasCamaratas.forEach(col => {
+      this.colunasCamaratas.forEach((col) => {
         if (col.dbId) {
-          col.lista.forEach(crianca => {
+          col.lista.forEach((crianca) => {
             if (crianca.camarata_id != col.dbId) {
               updatesCriancas.push({ id: crianca.id!, data: { camarata_id: col.dbId } });
               crianca.camarata_id = col.dbId;
@@ -443,9 +494,9 @@ export class GruposComponent implements OnInit {
         }
       });
 
-      this.colunasAtividades.forEach(col => {
+      this.colunasAtividades.forEach((col) => {
         if (col.dbId) {
-          col.lista.forEach(crianca => {
+          col.lista.forEach((crianca) => {
             if (crianca.grupo_id != col.dbId) {
               updatesCriancas.push({ id: crianca.id!, data: { grupo_id: col.dbId } });
               crianca.grupo_id = col.dbId;
@@ -454,7 +505,7 @@ export class GruposComponent implements OnInit {
         }
       });
 
-      this.poolVisual.forEach(crianca => {
+      this.poolVisual.forEach((crianca) => {
         if (this.modoVisualizacao === 'camarata' && crianca.camarata_id) {
           updatesCriancas.push({ id: crianca.id!, data: { camarata_id: null } });
           crianca.camarata_id = undefined;
@@ -471,7 +522,6 @@ export class GruposComponent implements OnInit {
       } else {
         this.snackBar.open('Estrutura guardada.', 'OK', { duration: 3000 });
       }
-
     } catch (e) {
       console.error(e);
       this.snackBar.open('Erro ao gravar.', 'Fechar');
@@ -483,7 +533,9 @@ export class GruposComponent implements OnInit {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
       const item = event.previousContainer.data[event.previousIndex];
-      const destCol = [...this.colunasCamaratas, ...this.colunasAtividades].find(c => c.lista === event.container.data);
+      const destCol = [...this.colunasCamaratas, ...this.colunasAtividades].find(
+        (c) => c.lista === event.container.data,
+      );
 
       if (destCol) {
         if (destCol.lista.length >= destCol.capacidade) {
@@ -491,11 +543,20 @@ export class GruposComponent implements OnInit {
           return;
         }
         if (destCol.genero !== 'Misto' && destCol.genero !== this.getGenero(item)) {
-          this.snackBar.open(`Este quarto é apenas para ${destCol.genero === 'M' ? 'Rapazes' : 'Raparigas'}`, 'X', { duration: 2000 });
+          this.snackBar.open(
+            `Este quarto é apenas para ${destCol.genero === 'M' ? 'Rapazes' : 'Raparigas'}`,
+            'X',
+            { duration: 2000 },
+          );
           return;
         }
       }
-      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+      transferArrayItem(
+        event.previousContainer.data,
+        event.container.data,
+        event.previousIndex,
+        event.currentIndex,
+      );
     }
   }
 
@@ -530,9 +591,8 @@ export class GruposComponent implements OnInit {
   // Verifica se uma dada criança tem um irmão na lista fornecida
   temIrmaoNaLista(crianca: Inscricao, lista: Inscricao[]): boolean {
     const meuFamilyId = this.getFamilyId(crianca);
-    return lista.some(outra => this.getFamilyId(outra) === meuFamilyId);
+    return lista.some((outra) => this.getFamilyId(outra) === meuFamilyId);
   }
-
 
   // =========================================================================
   // --- LÓGICAS DE DISTRIBUIÇÃO ---
@@ -542,17 +602,23 @@ export class GruposComponent implements OnInit {
     if (this.colunasCamaratas.length === 0) return;
 
     const rapazes = this.poolVisual
-      .filter(i => this.getGenero(i) === 'M')
+      .filter((i) => this.getGenero(i) === 'M')
       .sort((a, b) => this.getIdade(a) - this.getIdade(b));
 
     const raparigas = this.poolVisual
-      .filter(i => this.getGenero(i) === 'F')
+      .filter((i) => this.getGenero(i) === 'F')
       .sort((a, b) => this.getIdade(a) - this.getIdade(b));
 
     this.poolVisual = [];
 
-    this._distribuirAgrupadoEEquilibrado(rapazes, this.colunasCamaratas.filter(c => c.genero === 'M'));
-    this._distribuirAgrupadoEEquilibrado(raparigas, this.colunasCamaratas.filter(c => c.genero === 'F'));
+    this._distribuirAgrupadoEEquilibrado(
+      rapazes,
+      this.colunasCamaratas.filter((c) => c.genero === 'M'),
+    );
+    this._distribuirAgrupadoEEquilibrado(
+      raparigas,
+      this.colunasCamaratas.filter((c) => c.genero === 'F'),
+    );
   }
 
   distribuirNasAtividades() {
@@ -560,11 +626,11 @@ export class GruposComponent implements OnInit {
 
     // 1º Passo: Separar por género e ordenar por idade
     const rapazes = this.poolVisual
-      .filter(i => this.getGenero(i) === 'M')
+      .filter((i) => this.getGenero(i) === 'M')
       .sort((a, b) => this.getIdade(a) - this.getIdade(b));
 
     const raparigas = this.poolVisual
-      .filter(i => this.getGenero(i) === 'F')
+      .filter((i) => this.getGenero(i) === 'F')
       .sort((a, b) => this.getIdade(a) - this.getIdade(b));
 
     this.poolVisual = [];
@@ -574,14 +640,17 @@ export class GruposComponent implements OnInit {
     this._distribuirAVez(raparigas, this.colunasAtividades);
 
     // 3º Passo (NOVO): Ordenar cada grupo final por idade
-    this.colunasAtividades.forEach(grupo => {
+    this.colunasAtividades.forEach((grupo) => {
       grupo.lista.sort((a, b) => this.getIdade(a) - this.getIdade(b));
     });
   }
 
   // --- ALGORITMO CAMARATAS (Equilíbrio Numérico, Idades Crescentes, Separação de Irmãos) ---
   private _distribuirAgrupadoEEquilibrado(lista: Inscricao[], alvos: ColunaGrupo[]) {
-    if (alvos.length === 0) { this.poolVisual.push(...lista); return; }
+    if (alvos.length === 0) {
+      this.poolVisual.push(...lista);
+      return;
+    }
 
     let remainingKids = [...lista];
 
@@ -602,7 +671,7 @@ export class GruposComponent implements OnInit {
       let amountToTake = Math.min(targetCount, espacoLivre);
 
       if (amountToTake > 0) {
-        // Nova Lógica Anti-Irmãos: Em vez de cortar a lista cegamente, 
+        // Nova Lógica Anti-Irmãos: Em vez de cortar a lista cegamente,
         // vamos procurar os "amountToTake" primeiros que NÃO tenham irmãos já neste quarto
         const toAdd: Inscricao[] = [];
         const indicesToRemove: number[] = [];
@@ -611,7 +680,10 @@ export class GruposComponent implements OnInit {
           const candidato = remainingKids[k];
 
           // Verifica se já adicionámos um irmão ao quarto atual
-          if (!this.temIrmaoNaLista(candidato, quarto.lista) && !this.temIrmaoNaLista(candidato, toAdd)) {
+          if (
+            !this.temIrmaoNaLista(candidato, quarto.lista) &&
+            !this.temIrmaoNaLista(candidato, toAdd)
+          ) {
             toAdd.push(candidato);
             indicesToRemove.push(k);
           }
@@ -644,7 +716,7 @@ export class GruposComponent implements OnInit {
   private _distribuirAVez(lista: Inscricao[], alvos: ColunaGrupo[]) {
     lista.forEach((c) => {
       // 1. Encontra os grupos que ainda têm capacidade
-      let gruposComVaga = alvos.filter(a => a.lista.length < a.capacidade);
+      let gruposComVaga = alvos.filter((a) => a.lista.length < a.capacidade);
 
       // Se estiverem todos cheios, a criança volta para a lista de espera
       if (gruposComVaga.length === 0) {
@@ -666,7 +738,7 @@ export class GruposComponent implements OnInit {
         }
       }
 
-      // 4. PLANO B: Se todos os grupos com vaga já tiverem lá um irmão, 
+      // 4. PLANO B: Se todos os grupos com vaga já tiverem lá um irmão,
       // somos obrigados a juntá-los. Coloca no grupo que estiver mais vazio de todos.
       if (!placed) {
         gruposComVaga[0].lista.push(c);
@@ -685,50 +757,68 @@ export class GruposComponent implements OnInit {
   }
 
   removerMonitorDaEquipa(nome: string) {
-    const estaOcupado = [...this.colunasCamaratas, ...this.colunasAtividades].some(c => c.monitor === nome);
+    const estaOcupado = [...this.colunasCamaratas, ...this.colunasAtividades].some(
+      (c) => c.monitor === nome,
+    );
     if (estaOcupado) {
       this.snackBar.open('Remova o monitor dos quartos primeiro!', 'Aviso');
       return;
     }
-    this.equipaMonitores = this.equipaMonitores.filter(m => m !== nome);
+    this.equipaMonitores = this.equipaMonitores.filter((m) => m !== nome);
   }
 
-  abrirDialogEquipa() { this.exibirBusca = false; this.dialog.open(this.dialogGerirEquipa, { width: '450px' }); }
-  ajustarCapacidade(col: ColunaGrupo, delta: number) { if (col.capacidade + delta > 0) col.capacidade += delta; }
+  abrirDialogEquipa() {
+    this.exibirBusca = false;
+    this.dialog.open(this.dialogGerirEquipa, { width: '450px' });
+  }
+  ajustarCapacidade(col: ColunaGrupo, delta: number) {
+    if (col.capacidade + delta > 0) col.capacidade += delta;
+  }
   isMonitorDisponivel(n: string, c: ColunaGrupo): boolean {
-    const lista = this.modoVisualizacao === 'camarata' ? this.colunasCamaratas : this.colunasAtividades;
-    return !lista.some(x => x.id !== c.id && x.monitor === n);
+    const lista =
+      this.modoVisualizacao === 'camarata' ? this.colunasCamaratas : this.colunasAtividades;
+    return !lista.some((x) => x.id !== c.id && x.monitor === n);
   }
 
-  getGenero(i: Inscricao): 'M' | 'F' { return (i.participante as any).genero || 'M'; }
+  getGenero(i: Inscricao): 'M' | 'F' {
+    return (i.participante as any).genero || 'M';
+  }
   getIdade(i: Inscricao): number {
     if (!i.participante.dataNascimento) return 0;
     const born = new Date(i.participante.dataNascimento);
     return Math.floor((Date.now() - born.getTime()) / 31557600000);
   }
 
-  get colunasAtivas(): ColunaGrupo[] { return this.modoVisualizacao === 'camarata' ? this.colunasCamaratas : this.colunasAtividades; }
+  get colunasAtivas(): ColunaGrupo[] {
+    return this.modoVisualizacao === 'camarata' ? this.colunasCamaratas : this.colunasAtividades;
+  }
 
   imprimirFichaMonitor(nome: string) {
     if (!nome) return;
     const doc = new jsPDF();
-    doc.setFontSize(16); doc.text(`Monitor: ${nome}`, 14, 20);
-    const dados = this.colunasAtivas.find(c => c.monitor === nome)?.lista || [];
+    doc.setFontSize(16);
+    doc.text(`Monitor: ${nome}`, 14, 20);
+    const dados = this.colunasAtivas.find((c) => c.monitor === nome)?.lista || [];
     autoTable(doc, {
       head: [['Nome', 'Idade', 'Alergias', 'Medicação']],
-      body: dados.map(d => [d.participante.nomeCompleto, this.getIdade(d) + ' anos', d.saude.detalheAlergiaAlimentar || '-', d.saude.detalheMedicacao || '-']),
-      startY: 30
+      body: dados.map((d) => [
+        d.participante.nomeCompleto,
+        this.getIdade(d) + ' anos',
+        d.saude.detalheAlergiaAlimentar || '-',
+        d.saude.detalheMedicacao || '-',
+      ]),
+      startY: 30,
     });
     doc.save(`Ficha_${nome}.pdf`);
   }
 
   isRoomSelected(nomeTitulo: string): boolean {
-    const room = this.quartosDisponiveisSelect.find(q => q.titulo === nomeTitulo);
+    const room = this.quartosDisponiveisSelect.find((q) => q.titulo === nomeTitulo);
     return room ? room.selecionado : false;
   }
 
   toggleRoom(nomeTitulo: string) {
-    const room = this.quartosDisponiveisSelect.find(q => q.titulo === nomeTitulo);
+    const room = this.quartosDisponiveisSelect.find((q) => q.titulo === nomeTitulo);
     if (room) {
       room.selecionado = !room.selecionado;
     }
