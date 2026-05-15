@@ -45,6 +45,9 @@
     "xlsx-js-style": "^1.2.0",
     "zone.js": "~0.15.0"
   },
+  "overrides": {
+    "@angular/platform-browser-dynamic": "20.3.16"
+  },
   "devDependencies": {
     "@angular/build": "^20.3.2",
     "@angular/cli": "^20.3.2",
