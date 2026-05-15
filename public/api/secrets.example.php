@@ -4,10 +4,10 @@
 // NUNCA commitar o secrets.php (está no .gitignore)
 
 define('DB_HOST',      'localhost');
-define('DB_USER',      'db_user');
-define('DB_PASS',      'db_password');
-define('DB_NAME_PROD', 'quinta_app_turnos');
-define('DB_NAME_DEV',  'quinta_app_turnos-pre');
+define('DB_USER',      'quint122_admin');
+define('DB_PASS',      'senha_admin_site_app!turnos');
+define('DB_NAME_PROD', 'quint122_admin');
+define('DB_NAME_DEV',  'senha_admin_site_app!turnos');
 
 // Gerar um novo segredo com: php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
-define('JWT_SECRET', 'mudar_este_valor');
+define('JWT_SECRET', 'UOsuINsbZGyf2GK/ZAOLl49QXOzrMb4I/F4fmDPa8yw=');
