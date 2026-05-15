@@ -2,10 +2,6 @@
 // api/inscricoes.php
 require 'config.php';
 
-// Ativar reporte de erros para ajudar no debug (podes comentar isto depois)
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
-
 $method = $_SERVER['REQUEST_METHOD'];
 $acao = $_GET['acao'] ?? 'listar';
 
@@ -215,7 +211,8 @@ if ($method === 'GET') {
 
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["erro" => "Erro na consulta: " . $e->getMessage()]);
+            $msg = $is_dev_request ? 'Erro na consulta: ' . $e->getMessage() : 'Erro interno.';
+            echo json_encode(['erro' => $msg]);
             exit;
         }
     }
@@ -296,7 +293,7 @@ if ($method === 'POST' || $method === 'PUT') {
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(["erro" => "Erro SQL: " . $e->getMessage()]);
+            echo json_encode(['erro' => $is_dev_request ? 'Erro SQL: ' . $e->getMessage() : 'Erro interno.']);
         }
         exit;
     }
@@ -410,7 +407,7 @@ if ($method === 'POST' || $method === 'PUT') {
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(["erro" => $e->getMessage()]);
+            echo json_encode(['erro' => $is_dev_request ? $e->getMessage() : 'Erro interno.']);
         }
         exit;
     }

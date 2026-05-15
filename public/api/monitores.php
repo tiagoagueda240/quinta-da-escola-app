@@ -2,8 +2,7 @@
 // api/monitores.php
 require 'config.php';
 
-// Descomenta a linha abaixo para obrigar login nesta API se necessário
-// verificarAuth(); 
+verificarAuth();
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -116,35 +115,53 @@ if ($method === 'POST') {
 // --- PUT: Atualizar um registo específico ---
 if ($method === 'PUT') {
     $id = $_GET['id'] ?? null;
-    if (!$id) { http_response_code(400); exit(); }
-
-    $data = json_decode(file_get_contents('php://input'), true);
-    
-    // Preparar dados (Arrays -> JSON)
-    if(isset($data['turnosAtribuidos'])) $data['turnosAtribuidos'] = json_encode($data['turnosAtribuidos']);
-    if(isset($data['formacoes'])) $data['formacoes'] = json_encode($data['formacoes']);
-    unset($data['id']); // Segurança: Não atualizar o ID
-
-    $fields = []; $values = [];
-    foreach($data as $key => $val) {
-        $fields[] = "$key = ?";
-        $values[] = $val;
+    if (!$id) {
+        json_response(['erro' => 'ID obrigatório.'], 400);
     }
-    $values[] = $id;
 
-    $sql = "UPDATE monitores SET " . implode(', ', $fields) . " WHERE id = ?";
-    $stmt = $pdo->prepare($sql);
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    // Converter arrays para JSON antes de gravar
+    if (isset($data['turnosAtribuidos'])) {
+        $data['turnosAtribuidos'] = json_encode($data['turnosAtribuidos']);
+    }
+    if (isset($data['formacoes'])) {
+        $data['formacoes'] = json_encode($data['formacoes']);
+    }
+
+    // Whitelist de colunas permitidas (previne SQL injection por nomes de campos arbitrários)
+    $allowed = ['nome', 'nomeMonitor', 'email', 'telefone', 'status', 'obs', 'diasTrabalhados', 'intolerancias', 'turnosAtribuidos', 'formacoes'];
+
+    $fields = [];
+    $values = [];
+    foreach ($data as $key => $val) {
+        if (in_array($key, $allowed, true)) {
+            $fields[] = "`$key` = ?";
+            $values[] = $val;
+        }
+    }
+
+    if (empty($fields)) {
+        json_response(['erro' => 'Nenhum campo válido para atualizar.'], 400);
+    }
+
+    $values[] = $id;
+    $stmt = $pdo->prepare("UPDATE monitores SET " . implode(', ', $fields) . " WHERE id = ?");
     $stmt->execute($values);
-    echo json_encode(["msg" => "Atualizado com sucesso"]);
+    json_response(['msg' => 'Atualizado com sucesso']);
 }
 
 // --- DELETE: Apagar ---
 if ($method === 'DELETE') {
     $id = $_GET['id'] ?? null;
-    if ($id) {
-        $stmt = $pdo->prepare("DELETE FROM monitores WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode(["msg" => "Apagado"]);
+    if (!$id) {
+        json_response(['erro' => 'ID obrigatório.'], 400);
     }
+    $stmt = $pdo->prepare("DELETE FROM monitores WHERE id = ?");
+    $stmt->execute([$id]);
+    if ($stmt->rowCount() === 0) {
+        json_response(['erro' => 'Monitor não encontrado.'], 404);
+    }
+    json_response(['msg' => 'Apagado com sucesso']);
 }
 ?>

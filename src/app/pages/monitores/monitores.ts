@@ -1,38 +1,67 @@
-import { Component, OnInit, inject, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MonitorService } from '../../services/monitor.service';
+import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { lastValueFrom } from 'rxjs';
+import { Inscricao, TurnoConfig } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
-import { Inscricao, TurnoConfig } from '../../models/inscricao.model';
+import { MonitorService } from '../../services/monitor.service';
 
 // Material Imports
+import {
+  CdkDragDrop,
+  DragDropModule,
+  moveItemInArray,
+  transferArrayItem,
+} from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import {
+  MatListModule,
+  MatListOption,
+  MatSelectionList,
+  MatSelectionListChange,
+} from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
-import { MatCardModule } from '@angular/material/card';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatListModule, MatSelectionList, MatSelectionListChange, MatListOption } from '@angular/material/list';
-import { MatPaginatorModule } from '@angular/material/paginator';
-import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import * as XLSX from 'xlsx-js-style';
 
 @Component({
   selector: 'app-monitores',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, ReactiveFormsModule,
-    MatButtonModule, MatIconModule, MatInputModule, MatSelectModule,
-    MatCardModule, MatDialogModule, MatSnackBarModule, MatTooltipModule,
-    MatMenuModule, MatChipsModule, DragDropModule, MatListModule, MatPaginatorModule
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCardModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    MatTooltipModule,
+    MatMenuModule,
+    MatChipsModule,
+    DragDropModule,
+    MatListModule,
+    MatPaginatorModule,
   ],
   templateUrl: './monitores.html',
-  styleUrls: ['./monitores.scss']
+  styleUrls: ['./monitores.scss'],
 })
 export class MonitoresComponent implements OnInit {
   monitores: Monitor[] = [];
@@ -75,7 +104,7 @@ export class MonitoresComponent implements OnInit {
     telefone: ['telemóvel', 'telemovel', 'telefone', 'contacto'],
     alcunha: ['nome de batismo', 'nome monitor', 'nome de monitor', 'alcunha'],
     nascimento: ['data nasc.', 'data nascimento', 'data de nascimento'],
-    intolerancias: ['intolerâncias', 'intolerancias', 'rest. alim', 'restrições alimentares']
+    intolerancias: ['intolerâncias', 'intolerancias', 'rest. alim', 'restrições alimentares'],
   };
 
   async ngOnInit() {
@@ -89,13 +118,11 @@ export class MonitoresComponent implements OnInit {
       telefone: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       diasTrabalhados: [0, Validators.min(0)],
-      obs: ['']
+      obs: [''],
     });
 
-    this.inscricaoService.getInscricoes().subscribe(data => {
-      this.inscricoes = data;
-      this.atualizarStats();
-    });
+    this.inscricoes = await lastValueFrom(this.inscricaoService.getInscricoes());
+    this.atualizarStats();
   }
 
   async carregarTurnosDoSistema() {
@@ -104,13 +131,11 @@ export class MonitoresComponent implements OnInit {
       const todosTurnos = [
         ...(config.quinta || []),
         ...(config.costaCaparica || []),
-        ...(config.quiaios || [])
+        ...(config.quiaios || []),
       ];
-      this.listaTurnos = todosTurnos
-        .filter((t: any) => t.ativo === true)
-        .map((t: any) => t.nome);
+      this.listaTurnos = todosTurnos.filter((t: any) => t.ativo === true).map((t: any) => t.nome);
     } catch (e) {
-      console.error("Erro ao carregar turnos", e);
+      console.error('Erro ao carregar turnos', e);
       this.snackBar.open('Erro ao carregar lista de turnos.', 'OK');
     }
   }
@@ -171,9 +196,7 @@ export class MonitoresComponent implements OnInit {
     const nome = (m.nomeMonitor || m.nome).toLowerCase().trim();
 
     // Procura o índice ignorando maiúsculas/minúsculas
-    const index = turnoObj.coordenadores.findIndex((c: any) =>
-      c.toLowerCase().trim() === nome
-    );
+    const index = turnoObj.coordenadores.findIndex((c: any) => c.toLowerCase().trim() === nome);
 
     if (index > -1) {
       turnoObj.coordenadores.splice(index, 1);
@@ -217,34 +240,49 @@ export class MonitoresComponent implements OnInit {
 
   extrairFormacoesUnicas() {
     const set = new Set<string>();
-    this.monitores.forEach(m => {
-      if (m.formacoes) m.formacoes.forEach(f => set.add(f));
+    this.monitores.forEach((m) => {
+      if (m.formacoes) m.formacoes.forEach((f) => set.add(f));
     });
     this.listaFormacoes = Array.from(set).sort().reverse();
   }
 
-  toggleFiltroAlcunha(event: any) { this.filtroFaltaAlcunha = event.selected; this.atualizarListas(); }
-  toggleFiltroContacto(event: any) { this.filtroFaltaContacto = event.selected; this.atualizarListas(); }
+  toggleFiltroAlcunha(event: any) {
+    this.filtroFaltaAlcunha = event.selected;
+    this.atualizarListas();
+  }
+  toggleFiltroContacto(event: any) {
+    this.filtroFaltaContacto = event.selected;
+    this.atualizarListas();
+  }
 
   atualizarListas() {
     const termo = this.pesquisa ? this.pesquisa.toLowerCase().trim() : '';
 
-    const filtrados = this.monitores.filter(m => {
-      const matchPesquisa = !termo ||
+    const filtrados = this.monitores.filter((m) => {
+      const matchPesquisa =
+        !termo ||
         m.nome.toLowerCase().includes(termo) ||
         (m.nomeMonitor && m.nomeMonitor.toLowerCase().includes(termo)) ||
         m.email.toLowerCase().includes(termo);
 
       const matchFormacao = this.filtroFormacao ? m.formacoes?.includes(this.filtroFormacao) : true;
-      const matchFaltaAlcunha = this.filtroFaltaAlcunha ? (!m.nomeMonitor || m.nomeMonitor.trim() === '') : true;
-      const matchFaltaContacto = this.filtroFaltaContacto ? (!m.telefone || m.telefone.trim() === '') : true;
+      const matchFaltaAlcunha = this.filtroFaltaAlcunha
+        ? !m.nomeMonitor || m.nomeMonitor.trim() === ''
+        : true;
+      const matchFaltaContacto = this.filtroFaltaContacto
+        ? !m.telefone || m.telefone.trim() === ''
+        : true;
 
       return matchPesquisa && matchFormacao && matchFaltaAlcunha && matchFaltaContacto;
     });
 
     if (this.turnoSelecionado) {
-      this.monitoresAtribuidos = this.monitores.filter(m => m.turnosAtribuidos?.includes(this.turnoSelecionado));
-      this.monitoresDisponiveis = filtrados.filter(m => !m.turnosAtribuidos?.includes(this.turnoSelecionado));
+      this.monitoresAtribuidos = this.monitores.filter((m) =>
+        m.turnosAtribuidos?.includes(this.turnoSelecionado),
+      );
+      this.monitoresDisponiveis = filtrados.filter(
+        (m) => !m.turnosAtribuidos?.includes(this.turnoSelecionado),
+      );
     } else {
       this.monitoresAtribuidos = [];
       this.monitoresDisponiveis = filtrados;
@@ -253,10 +291,22 @@ export class MonitoresComponent implements OnInit {
     this.atualizarStats();
   }
 
-  abrirImportar() { this.dialog.open(this.dialogImportar, { width: '450px' }); }
-  onFileOver(e: any) { e.preventDefault(); this.isDraggingFile = true; }
-  onFileLeave(e: any) { e.preventDefault(); this.isDraggingFile = false; }
-  onFileDrop(e: any) { e.preventDefault(); this.isDraggingFile = false; this.processarFicheiro(e.dataTransfer.files[0]); }
+  abrirImportar() {
+    this.dialog.open(this.dialogImportar, { width: '450px' });
+  }
+  onFileOver(e: any) {
+    e.preventDefault();
+    this.isDraggingFile = true;
+  }
+  onFileLeave(e: any) {
+    e.preventDefault();
+    this.isDraggingFile = false;
+  }
+  onFileDrop(e: any) {
+    e.preventDefault();
+    this.isDraggingFile = false;
+    this.processarFicheiro(e.dataTransfer.files[0]);
+  }
 
   processarFicheiro(file: File) {
     const reader = new FileReader();
@@ -269,13 +319,12 @@ export class MonitoresComponent implements OnInit {
       let atualizados = 0;
       let ignoradosPorCor = 0;
 
-      this.monitores.forEach(m => {
+      this.monitores.forEach((m) => {
         const key = this.gerarChaveUnica(m.email, m.nome);
         if (key) mapMonitores.set(key, { ...m });
       });
 
       for (const sheetName of workbook.SheetNames) {
-
         if (this.isAbaIrrelevante(sheetName)) continue;
 
         const worksheet = workbook.Sheets[sheetName];
@@ -296,7 +345,8 @@ export class MonitoresComponent implements OnInit {
 
           const row = jsonData[i];
           const nome = this.getVal(row, mapColunas, 'nome')?.toString().trim() || '';
-          const email = this.getVal(row, mapColunas, 'email')?.toString().trim().toLowerCase() || '';
+          const email =
+            this.getVal(row, mapColunas, 'email')?.toString().trim().toLowerCase() || '';
 
           if (!nome && !email) continue;
 
@@ -329,7 +379,7 @@ export class MonitoresComponent implements OnInit {
               diasTrabalhados: status === 'estagiario' ? 0 : 8,
               status: status as any,
               turnosAtribuidos: [],
-              formacoes: [sheetName]
+              formacoes: [sheetName],
             });
             novos++;
           }
@@ -343,7 +393,7 @@ export class MonitoresComponent implements OnInit {
         this.snackBar.open(
           `Concluído: ${novos} novos, ${atualizados} atualizados. (${ignoradosPorCor} ignorados)`,
           'OK',
-          { duration: 5000 }
+          { duration: 5000 },
         );
       } catch (error) {
         console.error('Erro ao gravar:', error);
@@ -353,38 +403,86 @@ export class MonitoresComponent implements OnInit {
     reader.readAsArrayBuffer(file);
   }
 
-  private isAbaIrrelevante(name: string) { return ['horário', 'ementa', 'quartos', 'esquema', 'pagamentos', 'resumo', 'transporte', 'lista'].some(i => name.toLowerCase().includes(i)); }
-  private gerarChaveUnica(email: string, nome: string) { if (email && email.includes('@')) return email.toLowerCase().trim(); if (nome) return nome.toLowerCase().trim().replace(/\s+/g, ' '); return ''; }
+  private isAbaIrrelevante(name: string) {
+    return [
+      'horário',
+      'ementa',
+      'quartos',
+      'esquema',
+      'pagamentos',
+      'resumo',
+      'transporte',
+      'lista',
+    ].some((i) => name.toLowerCase().includes(i));
+  }
+  private gerarChaveUnica(email: string, nome: string) {
+    if (email && email.includes('@')) return email.toLowerCase().trim();
+    if (nome) return nome.toLowerCase().trim().replace(/\s+/g, ' ');
+    return '';
+  }
   private detectarCabecalhos(data: any[][]) {
-    let headerRowIndex = -1, mapColunas = new Map<string, number>();
+    let headerRowIndex = -1,
+      mapColunas = new Map<string, number>();
     for (let r = 0; r < Math.min(data.length, 20); r++) {
-      const row = data[r]; if (!Array.isArray(row)) continue;
+      const row = data[r];
+      if (!Array.isArray(row)) continue;
       let matches = 0;
-      row.forEach(c => { if (typeof c === 'string') { Object.values(this.COL_ALIASES).forEach((al: any) => { if (al.includes(c.toLowerCase().trim())) matches++; }); } });
+      row.forEach((c) => {
+        if (typeof c === 'string') {
+          Object.values(this.COL_ALIASES).forEach((al: any) => {
+            if (al.includes(c.toLowerCase().trim())) matches++;
+          });
+        }
+      });
       if (matches >= 2) {
         headerRowIndex = r;
-        row.forEach((c: any, i) => { if (typeof c !== 'string') return; const val = c.toLowerCase().trim(); for (const [k, al] of Object.entries(this.COL_ALIASES)) { if ((al as string[]).includes(val)) mapColunas.set(k, i); } });
+        row.forEach((c: any, i) => {
+          if (typeof c !== 'string') return;
+          const val = c.toLowerCase().trim();
+          for (const [k, al] of Object.entries(this.COL_ALIASES)) {
+            if ((al as string[]).includes(val)) mapColunas.set(k, i);
+          }
+        });
         break;
       }
     }
     return { headerRowIndex, mapColunas };
   }
-  private getVal(row: any[], map: Map<string, number>, key: string) { const idx = map.get(key); return idx !== undefined ? row[idx] : null; }
+  private getVal(row: any[], map: Map<string, number>, key: string) {
+    const idx = map.get(key);
+    return idx !== undefined ? row[idx] : null;
+  }
 
   drop(event: CdkDragDrop<Monitor[]>) {
-    if (event.previousContainer === event.container) moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+    if (event.previousContainer === event.container)
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     else {
       const monitor = event.previousContainer.data[event.previousIndex];
-      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
-      event.container.id === 'lista-atribuidos' ? this.adicionarAoTurno(monitor) : this.removerDoTurno(monitor);
+      transferArrayItem(
+        event.previousContainer.data,
+        event.container.data,
+        event.previousIndex,
+        event.currentIndex,
+      );
+      event.container.id === 'lista-atribuidos'
+        ? this.adicionarAoTurno(monitor)
+        : this.removerDoTurno(monitor);
     }
   }
 
-  async adicionarAoTurno(m: Monitor) { if (m.id && !m.turnosAtribuidos?.includes(this.turnoSelecionado)) { await this.monitorService.updateMonitor(m.id, { turnosAtribuidos: [...(m.turnosAtribuidos || []), this.turnoSelecionado] }); m.turnosAtribuidos?.push(this.turnoSelecionado); this.atualizarStats(); } }
+  async adicionarAoTurno(m: Monitor) {
+    if (m.id && !m.turnosAtribuidos?.includes(this.turnoSelecionado)) {
+      await this.monitorService.updateMonitor(m.id, {
+        turnosAtribuidos: [...(m.turnosAtribuidos || []), this.turnoSelecionado],
+      });
+      m.turnosAtribuidos?.push(this.turnoSelecionado);
+      this.atualizarStats();
+    }
+  }
 
   async removerDoTurno(m: Monitor) {
     if (m.id) {
-      const novos = (m.turnosAtribuidos || []).filter(t => t !== this.turnoSelecionado);
+      const novos = (m.turnosAtribuidos || []).filter((t) => t !== this.turnoSelecionado);
 
       await this.monitorService.updateMonitor(m.id, { turnosAtribuidos: novos });
 
@@ -406,13 +504,19 @@ export class MonitoresComponent implements OnInit {
         const nome = m.nomeMonitor || m.nome;
 
         // Pede confirmação ÚNICA
-        if (confirm(`⚠️ ATENÇÃO: ${nome} é Coordenador(a)!\n\nAo remover deste turno, perderá também o estatuto de Coordenador.\n\nDeseja continuar?`)) {
+        if (
+          confirm(
+            `⚠️ ATENÇÃO: ${nome} é Coordenador(a)!\n\nAo remover deste turno, perderá também o estatuto de Coordenador.\n\nDeseja continuar?`,
+          )
+        ) {
           // 1. Remove coordenação (BD Configurações)
           await this.removerCoordenadorSilenciosamente(m);
           // 2. Remove do turno (BD Monitores) + Atualiza Ecrã
           await this.removerDoTurno(m);
 
-          this.snackBar.open(`${nome} removido da equipa e da coordenação.`, 'OK', { duration: 3000 });
+          this.snackBar.open(`${nome} removido da equipa e da coordenação.`, 'OK', {
+            duration: 3000,
+          });
         }
         return;
       }
@@ -425,14 +529,45 @@ export class MonitoresComponent implements OnInit {
     }
   }
 
-  atualizarStats() { if (!this.turnoSelecionado) return; const doTurno = this.inscricoes.filter(i => i.turnoEscolhido === this.turnoSelecionado); this.stats.totalCriancas = doTurno.length; this.stats.monitores = this.monitoresAtribuidos.length; this.stats.racio = this.stats.monitores > 0 ? Math.round(this.stats.totalCriancas / this.stats.monitores) : 0; }
+  atualizarStats() {
+    if (!this.turnoSelecionado) return;
+    const doTurno = this.inscricoes.filter((i) => i.turnoEscolhido === this.turnoSelecionado);
+    this.stats.totalCriancas = doTurno.length;
+    this.stats.monitores = this.monitoresAtribuidos.length;
+    this.stats.racio =
+      this.stats.monitores > 0 ? Math.round(this.stats.totalCriancas / this.stats.monitores) : 0;
+  }
 
-  abrirNovo() { this.isEditing = false; this.monitorForm.reset(); this.dialog.open(this.dialogMonitor, { width: '400px' }); }
-  abrirEditar(m: Monitor) { this.isEditing = true; this.selectedMonitorId = m.id!; this.monitorForm.patchValue(m); this.dialog.open(this.dialogMonitor, { width: '400px' }); }
-  async guardarMonitor() { if (this.monitorForm.invalid) return; const d = this.monitorForm.value; if (this.isEditing) await this.monitorService.updateMonitor(this.selectedMonitorId!, d); else await this.monitorService.addMonitor({ ...d, turnosAtribuidos: [], formacoes: [] }); await this.carregarDadosIniciais(); this.dialog.closeAll(); }
-  async apagarMonitor(id?: string) { if (id && confirm('Apagar?')) { await this.monitorService.deleteMonitor(id); await this.carregarDadosIniciais(); } }
+  abrirNovo() {
+    this.isEditing = false;
+    this.monitorForm.reset();
+    this.dialog.open(this.dialogMonitor, { width: '400px' });
+  }
+  abrirEditar(m: Monitor) {
+    this.isEditing = true;
+    this.selectedMonitorId = m.id!;
+    this.monitorForm.patchValue(m);
+    this.dialog.open(this.dialogMonitor, { width: '400px' });
+  }
+  async guardarMonitor() {
+    if (this.monitorForm.invalid) return;
+    const d = this.monitorForm.value;
+    if (this.isEditing) await this.monitorService.updateMonitor(this.selectedMonitorId!, d);
+    else await this.monitorService.addMonitor({ ...d, turnosAtribuidos: [], formacoes: [] });
+    await this.carregarDadosIniciais();
+    this.dialog.closeAll();
+  }
+  async apagarMonitor(id?: string) {
+    if (id && confirm('Apagar?')) {
+      await this.monitorService.deleteMonitor(id);
+      await this.carregarDadosIniciais();
+    }
+  }
 
-  abrirGestaoTurnos(m: Monitor) { this.selectedMonitor = m; this.dialog.open(this.dialogTurnosMonitor, { width: '400px' }); }
+  abrirGestaoTurnos(m: Monitor) {
+    this.selectedMonitor = m;
+    this.dialog.open(this.dialogTurnosMonitor, { width: '400px' });
+  }
 
   async atualizarSelecaoTurnos(event: MatSelectionListChange) {
     if (!this.selectedMonitor?.id) return;
@@ -445,7 +580,11 @@ export class MonitoresComponent implements OnInit {
     if (!isSelected) {
       if (this.isCoordenadorDoTurno(this.selectedMonitor, turnoNome)) {
         const nome = this.selectedMonitor.nomeMonitor || this.selectedMonitor.nome;
-        if (confirm(`⚠️ ${nome} é Coordenador em "${turnoNome}".\n\nAo sair deste turno, perderá a coordenação.\nPretende continuar?`)) {
+        if (
+          confirm(
+            `⚠️ ${nome} é Coordenador em "${turnoNome}".\n\nAo sair deste turno, perderá a coordenação.\nPretende continuar?`,
+          )
+        ) {
           await this.removerCoordenadorDoTurno(this.selectedMonitor, turnoNome);
           this.snackBar.open('Coordenação removida.', 'OK', { duration: 2000 });
         } else {
@@ -457,13 +596,17 @@ export class MonitoresComponent implements OnInit {
 
     const novosTurnos = this.turnosList.selectedOptions.selected.map((o: MatListOption) => o.value);
 
-    await this.monitorService.updateMonitor(this.selectedMonitor.id, { turnosAtribuidos: novosTurnos });
+    await this.monitorService.updateMonitor(this.selectedMonitor.id, {
+      turnosAtribuidos: novosTurnos,
+    });
     this.selectedMonitor.turnosAtribuidos = novosTurnos;
 
     if (this.turnoSelecionado) this.atualizarStats();
   }
 
-  isMonitorNoTurno(t: string) { return this.selectedMonitor?.turnosAtribuidos?.includes(t); }
+  isMonitorNoTurno(t: string) {
+    return this.selectedMonitor?.turnosAtribuidos?.includes(t);
+  }
 
   private isCellRed(cell: any): boolean {
     if (!cell || !cell.s || !cell.s.fgColor) return false;
@@ -491,9 +634,10 @@ export class MonitoresComponent implements OnInit {
     const nome = monitor.nomeMonitor || monitor.nome;
     const nomeCompleto = monitor.nome || '';
 
-    turnoObj.coordenadores = turnoObj.coordenadores.filter((c: any) =>
-      c.toLowerCase().trim() !== nome.toLowerCase().trim() &&
-      c.toLowerCase().trim() !== nomeCompleto.toLowerCase().trim()
+    turnoObj.coordenadores = turnoObj.coordenadores.filter(
+      (c: any) =>
+        c.toLowerCase().trim() !== nome.toLowerCase().trim() &&
+        c.toLowerCase().trim() !== nomeCompleto.toLowerCase().trim(),
     );
 
     await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);

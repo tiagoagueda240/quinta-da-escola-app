@@ -362,7 +362,6 @@ export class ConfigTurnosComponent implements OnInit {
     for (const local of this.locais) {
       payload[local] = this.config[local] || [];
     }
-    console.log('[ConfigTurnos] A guardar payload:', JSON.stringify(payload));
 
     try {
       await this.inscricaoService.saveConfiguracoesTurnos(payload);

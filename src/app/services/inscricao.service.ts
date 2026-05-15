@@ -10,19 +10,7 @@ import { ConfigTurnos, Inscricao } from '../models/inscricao.model';
 export class InscricaoService {
   private http = inject(HttpClient);
 
-  // URL base da API
   private apiUrl = 'https://turnos.quintadaescola.com/api/inscricoes.php';
-
-  // --- 1. HEADERS ADMIN (JWT) ---
-  private getHeaders() {
-    const token = localStorage.getItem('auth_token');
-    return {
-      headers: new HttpHeaders({
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }),
-    };
-  }
 
   // ==========================================================
   //     ADAPTADOR (TRADUTOR DE DADOS)
@@ -54,7 +42,7 @@ export class InscricaoService {
    */
   getInscricoes(): Observable<Inscricao[]> {
     return this.http
-      .get<any[]>(`${this.apiUrl}?acao=listar`, this.getHeaders())
+      .get<any[]>(`${this.apiUrl}?acao=listar`)
       .pipe(map((rows) => rows.map((r) => this.adaptarInscricao(r))));
   }
 
@@ -62,18 +50,11 @@ export class InscricaoService {
    * Admin: Obtém configurações de turnos
    */
   async getConfiguracoesTurnos(): Promise<ConfigTurnos> {
-    return await lastValueFrom(
-      this.http.get<ConfigTurnos>(`${this.apiUrl}?acao=config_turnos`, this.getHeaders()),
-    );
+    return await lastValueFrom(this.http.get<ConfigTurnos>(`${this.apiUrl}?acao=config_turnos`));
   }
 
-  /**
-   * Admin: Grava configurações de turnos
-   */
   async saveConfiguracoesTurnos(config: ConfigTurnos) {
-    return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=salvar_config_turnos`, config, this.getHeaders()),
-    );
+    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=salvar_config_turnos`, config));
   }
 
   // ==========================================================
@@ -114,20 +95,13 @@ export class InscricaoService {
     return res;
   }
 
-  // Alias
-  addInscricao(inscricao: Inscricao) {
-    return this.createInscricao(inscricao);
-  }
-
   /**
    * Admin: Atualiza várias inscrições ou campos específicos (Batch)
    */
   async updateInscricaoBatch(
     updates: { id: string | number; checkin?: any; [key: string]: any }[],
   ) {
-    return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders()),
-    );
+    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=batch_update`, updates));
   }
 
   // Alias para update individual
@@ -153,7 +127,7 @@ export class InscricaoService {
 
   async gerarLinkCoordenador(payload: any) {
     const url = this.apiUrl.replace('inscricoes.php', 'gerar_acesso.php');
-    return await lastValueFrom(this.http.post<any>(url, payload, this.getHeaders()));
+    return await lastValueFrom(this.http.post<any>(url, payload));
   }
 
   enviarEmailSeguro(dados: any) {
@@ -174,15 +148,11 @@ export class InscricaoService {
   // ==========================================================
 
   async updateBatch(updates: { id: string | number; data: any }[]) {
-    return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=batch_update`, updates, this.getHeaders()),
-    );
+    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=batch_update`, updates));
   }
 
   async deleteInscricao(id: string) {
-    return await lastValueFrom(
-      this.http.post(`${this.apiUrl}?acao=apagar`, { id }, this.getHeaders()),
-    );
+    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=apagar`, { id }));
   }
 
   // --- RESTAURADO: Método auxiliar usado pelo Admin ---

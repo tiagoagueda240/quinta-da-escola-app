@@ -1,0 +1,21 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Servir ficheiros e diretorios existentes diretamente (JS, CSS, imagens, API, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 2. Nao redirecionar chamadas a API PHP
+  RewriteRule ^api/ - [L]
+
+  # 3. Tudo o resto -> Angular SPA
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Tipos MIME corretos para modulos ES
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+</IfModule>

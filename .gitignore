@@ -40,7 +40,11 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
-
+# PHP logs
+error_log
+*.log
+# PHP secrets
+secrets.php
 # Firebase
 .firebase
 *-debug.log

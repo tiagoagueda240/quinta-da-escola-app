@@ -1,0 +1,6 @@
+# Proteger ficheiros sensíveis contra acesso direto via browser
+
+<Files "secrets.php">
+Order Allow,Deny
+Deny from all
+</Files>

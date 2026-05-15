@@ -1,6 +1,5 @@
 import { SelectionModel } from '@angular/cdk/collections';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { AfterViewInit, Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,9 +17,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { lastValueFrom } from 'rxjs';
 import { Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
+import { OPCOES_TRANSPORTE } from '../../shared/transport-options';
 
 import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
@@ -72,12 +73,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   todosOsTurnosConfig: any = null;
   listaTurnos: string[] = [];
 
-  opcoesTransporte = [
-    { label: 'Não (Entregue pelos pais)', valor: 0 },
-    { label: 'Lisboa - Quinta da Escola (+20€)', valor: 20 },
-    { label: 'Quinta da Escola - Lisboa (+20€)', valor: 20 },
-    { label: 'Lisboa - Quinta - Lisboa (+40€)', valor: 40 },
-  ];
+  readonly opcoesTransporte = OPCOES_TRANSPORTE;
 
   // KPIs
   totalInscritos = 0;
@@ -143,11 +139,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
-  private http = inject(HttpClient);
 
   async ngOnInit() {
-    await this.recarregarDadosCompletos();
     this.configurarFiltroAvancado();
+    await this.recarregarDadosCompletos();
   }
 
   ngAfterViewInit() {
@@ -167,11 +162,9 @@ export class AdminComponent implements OnInit, AfterViewInit {
         this.atualizarListaDeTurnosPorLocal();
       }
 
-      // Depois carregamos as inscrições e calculamos a ocupação usando a config acima
-      this.inscricaoService.getInscricoes().subscribe((dados) => {
-        this.dataSource.data = dados;
-        this.atualizarFiltros(); // Este método chama o calcularOcupacao()
-      });
+      const dados = await lastValueFrom(this.inscricaoService.getInscricoes());
+      this.dataSource.data = dados;
+      this.atualizarFiltros();
     } catch (error) {
       this.mostrarNotificacao('Erro ao carregar dados.', 'error');
     }
@@ -359,7 +352,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
     try {
       if (this.isCreating) {
-        await this.inscricaoService.addInscricao(dados);
+        await this.inscricaoService.createInscricao(dados);
         this.mostrarNotificacao('Nova inscrição adicionada com sucesso!');
       } else {
         if (!this.selectedInscricao.id) return;
@@ -783,7 +776,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
             .toISOString()
             .split('T')[0];
         }
-        const res: any = await this.inscricaoService.addInscricao(nova);
+        const res: any = await this.inscricaoService.createInscricao(nova);
         nova.id = res.id;
       }
 
@@ -1050,7 +1043,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
           inscricao.tipoCliente = 'instituicao';
           inscricao.nomeInstituicao = this.empresaImportacao.trim();
         }
-        await this.inscricaoService.addInscricao(inscricao);
+        await this.inscricaoService.createInscricao(inscricao);
       }
 
       this.mostrarNotificacao(

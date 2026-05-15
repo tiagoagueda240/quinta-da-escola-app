@@ -1,31 +1,39 @@
-import { Component, OnInit, inject, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { InscricaoService } from '../../services/inscricao.service';
-import { Inscricao } from '../../models/inscricao.model';
 import { from, Observable } from 'rxjs'; // <--- IMPORTANTE
+import { Inscricao } from '../../models/inscricao.model';
+import { AuthService } from '../../services/auth.service';
+import { InscricaoService } from '../../services/inscricao.service';
 
 // Material Imports
-import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatRippleModule } from '@angular/material/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-checkin',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatIconModule, MatButtonModule,
-    MatFormFieldModule, MatInputModule, MatSnackBarModule,
-    MatDialogModule, MatRippleModule, MatProgressSpinnerModule
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatRippleModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './checkin.html',
-  styleUrls: ['./checkin.scss']
+  styleUrls: ['./checkin.scss'],
 })
 export class CheckinComponent implements OnInit {
   // Dados
@@ -54,6 +62,7 @@ export class CheckinComponent implements OnInit {
   @ViewChild('dialogEntrada') dialogEntrada!: TemplateRef<any>;
 
   private inscricaoService = inject(InscricaoService);
+  private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
@@ -71,7 +80,7 @@ export class CheckinComponent implements OnInit {
         this.validarPin();
       }
     } else {
-      if (this.isAdminLogado()) {
+      if (this.authService.getToken()) {
         this.modoLink = false;
         this.pinValidado = true;
         await this.carregarDadosAdmin();
@@ -79,10 +88,6 @@ export class CheckinComponent implements OnInit {
         this.router.navigate(['/login']);
       }
     }
-  }
-
-  isAdminLogado(): boolean {
-    return !!localStorage.getItem('auth_token');
   }
 
   validarPin() {
@@ -103,7 +108,7 @@ export class CheckinComponent implements OnInit {
         this.pinValidado = false;
         this.erroPin = 'PIN incorreto.';
         sessionStorage.removeItem('access_pin_' + this.token);
-      }
+      },
     });
   }
 
@@ -114,12 +119,10 @@ export class CheckinComponent implements OnInit {
       const todosTurnos = [
         ...(config.quinta || []),
         ...(config.costaCaparica || []),
-        ...(config.quiaios || [])
+        ...(config.quiaios || []),
       ];
 
-      this.listaTurnos = todosTurnos
-        .filter((t: any) => t.ativo === true)
-        .map((t: any) => t.nome);
+      this.listaTurnos = todosTurnos.filter((t: any) => t.ativo === true).map((t: any) => t.nome);
 
       this.inscricaoService.getInscricoes().subscribe({
         next: (dados) => {
@@ -129,24 +132,29 @@ export class CheckinComponent implements OnInit {
         error: () => {
           this.mostrarToast('Erro ao carregar dados.');
           this.loading = false;
-        }
+        },
       });
-
     } catch (e) {
-      console.error("Erro config", e);
+      console.error('Erro config', e);
       this.loading = false;
     }
   }
 
   processarDadosRecebidos(dados: Inscricao[]) {
-    this.inscricoes = dados.map(i => {
+    this.inscricoes = dados.map((i) => {
       // CORREÇÃO: Adicionada dataEntrada fictícia para satisfazer o tipo Date
-      if (!i.checkin) i.checkin = { status: 'fora', dinheiroBolso: 0, notasCheckin: '', dataEntrada: new Date(0) };
+      if (!i.checkin)
+        i.checkin = {
+          status: 'fora',
+          dinheiroBolso: 0,
+          notasCheckin: '',
+          dataEntrada: new Date(0),
+        };
       return i;
     });
 
     if (this.modoLink) {
-      const turnosUnicos = [...new Set(dados.map(i => i.turnoEscolhido))];
+      const turnosUnicos = [...new Set(dados.map((i) => i.turnoEscolhido))];
       this.listaTurnos = turnosUnicos.sort();
     }
 
@@ -168,7 +176,7 @@ export class CheckinComponent implements OnInit {
   filtrar() {
     const texto = this.pesquisa.toLowerCase().trim();
 
-    this.inscricoesFiltradas = this.inscricoes.filter(i => {
+    this.inscricoesFiltradas = this.inscricoes.filter((i) => {
       const matchTurno = this.turnoSelecionado ? i.turnoEscolhido === this.turnoSelecionado : true;
       const matchNome = i.participante.nomeCompleto.toLowerCase().includes(texto);
       return matchTurno && matchNome;
@@ -178,7 +186,9 @@ export class CheckinComponent implements OnInit {
   }
 
   atualizarContador() {
-    this.totalPresentes = this.inscricoesFiltradas.filter(i => i.checkin?.status === 'dentro').length;
+    this.totalPresentes = this.inscricoesFiltradas.filter(
+      (i) => i.checkin?.status === 'dentro',
+    ).length;
   }
 
   abrirCheckin(inscricao: Inscricao) {
@@ -198,18 +208,22 @@ export class CheckinComponent implements OnInit {
       status: 'dentro',
       dataEntrada: new Date(),
       dinheiroBolso: this.tempDinheiro || 0,
-      notasCheckin: this.tempNotas
+      notasCheckin: this.tempNotas,
     };
 
     const payload = {
       id: idSeguro,
-      checkin: novoCheckin
+      checkin: novoCheckin,
     };
 
     let observable$: Observable<any>;
 
     if (this.modoLink) {
-      observable$ = this.inscricaoService.updateCheckinComToken(payload, this.token!, this.pinSessao);
+      observable$ = this.inscricaoService.updateCheckinComToken(
+        payload,
+        this.token!,
+        this.pinSessao,
+      );
     } else {
       // CORREÇÃO: Converter Promise para Observable para usar .subscribe()
       observable$ = from(this.inscricaoService.updateInscricaoBatch([payload]));
@@ -219,7 +233,12 @@ export class CheckinComponent implements OnInit {
       next: () => {
         // CORREÇÃO: Verificar se checkin existe antes de atribuir
         if (!inscricaoAlvo.checkin) {
-          inscricaoAlvo.checkin = { status: 'dentro', dataEntrada: new Date(), dinheiroBolso: 0, notasCheckin: '' };
+          inscricaoAlvo.checkin = {
+            status: 'dentro',
+            dataEntrada: new Date(),
+            dinheiroBolso: 0,
+            notasCheckin: '',
+          };
         }
         Object.assign(inscricaoAlvo.checkin, novoCheckin);
 
@@ -231,7 +250,7 @@ export class CheckinComponent implements OnInit {
       error: (err: any) => {
         console.error(err);
         this.mostrarToast('Erro ao registar entrada.');
-      }
+      },
     });
   }
 
@@ -246,13 +265,17 @@ export class CheckinComponent implements OnInit {
       checkin: {
         ...(inscricao.checkin || {}),
         status: 'fora',
-        dataSaida: new Date()
-      }
+        dataSaida: new Date(),
+      },
     };
 
     let observable$: Observable<any>;
     if (this.modoLink) {
-      observable$ = this.inscricaoService.updateCheckinComToken(payload, this.token!, this.pinSessao);
+      observable$ = this.inscricaoService.updateCheckinComToken(
+        payload,
+        this.token!,
+        this.pinSessao,
+      );
     } else {
       observable$ = from(this.inscricaoService.updateInscricaoBatch([payload]));
     }
@@ -263,7 +286,7 @@ export class CheckinComponent implements OnInit {
         this.atualizarContador();
         this.mostrarToast('Saída registada.');
       },
-      error: () => this.mostrarToast('Erro ao registar saída.')
+      error: () => this.mostrarToast('Erro ao registar saída.'),
     });
   }
 

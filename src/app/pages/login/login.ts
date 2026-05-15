@@ -1,13 +1,13 @@
-import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Component, inject } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
 // Material
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-login',
@@ -18,10 +18,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatSnackBarModule
+    MatSnackBarModule,
   ],
   templateUrl: './login.html',
-  styleUrls: ['./login.scss']
+  styleUrls: ['./login.scss'],
 })
 export class LoginComponent {
   loginForm: FormGroup;
@@ -36,7 +36,7 @@ export class LoginComponent {
   constructor() {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required]
+      password: ['', Validators.required],
     });
   }
 
@@ -49,17 +49,14 @@ export class LoginComponent {
 
     try {
       await this.authService.login(email, password);
-      // O redirecionamento agora é feito no Service, ou podes fazer aqui
     } catch (e: any) {
-      this.isLoading = false;
-
-      // Tenta ler a mensagem de erro que vem do PHP
       if (e.error && e.error.erro) {
-        this.erro = e.error.erro; // Ex: "Credenciais inválidas"
+        this.erro = e.error.erro;
       } else {
         this.erro = 'Erro ao conectar ao servidor.';
       }
-      console.error(e);
+    } finally {
+      this.isLoading = false;
     }
   }
 }

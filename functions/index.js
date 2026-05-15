@@ -1,29 +1,29 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const nodemailer = require("nodemailer");
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const nodemailer = require('nodemailer');
 
 admin.initializeApp();
 
 // 1. Configuração do "Carteiro" (Gmail)
-// Tens de gerar uma "App Password" na tua conta Google: https://myaccount.google.com/apppasswords
+// Configura as credenciais via Firebase environment config:
+// firebase functions:config:set gmail.user="..." gmail.pass="..."
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  service: 'gmail',
   auth: {
-    user: "agueda.tap@gmail.com",
-    pass: "aknz rkwx fylv ameq",   
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
   },
 });
 
 // 2. A Função que "Escuta" novas inscrições
 exports.enviarEmailConfirmacao = functions.firestore
-  .document("inscricoes/{idInscricao}")
+  .document('inscricoes/{idInscricao}')
   .onCreate(async (snap, context) => {
-    
     const dados = snap.data();
-    
+
     // Verificações de segurança simples
     if (!dados || !dados.ee || !dados.ee.email) {
-      console.log("Email não enviado: Dados incompletos.");
+      console.log('Email não enviado: Dados incompletos.');
       return null;
     }
 
@@ -60,12 +60,12 @@ exports.enviarEmailConfirmacao = functions.firestore
 
     try {
       await transporter.sendMail(mailOptions);
-      console.log("Email enviado com sucesso para:", emailDestino);
-      
+      console.log('Email enviado com sucesso para:', emailDestino);
+
       // Opcional: Marcar na base de dados que o email foi enviado
       return snap.ref.update({ emailEnviado: true });
     } catch (erro) {
-      console.error("Erro ao enviar email:", erro);
+      console.error('Erro ao enviar email:', erro);
       return null;
     }
   });

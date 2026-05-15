@@ -1,11 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
 import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-reset-password',
@@ -25,9 +25,8 @@ export class ResetPassword implements OnInit {
   private snack = inject(MatSnackBar);
 
   ngOnInit() {
-    // Ler o token da URL (?token=XYZ)
     this.token = this.route.snapshot.queryParamMap.get('token') || '';
-    if (this.token) this.tokenValido = true;
+    this.tokenValido = /^[0-9a-f]{64}$/.test(this.token);
   }
 
   async alterar() {

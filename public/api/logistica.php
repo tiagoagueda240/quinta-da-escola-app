@@ -139,8 +139,8 @@ if ($method === 'POST') {
 
     } catch (Exception $e) {
         $pdo->rollBack();
-        http_response_code(500);
-        echo json_encode(["erro" => $e->getMessage()]);
+        $msg = $is_dev_request ? $e->getMessage() : 'Erro interno ao guardar estrutura.';
+        json_response(['erro' => $msg], 500);
     }
     exit;
 }

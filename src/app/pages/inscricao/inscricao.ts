@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { lastValueFrom } from 'rxjs'; // Adicionado para lidar com chamadas async/await
+import { lastValueFrom } from 'rxjs';
 import { InscricaoService } from '../../services/inscricao.service';
+import { OPCOES_TRANSPORTE } from '../../shared/transport-options';
 
 // Angular Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -73,31 +74,23 @@ export class InscricaoComponent implements OnInit {
   private fb = inject(FormBuilder);
   private inscricaoService = inject(InscricaoService);
 
-  opcoesTransporte = [
-    { label: 'Não (Entregue pelos pais)', valor: 0 },
-    { label: 'Lisboa - Quinta da Escola (+20€)', valor: 20 },
-    { label: 'Quinta da Escola - Lisboa (+20€)', valor: 20 },
-    { label: 'Lisboa - Quinta - Lisboa (+40€)', valor: 40 },
-  ];
+  readonly opcoesTransporte = OPCOES_TRANSPORTE;
 
   ngOnInit(): void {
     this.criarFormulario();
     this.carregarDadosIniciais();
 
-    // 1. Escuta mudanças no Transporte
     this.inscricaoForm.get('transporte')?.valueChanges.subscribe(() => {
       this.calcularTotal();
     });
 
-    // 2. Escuta mudanças no Turno para atualizar o Valor Base
     this.inscricaoForm.get('turnoEscolhido')?.valueChanges.subscribe((turnoNome) => {
       const turnoSelecionado = this.turnos.find((t) => t.nome === turnoNome);
-      if (turnoSelecionado) {
-        this.valorBase = turnoSelecionado.precoBase;
-      } else {
-        this.valorBase = 0;
-      }
+      this.valorBase = turnoSelecionado ? turnoSelecionado.precoBase : 0;
       this.calcularTotal();
+      if (turnoSelecionado?.esgotado) {
+        this.inscricaoForm.get('turnoEscolhido')?.setValue(null, { emitEvent: false });
+      }
     });
   }
 
@@ -113,21 +106,11 @@ export class InscricaoComponent implements OnInit {
 
       // Chama o novo endpoint que traz preço e vagas restantes
       this.turnos = await lastValueFrom(this.inscricaoService.getTurnosPublicos(localApi));
-      console.log('[Inscricao] Turnos recebidos da API:', JSON.stringify(this.turnos));
 
-      // Lógica de Seleção Automática se só existir 1 turno disponível
       const turnosDisponiveis = this.turnos.filter((t) => !t.esgotado);
       if (turnosDisponiveis.length === 1) {
         this.inscricaoForm.get('turnoEscolhido')?.patchValue(turnosDisponiveis[0].nome);
       }
-
-      // Guardar: se turno seleccionado ficou esgotado, limpar
-      this.inscricaoForm.get('turnoEscolhido')?.valueChanges.subscribe((val) => {
-        const turno = this.turnos.find((t) => t.nome === val);
-        if (turno?.esgotado) {
-          this.inscricaoForm.get('turnoEscolhido')?.setValue(null, { emitEvent: false });
-        }
-      });
     } catch (error) {
       console.error('Erro ao carregar turnos:', error);
     }
@@ -232,7 +215,7 @@ export class InscricaoComponent implements OnInit {
       };
 
       try {
-        await this.inscricaoService.addInscricao(novaInscricao);
+        await this.inscricaoService.createInscricao(novaInscricao);
         this.mostrarSucesso = true;
       } catch (erro) {
         console.error('Erro ao submeter inscrição:', erro);

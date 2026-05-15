@@ -3,30 +3,44 @@
 require 'config.php';
 
 $user = verificarAuth();
-if (!$user || $user['role'] !== 'admin') { http_response_code(403); exit; }
-
-$input = json_decode(file_get_contents('php://input'), true);
-
-// ... (Ler nome, local, turnos como antes) ...
-
-// --- NOVO: Tratamento do PIN ---
-$pin = $input['pin']; // Ex: "1234"
-if (!$pin || strlen($pin) < 4) {
-    http_response_code(400); echo json_encode(["erro" => "PIN deve ter 4 dígitos"]); exit;
+if ($user['role'] !== 'admin') {
+    json_response(['erro' => 'Acesso reservado a administradores.'], 403);
 }
-$pinHash = password_hash($pin, PASSWORD_DEFAULT);
-// ------------------------------
 
-$token = bin2hex(random_bytes(32));
-$expira = date('Y-m-d H:i:s', strtotime("+30 days")); // Exemplo
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    json_response(['erro' => 'Método não suportado.'], 405);
+}
 
-// Gravar com o PIN Hash
-$stmt = $pdo->prepare("INSERT INTO access_tokens (token, nome_coordenador, local, turnos_permitidos, expira_em, pin_hash) VALUES (?, ?, ?, ?, ?, ?)");
-$stmt->execute([$token, $input['nome'], $input['local'], json_encode($input['turnos']), $expira, $pinHash]);
+$input  = json_decode(file_get_contents('php://input'), true) ?? [];
+$nome   = trim($input['nome']   ?? '');
+$local  = trim($input['local']  ?? '');
+$turnos = $input['turnos']      ?? [];
+$pin    = $input['pin']         ?? '';
 
-echo json_encode([
-    "msg" => "Acesso Criado!",
-    "link" => "https://turnos.quintadaescola.com/checkin?token=" . $token,
-    "pin_lembrete" => $pin // Devolvemos só para confirmar
+if (!$nome || !$local || empty($turnos)) {
+    json_response(['erro' => 'Campos obrigatórios: nome, local, turnos.'], 400);
+}
+
+$locaisValidos = ['quinta', 'costaCaparica', 'quiaios'];
+if (!in_array($local, $locaisValidos, true)) {
+    json_response(['erro' => 'Local inválido.'], 400);
+}
+
+if (!$pin || strlen((string)$pin) < 4) {
+    json_response(['erro' => 'PIN deve ter pelo menos 4 dígitos.'], 400);
+}
+
+$pinHash = password_hash((string)$pin, PASSWORD_DEFAULT);
+$token   = bin2hex(random_bytes(32));
+$expira  = date('Y-m-d H:i:s', strtotime('+30 days'));
+
+$stmt = $pdo->prepare(
+    "INSERT INTO access_tokens (token, nome_coordenador, local, turnos_permitidos, expira_em, pin_hash)
+     VALUES (?, ?, ?, ?, ?, ?)"
+);
+$stmt->execute([$token, $nome, $local, json_encode($turnos), $expira, $pinHash]);
+
+json_response([
+    'msg'  => 'Acesso criado com sucesso.',
+    'link' => 'https://turnos.quintadaescola.com/checkin?token=' . $token,
 ]);
-?>
