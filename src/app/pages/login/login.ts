@@ -1,5 +1,4 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
@@ -12,16 +11,10 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSnackBarModule,
-  ],
+  imports: [ReactiveFormsModule, MatInputModule, MatButtonModule, MatIconModule, MatSnackBarModule],
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
   loginForm: FormGroup;

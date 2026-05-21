@@ -18,7 +18,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { lastValueFrom } from 'rxjs';
-import { Inscricao } from '../../models/inscricao.model';
+import { ConfigTurnos, Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
 import { OPCOES_TRANSPORTE } from '../../shared/transport-options';
@@ -30,6 +30,7 @@ import * as XLSX from 'xlsx';
 
 import { ConfigTurnosComponent } from '../../components/config-turnos.component';
 import { DialogGerarAcessoComponent } from '../../components/gerar-acesso.component';
+import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 @Component({
   selector: 'app-admin',
@@ -70,7 +71,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   ];
   selection = new SelectionModel<Inscricao>(true, []);
 
-  todosOsTurnosConfig: any = null;
+  todosOsTurnosConfig: ConfigTurnos | null = null;
   listaTurnos: string[] = [];
 
   readonly opcoesTransporte = OPCOES_TRANSPORTE;
@@ -139,10 +140,15 @@ export class AdminComponent implements OnInit, AfterViewInit {
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private confirmService = inject(ConfirmService);
 
   async ngOnInit() {
-    this.configurarFiltroAvancado();
-    await this.recarregarDadosCompletos();
+    try {
+      this.configurarFiltroAvancado();
+      await this.recarregarDadosCompletos();
+    } catch (error) {
+      this.mostrarNotificacao('Erro ao inicializar a aplicação.', 'error');
+    }
   }
 
   ngAfterViewInit() {
@@ -290,9 +296,12 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
+  async marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
     const selecionados = this.selection.selected;
-    if (confirm(`Alterar ${selecionados.length} inscrições para ${novoEstado}?`)) {
+    const ok = await this.confirmService.confirmar(
+      `Alterar ${selecionados.length} inscrições para ${novoEstado}?`,
+    );
+    if (ok) {
       const updates = selecionados.map((i) => {
         const update: any = { id: i.id!, estado_pagamento: novoEstado };
         if (novoEstado === 'pago') {
@@ -308,17 +317,28 @@ export class AdminComponent implements OnInit, AfterViewInit {
     }
   }
 
-  apagarSelecionados() {
+  async apagarSelecionados() {
     const selecionados = this.selection.selected;
-    if (confirm(`Apagar ${selecionados.length} registos permanentemente?`)) {
-      const promessas = selecionados.map((i) =>
-        i.id ? this.inscricaoService.deleteInscricao(i.id) : Promise.resolve(),
-      );
-      Promise.all(promessas).then(() => {
-        this.recarregarDadosCompletos();
-        this.selection.clear();
+    const ok = await this.confirmService.confirmar(
+      `Apagar ${selecionados.length} registos permanentemente?`,
+      { cor: 'warn', confirmar: 'Apagar' },
+    );
+    if (ok) {
+      const ids = new Set(selecionados.map((i) => String(i.id)));
+      // Remoção imediata da tabela
+      this.dataSource.data = this.dataSource.data.filter((i) => !ids.has(String(i.id)));
+      this.selection.clear();
+      try {
+        await Promise.all(
+          selecionados.map((i) =>
+            i.id ? this.inscricaoService.deleteInscricao(i.id) : Promise.resolve(),
+          ),
+        );
         this.mostrarNotificacao('Apagado.', 'error');
-      });
+      } catch {
+        this.mostrarNotificacao('Erro ao apagar alguns registos.', 'error');
+      }
+      await this.recarregarDadosCompletos();
     }
   }
 
@@ -466,11 +486,12 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  fecharModoExcel() {
+  async fecharModoExcel() {
     if (this.linhasModificadas.size > 0) {
-      if (!confirm('Tens alterações por guardar! Queres mesmo sair e perder os dados?')) {
-        return;
-      }
+      const ok = await this.confirmService.confirmar(
+        'Tens alterações por guardar! Queres mesmo sair e perder os dados?',
+      );
+      if (!ok) return;
     }
     this.linhasModificadas.clear();
     this.dialog.closeAll();
@@ -808,22 +829,22 @@ export class AdminComponent implements OnInit, AfterViewInit {
     }
   }
 
-  apagarLinhaExcel(row: Inscricao) {
+  async apagarLinhaExcel(row: Inscricao) {
     if (!row.id) {
       this.dataSource.data = this.dataSource.data.filter((r) => r !== row);
       this.linhasModificadas.delete(row);
       return;
     }
-    if (confirm('Apagar esta linha permanentemente?')) {
-      this.inscricaoService.deleteInscricao(row.id).then(() => {
-        this.dataSource.data = this.dataSource.data.filter((r) => r.id !== row.id);
-        this.linhasModificadas.delete(row);
-        this.atualizarKPIs(this.dataSource.filteredData);
-        this.snackBar.open('Linha eliminada', 'OK', {
-          duration: 1500,
-          panelClass: 'snackbar-error',
-        });
-      });
+    const ok = await this.confirmService.confirmar('Apagar esta linha permanentemente?', {
+      cor: 'warn',
+      confirmar: 'Apagar',
+    });
+    if (ok) {
+      await this.inscricaoService.deleteInscricao(row.id);
+      this.dataSource.data = this.dataSource.data.filter((r) => r.id !== row.id);
+      this.linhasModificadas.delete(row);
+      this.atualizarKPIs(this.dataSource.filteredData);
+      this.snackBar.open('Linha eliminada', 'OK', { duration: 1500, panelClass: 'snackbar-error' });
     }
   }
 
@@ -1144,21 +1165,34 @@ export class AdminComponent implements OnInit, AfterViewInit {
     this.isEditing = true;
   }
 
-  reenviarEmail(inscricao: Inscricao) {
-    if (!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
+  async reenviarEmail(inscricao: Inscricao) {
+    const ok = await this.confirmService.confirmar(
+      `Enviar email de confirmação para ${inscricao.ee.email}?`,
+    );
+    if (!ok) return;
     this.mostrarNotificacao('A processar pedido...', 'success');
     this.inscricaoService.enviarEmailSeguro(inscricao);
     this.mostrarNotificacao('Email enviado para o servidor de correio!');
   }
 
-  apagarInscricao(id?: string) {
+  async apagarInscricao(id?: string) {
     if (!id) return;
-    if (confirm('Eliminar permanentemente?')) {
-      this.inscricaoService.deleteInscricao(id).then(() => {
-        this.recarregarDadosCompletos();
-        this.fecharDetalhes();
-        this.mostrarNotificacao('Apagado.', 'error');
-      });
+    const ok = await this.confirmService.confirmar('Eliminar permanentemente?', {
+      cor: 'warn',
+      confirmar: 'Eliminar',
+    });
+    if (ok) {
+      // Remoção imediata da tabela para feedback instantâneo
+      this.dataSource.data = this.dataSource.data.filter((i) => String(i.id) !== String(id));
+      this.fecharDetalhes();
+      try {
+        await this.inscricaoService.deleteInscricao(id);
+        this.mostrarNotificacao('Apagado com sucesso.', 'error');
+      } catch {
+        this.mostrarNotificacao('Erro ao apagar. A recarregar dados...', 'error');
+      }
+      // Reload em background para garantir sincronismo com o servidor
+      await this.recarregarDadosCompletos();
     }
   }
 

@@ -55,6 +55,13 @@
               }
             </mat-select>
           </mat-form-field>
+
+          <div class="aviso-minimo">
+            <mat-icon>info_outline</mat-icon>
+            <span
+              >A realização de cada turno está sujeita a um número mínimo de 15 inscrições.</span
+            >
+          </div>
         </mat-card-content>
       </mat-card>
 
@@ -269,17 +276,6 @@
               }
             </mat-select>
           </mat-form-field>
-
-          <div class="checkbox-group">
-            <mat-checkbox formControlName="autorizaFotoVideo"
-              >Autorizo captação de imagem nas atividades</mat-checkbox
-            >
-          </div>
-          <div class="checkbox-group">
-            <mat-checkbox formControlName="politicaPrivacidade"
-              >Aceito a política de privacidade</mat-checkbox
-            >
-          </div>
         </mat-card-content>
       </mat-card>
 
@@ -300,6 +296,53 @@
               placeholder="Ex: Gostaríamos que ficasse no mesmo grupo que o João Silva..."
             ></textarea>
           </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>checklist</mat-icon>
+            Declarações e Autorizações
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="checkbox-group">
+            <mat-checkbox formControlName="consenteDadosSaude">
+              <span class="consent-label">
+                Consinto o tratamento dos dados de saúde do participante para fins de segurança e
+                assistência durante as atividades.
+              </span>
+            </mat-checkbox>
+            @if (
+              inscricaoForm.get('consenteDadosSaude')?.hasError('requiredTrue') &&
+              inscricaoForm.get('consenteDadosSaude')?.touched
+            ) {
+              <mat-error class="consent-error"
+                >Consentimento obrigatório para prosseguir.</mat-error
+              >
+            }
+          </div>
+          <div class="checkbox-group">
+            <mat-checkbox formControlName="autorizaFotoVideo"
+              >Autorizo captação de imagem/vídeo nas atividades para fins
+              institucionais</mat-checkbox
+            >
+          </div>
+          <div class="checkbox-group">
+            <mat-checkbox formControlName="politicaPrivacidade">
+              Li e aceito a
+              <a routerLink="/politica-privacidade" target="_blank" class="link-politica"
+                >Política de Privacidade</a
+              >.
+            </mat-checkbox>
+            @if (
+              inscricaoForm.get('politicaPrivacidade')?.hasError('requiredTrue') &&
+              inscricaoForm.get('politicaPrivacidade')?.touched
+            ) {
+              <mat-error class="consent-error">Deve aceitar a Política de Privacidade.</mat-error>
+            }
+          </div>
         </mat-card-content>
       </mat-card>
 
@@ -359,6 +402,15 @@
         <button mat-flat-button color="primary" class="btn-big" (click)="novaInscricao()">
           <mat-icon>person_add</mat-icon> Inscrever Irmão/Amigo
         </button>
+        <p class="rgpd-note">
+          Para aceder, retificar ou eliminar os seus dados, consulte a
+          <a routerLink="/politica-privacidade" target="_blank">Política de Privacidade</a>
+          ou contacte
+          <a
+            href="mailto:info@quintadaescola.com?subject=RGPD%20%E2%80%93%20Exerc%C3%ADcio%20de%20Direitos"
+            >info&#64;quintadaescola.com</a
+          >.
+        </p>
       </div>
     </div>
   </div>

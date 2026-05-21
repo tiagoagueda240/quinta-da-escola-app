@@ -6,6 +6,7 @@ import { from, Observable } from 'rxjs'; // <--- IMPORTANTE
 import { Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
+import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -67,26 +68,32 @@ export class CheckinComponent implements OnInit {
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private confirmService = inject(ConfirmService);
 
   async ngOnInit() {
-    this.token = this.route.snapshot.queryParamMap.get('token');
+    try {
+      this.token = this.route.snapshot.queryParamMap.get('token');
 
-    if (this.token) {
-      this.modoLink = true;
-      this.loading = false;
-      const pinSalvo = sessionStorage.getItem('access_pin_' + this.token);
-      if (pinSalvo) {
-        this.pinInput = pinSalvo;
-        this.validarPin();
-      }
-    } else {
-      if (this.authService.getToken()) {
-        this.modoLink = false;
-        this.pinValidado = true;
-        await this.carregarDadosAdmin();
+      if (this.token) {
+        this.modoLink = true;
+        this.loading = false;
+        const pinSalvo = sessionStorage.getItem('access_pin_' + this.token);
+        if (pinSalvo) {
+          this.pinInput = pinSalvo;
+          this.validarPin();
+        }
       } else {
-        this.router.navigate(['/login']);
+        if (this.authService.getToken()) {
+          this.modoLink = false;
+          this.pinValidado = true;
+          await this.carregarDadosAdmin();
+        } else {
+          this.router.navigate(['/login']);
+        }
       }
+    } catch (error) {
+      this.mostrarToast('Erro ao inicializar.');
+      this.loading = false;
     }
   }
 
@@ -254,11 +261,14 @@ export class CheckinComponent implements OnInit {
     });
   }
 
-  registarSaida(inscricao: Inscricao) {
+  async registarSaida(inscricao: Inscricao) {
     if (!inscricao.id) return;
     const idSeguro = inscricao.id;
 
-    if (!confirm(`Confirmar saída de ${inscricao.participante.nomeCompleto}?`)) return;
+    const ok = await this.confirmService.confirmar(
+      `Confirmar saída de ${inscricao.participante.nomeCompleto}?`,
+    );
+    if (!ok) return;
 
     const payload = {
       id: idSeguro,

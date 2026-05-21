@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Monitor } from '../models/monitor.model';
 import { InscricaoService } from '../services/inscricao.service';
 import { MonitorService } from '../services/monitor.service';
+import { ConfirmService } from '../shared/confirm-dialog.component';
 
 @Component({
   selector: 'app-config-turnos',
@@ -268,6 +269,7 @@ export class ConfigTurnosComponent implements OnInit {
   private monitoresService = inject(MonitorService);
   private dialogRef = inject(MatDialogRef<ConfigTurnosComponent>);
   private snack = inject(MatSnackBar);
+  private confirmService = inject(ConfirmService);
   async ngOnInit() {
     try {
       const dados = await this.inscricaoService.getConfiguracoesTurnos();
@@ -338,8 +340,12 @@ export class ConfigTurnosComponent implements OnInit {
     });
   }
 
-  removerTurno(local: string, index: number) {
-    if (confirm('Remover turno?')) this.config[local].splice(index, 1);
+  async removerTurno(local: string, index: number) {
+    const ok = await this.confirmService.confirmar('Remover turno?', {
+      cor: 'warn',
+      confirmar: 'Remover',
+    });
+    if (ok) this.config[local].splice(index, 1);
   }
 
   addCoordenador(turno: any) {

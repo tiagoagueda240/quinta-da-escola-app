@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
 import { InscricaoService } from '../../services/inscricao.service';
 import { OPCOES_TRANSPORTE } from '../../shared/transport-options';
@@ -37,6 +39,7 @@ export const FORMATOS_PT_LUXON = {
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     ReactiveFormsModule,
     MatInputModule,
     MatSelectModule,
@@ -73,6 +76,7 @@ export class InscricaoComponent implements OnInit {
 
   private fb = inject(FormBuilder);
   private inscricaoService = inject(InscricaoService);
+  private destroyRef = inject(DestroyRef);
 
   readonly opcoesTransporte = OPCOES_TRANSPORTE;
 
@@ -80,18 +84,24 @@ export class InscricaoComponent implements OnInit {
     this.criarFormulario();
     this.carregarDadosIniciais();
 
-    this.inscricaoForm.get('transporte')?.valueChanges.subscribe(() => {
-      this.calcularTotal();
-    });
+    this.inscricaoForm
+      .get('transporte')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.calcularTotal();
+      });
 
-    this.inscricaoForm.get('turnoEscolhido')?.valueChanges.subscribe((turnoNome) => {
-      const turnoSelecionado = this.turnos.find((t) => t.nome === turnoNome);
-      this.valorBase = turnoSelecionado ? turnoSelecionado.precoBase : 0;
-      this.calcularTotal();
-      if (turnoSelecionado?.esgotado) {
-        this.inscricaoForm.get('turnoEscolhido')?.setValue(null, { emitEvent: false });
-      }
-    });
+    this.inscricaoForm
+      .get('turnoEscolhido')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((turnoNome) => {
+        const turnoSelecionado = this.turnos.find((t) => t.nome === turnoNome);
+        this.valorBase = turnoSelecionado ? turnoSelecionado.precoBase : 0;
+        this.calcularTotal();
+        if (turnoSelecionado?.esgotado) {
+          this.inscricaoForm.get('turnoEscolhido')?.setValue(null, { emitEvent: false });
+        }
+      });
   }
 
   async carregarDadosIniciais() {
@@ -146,6 +156,7 @@ export class InscricaoComponent implements OnInit {
         nif: [''], // Adicionado, útil para a BD
         contactoEmergencia: [''],
       }),
+      consenteDadosSaude: [false, Validators.requiredTrue],
       autorizaFotoVideo: [false, Validators.requiredTrue],
       transporte: [0, Validators.required],
       observacoes: [''],

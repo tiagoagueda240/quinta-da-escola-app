@@ -120,14 +120,14 @@ if ($method === 'GET') {
 
     if ($acao === 'listar') {
         try {
-            // QUERY: Busca tudo. 
+            // QUERY: Busca tudo.
+            // IMPORTANTE: i.id AS id deve vir NO FINAL para não ser sobrescrito por p.id
+            // (quando há SELECT i.*, p.*, o PDO FETCH_ASSOC usa o último valor de colunas com nome duplicado)
             $sqlBase = "
                 SELECT 
-                    i.*, 
-                    p.nome_completo, p.data_nascimento, p.genero,
-                    p.email_ee, p.nome_ee, p.telefone_ee, p.nif_ee, p.contacto_emergencia,
-                    p.intolerancias, p.medicacao, p.tamanho_tshirt,
-                    p.morada, p.cc, p.nif, p.sistema_saude
+                    i.*,
+                    p.*,
+                    i.id AS id
                 FROM inscricoes i
                 JOIN participantes p ON i.participante_id = p.id
             ";

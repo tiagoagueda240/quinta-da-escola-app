@@ -1,9 +1,23 @@
 ﻿<?php
-// send-email.php — Envio via mail() nativo do servidor (sem API externa)
+// send-email.php — Envio via SMTP direto (SSL, porta 465)
+require_once __DIR__ . '/api/secrets.php';
+require_once __DIR__ . '/api/smtp.php';
 
 function logMsg($msg) {
     $date = date('Y-m-d H:i:s');
-    file_put_contents(__DIR__ . '/log.txt', "[$date] $msg" . PHP_EOL, FILE_APPEND);
+    // Rotate log: keep only last 90 days. Delete if older.
+    $logFile = __DIR__ . '/log.txt';
+    if (file_exists($logFile) && (time() - filemtime($logFile)) > 90 * 86400) {
+        unlink($logFile);
+    }
+    file_put_contents($logFile, "[$date] $msg" . PHP_EOL, FILE_APPEND);
+}
+
+// Anonymize email for logging (show only domain, e.g. ***@gmail.com)
+function anonimizarEmail($email) {
+    $parts = explode('@', $email);
+    if (count($parts) !== 2) return '***@***.***';
+    return '***@' . $parts[1];
 }
 
 // CORS
@@ -11,26 +25,22 @@ header("Access-Control-Allow-Origin: https://turnos.quintadaescola.com");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-// Receber dados do Angular
 $rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true);
+$input    = json_decode($rawInput, true);
 
 if (!$input || empty($input['email'])) {
-    logMsg("ERRO: Dados em falta. Raw: " . $rawInput);
+    logMsg("ERRO: Dados em falta.");
     http_response_code(400);
     echo json_encode(["error" => "Dados em falta"]);
     exit;
 }
 
-$para      = filter_var(trim($input['email']), FILTER_VALIDATE_EMAIL);
-$nome      = htmlspecialchars(trim($input['nome']  ?? 'Encarregado de Educacao'), ENT_QUOTES, 'UTF-8');
-$turno     = htmlspecialchars(trim($input['turno'] ?? ''), ENT_QUOTES, 'UTF-8');
-$valor     = htmlspecialchars(trim($input['valor'] ?? ''), ENT_QUOTES, 'UTF-8');
+$para  = filter_var(trim($input['email']), FILTER_VALIDATE_EMAIL);
+$nome  = htmlspecialchars(trim($input['nome']  ?? 'Encarregado de Educacao'), ENT_QUOTES, 'UTF-8');
+$turno = htmlspecialchars(trim($input['turno'] ?? ''), ENT_QUOTES, 'UTF-8');
+$valor = htmlspecialchars(trim((string)($input['valor'] ?? '')), ENT_QUOTES, 'UTF-8');
 
 if (!$para) {
     logMsg("ERRO: Email invalido: " . $input['email']);
@@ -39,11 +49,7 @@ if (!$para) {
     exit;
 }
 
-logMsg("A enviar para: $para");
-
-// Construir email HTML
-$assunto   = '=?UTF-8?B?' . base64_encode('Confirmacao de Inscricao - Quinta da Escola') . '?=';
-$remetente = 'Quinta da Escola <noreply@quintadaescola.com>';
+logMsg("A enviar para: " . anonimizarEmail($para) . " | turno: $turno | valor: $valor");
 
 $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
     . 'body{margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f6f8;}'
@@ -72,20 +78,13 @@ $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
     . '<center><a href="mailto:info@quintadaescola.com" class="btn">Enviar Comprovativo</a></center>'
     . '</div></div></body></html>';
 
-$headers  = "MIME-Version: 1.0\r\n";
-$headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-$headers .= "From: " . $remetente . "\r\n";
-$headers .= "Reply-To: info@quintadaescola.com\r\n";
-$headers .= "X-Mailer: PHP/" . phpversion();
+$resultado = enviarSmtp($para, 'Confirmacao de Inscricao - Quinta da Escola', $html);
 
-$enviado = mail($para, $assunto, $html, $headers);
-
-if ($enviado) {
-    logMsg("Email enviado com sucesso para: $para");
+if ($resultado === true) {
+    logMsg("Email enviado com sucesso para: " . anonimizarEmail($para));
     echo json_encode(["success" => true]);
 } else {
-    logMsg("ERRO: mail() devolveu false para: $para");
+    logMsg("ERRO ao enviar para " . anonimizarEmail($para) . ": $resultado");
     http_response_code(500);
-    echo json_encode(["error" => "Falha ao enviar email."]);
+    echo json_encode(["error" => $resultado]);
 }
-?>

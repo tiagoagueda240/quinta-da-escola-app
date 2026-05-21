@@ -8,10 +8,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
-import { Inscricao, TurnoConfig } from '../../models/inscricao.model';
+import { ConfigTurnos, Inscricao, TurnoConfig } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
 import { MonitorService } from '../../services/monitor.service';
+import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 // Material Imports
 import {
@@ -37,7 +38,7 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-monitores',
@@ -78,7 +79,7 @@ export class MonitoresComponent implements OnInit {
 
   listaFormacoes: string[] = [];
   listaTurnos: string[] = [];
-  todosTurnosConfig: any = {};
+  todosTurnosConfig: ConfigTurnos | null = null;
 
   stats = { monitores: 0, totalCriancas: 0, racio: 0 };
   monitorForm!: FormGroup;
@@ -97,6 +98,7 @@ export class MonitoresComponent implements OnInit {
   private fb = inject(FormBuilder);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private confirmService = inject(ConfirmService);
 
   private readonly COL_ALIASES: any = {
     nome: ['nome completo', 'nome'],
@@ -108,10 +110,6 @@ export class MonitoresComponent implements OnInit {
   };
 
   async ngOnInit() {
-    await this.carregarTurnosDoSistema();
-    await this.carregarConfiguracaoCompleta();
-    await this.carregarDadosIniciais();
-
     this.monitorForm = this.fb.group({
       nome: ['', Validators.required],
       nomeMonitor: [''],
@@ -121,8 +119,16 @@ export class MonitoresComponent implements OnInit {
       obs: [''],
     });
 
-    this.inscricoes = await lastValueFrom(this.inscricaoService.getInscricoes());
-    this.atualizarStats();
+    try {
+      await this.carregarTurnosDoSistema();
+      await this.carregarConfiguracaoCompleta();
+      await this.carregarDadosIniciais();
+
+      this.inscricoes = await lastValueFrom(this.inscricaoService.getInscricoes());
+      this.atualizarStats();
+    } catch (error) {
+      this.snackBar.open('Erro ao inicializar os monitores.', 'OK', { duration: 3000 });
+    }
   }
 
   async carregarTurnosDoSistema() {
@@ -167,7 +173,11 @@ export class MonitoresComponent implements OnInit {
 
     if (index > -1) {
       // Remover
-      if (confirm(`⚠️ Remover ${nome} de Coordenador deste turno?`)) {
+      const ok = await this.confirmService.confirmar(
+        `Remover ${nome} de Coordenador deste turno?`,
+        { cor: 'warn' },
+      );
+      if (ok) {
         turnoObj.coordenadores.splice(index, 1);
         this.snackBar.open(`${nome} removido de coordenador!`, 'OK', { duration: 2000 });
       } else {
@@ -180,7 +190,7 @@ export class MonitoresComponent implements OnInit {
     }
 
     try {
-      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
+      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig!);
     } catch (e) {
       console.error(e);
       this.snackBar.open('Erro ao gravar coordenador.', 'Fechar');
@@ -200,14 +210,14 @@ export class MonitoresComponent implements OnInit {
 
     if (index > -1) {
       turnoObj.coordenadores.splice(index, 1);
-      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
+      await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig!);
     }
   }
 
   private encontrarTurnoNaConfig(nomeTurno: string): TurnoConfig | undefined {
-    const locais = ['quinta', 'costaCaparica', 'quiaios'];
+    const locais: (keyof ConfigTurnos)[] = ['quinta', 'costaCaparica', 'quiaios'];
     for (const local of locais) {
-      const lista = this.todosTurnosConfig[local] || [];
+      const lista = this.todosTurnosConfig?.[local] || [];
       const encontrado = lista.find((t: any) => t.nome === nomeTurno);
       if (encontrado) return encontrado;
     }
@@ -505,8 +515,9 @@ export class MonitoresComponent implements OnInit {
 
         // Pede confirmação ÚNICA
         if (
-          confirm(
-            `⚠️ ATENÇÃO: ${nome} é Coordenador(a)!\n\nAo remover deste turno, perderá também o estatuto de Coordenador.\n\nDeseja continuar?`,
+          await this.confirmService.confirmar(
+            `${nome} é Coordenador(a)! Ao remover deste turno, perderá também o estatuto de Coordenador. Deseja continuar?`,
+            { cor: 'warn' },
           )
         ) {
           // 1. Remove coordenação (BD Configurações)
@@ -558,7 +569,12 @@ export class MonitoresComponent implements OnInit {
     this.dialog.closeAll();
   }
   async apagarMonitor(id?: string) {
-    if (id && confirm('Apagar?')) {
+    if (!id) return;
+    const ok = await this.confirmService.confirmar('Apagar monitor?', {
+      cor: 'warn',
+      confirmar: 'Apagar',
+    });
+    if (ok) {
       await this.monitorService.deleteMonitor(id);
       await this.carregarDadosIniciais();
     }
@@ -580,11 +596,11 @@ export class MonitoresComponent implements OnInit {
     if (!isSelected) {
       if (this.isCoordenadorDoTurno(this.selectedMonitor, turnoNome)) {
         const nome = this.selectedMonitor.nomeMonitor || this.selectedMonitor.nome;
-        if (
-          confirm(
-            `⚠️ ${nome} é Coordenador em "${turnoNome}".\n\nAo sair deste turno, perderá a coordenação.\nPretende continuar?`,
-          )
-        ) {
+        const okRemove = await this.confirmService.confirmar(
+          `${nome} é Coordenador em "${turnoNome}". Ao sair deste turno, perderá a coordenação. Pretende continuar?`,
+          { cor: 'warn' },
+        );
+        if (okRemove) {
           await this.removerCoordenadorDoTurno(this.selectedMonitor, turnoNome);
           this.snackBar.open('Coordenação removida.', 'OK', { duration: 2000 });
         } else {
@@ -640,6 +656,6 @@ export class MonitoresComponent implements OnInit {
         c.toLowerCase().trim() !== nomeCompleto.toLowerCase().trim(),
     );
 
-    await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig);
+    await this.inscricaoService.saveConfiguracoesTurnos(this.todosTurnosConfig!);
   }
 }

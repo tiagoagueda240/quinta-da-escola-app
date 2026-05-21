@@ -1,45 +1,26 @@
 <?php
-// api/teste_brevo.php
+// teste_smtp.php — Testa o envio SMTP direto (mesmo mecanismo do send-email.php)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
+require_once __DIR__ . '/api/secrets.php';
+require_once __DIR__ . '/api/smtp.php';
 
-echo "<h1>A iniciar teste...</h1>";
+echo "<h1>Teste SMTP Direto</h1>";
+echo "<p>Servidor: <strong>" . SMTP_HOST . ":" . SMTP_PORT . "</strong></p>";
+echo "<p>Remetente: <strong>" . SMTP_USER . "</strong></p>";
 
-// 1. A TUA CHAVE (Cola aqui outra vez para garantir)
-$apiKey = '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'; // <--- TUA CHAVE AQUI
+$destinatario = 'agueda.tap@gmail.com';
+echo "<p>Destinatário: <strong>$destinatario</strong></p>";
 
-// 2. Configuração
-$url = 'https://api.brevo.com/v3/smtp/email';
-$data = [
-    // ATENÇÃO: Usa aqui o email com que te registaste no Brevo para garantir que funciona
-    'sender' => ['name' => 'Teste', 'email' => 'geral@quintadaescola.com'], 
-    'to' => [['email' => 'agueda.tap@gmail.com', 'name' => 'Eu Próprio']],
-    'subject' => 'Teste de Conexão PHP -> Brevo',
-    'htmlContent' => '<p>Se lês isto, o PHP e o Brevo estão a funcionar!</p>'
-];
+$resultado = enviarSmtp(
+    $destinatario,
+    'Teste SMTP – Quinta da Escola',
+    '<h2>Teste bem sucedido!</h2><p>O SMTP direto está a funcionar corretamente.</p>'
+);
 
-// 3. Enviar
-$ch = curl_init($url);
-curl_setopt($ch, CURLOPT_POST, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'api-key: ' . $apiKey,
-    'Content-Type: application/json',
-    'Accept: application/json'
-]);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-// Linha importante para servidores partilhados antigos:
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-
-$result = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-if (curl_errno($ch)) {
-    echo "<h2 style='color:red'>Erro de cURL: " . curl_error($ch) . "</h2>";
+if ($resultado === true) {
+    echo "<h2 style='color:green'>✅ Email enviado com sucesso!</h2>";
 } else {
-    echo "<h3>Código HTTP: $httpCode</h3>";
-    echo "<pre>Resposta do Brevo: $result</pre>";
+    echo "<h2 style='color:red'>❌ Erro: " . htmlspecialchars($resultado) . "</h2>";
 }
-
-curl_close($ch);
 ?>

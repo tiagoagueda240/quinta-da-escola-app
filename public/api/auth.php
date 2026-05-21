@@ -14,9 +14,14 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
     json_response(['erro' => 'Credenciais inválidas.'], 400);
 }
 
-$stmt = $pdo->prepare("SELECT id, email, password_hash, role, nome FROM users WHERE email = ?");
-$stmt->execute([$email]);
-$user = $stmt->fetch();
+try {
+    $stmt = $pdo->prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+} catch (PDOException $e) {
+    error_log('auth.php DB error: ' . $e->getMessage());
+    json_response(['erro' => 'Erro interno do servidor.'], 500);
+}
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
     json_response(['erro' => 'Email ou password incorretos.'], 401);
@@ -26,7 +31,7 @@ $jwt = generate_jwt([
     'id'    => $user['id'],
     'email' => $user['email'],
     'role'  => $user['role'],
-    'nome'  => $user['nome'],
+    'nome'  => $user['email'],
     'exp'   => time() + 86400, // 24 horas
 ]);
 
@@ -34,7 +39,7 @@ json_response([
     'token' => $jwt,
     'user'  => [
         'email' => $user['email'],
-        'nome'  => $user['nome'],
+        'nome'  => $user['email'],
         'role'  => $user['role'],
     ],
 ]);

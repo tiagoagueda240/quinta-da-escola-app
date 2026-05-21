@@ -1,19 +1,19 @@
-import { Component, inject, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, ElementRef, HostListener, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-hidden-menu',
   standalone: true,
   imports: [CommonModule, RouterModule, MatIconModule],
   templateUrl: './hidden-menu.html',
-  styleUrl: './hidden-menu.scss'
+  styleUrl: './hidden-menu.scss',
 })
 export class HiddenMenuComponent {
   isOpen = false;
-  
+
   private router = inject(Router);
   private authService = inject(AuthService);
   private eRef = inject(ElementRef);
@@ -29,9 +29,9 @@ export class HiddenMenuComponent {
     }
   }
 
-  async logout() {
+  logout() {
     this.isOpen = false;
-      await this.authService.logout();
+    this.authService.logout();
   }
 
   navegar(rota: string) {

@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Inscricao } from '../../models/inscricao.model';
+import { ConfigTurnos, Inscricao } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
 import { LogisticaService } from '../../services/logistica.service';
 import { MonitorService } from '../../services/monitor.service';
+import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 // Material & CDK
 import {
@@ -73,6 +74,7 @@ export class GruposComponent implements OnInit {
   private logisticaService = inject(LogisticaService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private confirmService = inject(ConfirmService);
 
   @ViewChild('dialogGerirEquipa') dialogGerirEquipa!: TemplateRef<any>;
   @ViewChild('dialogSelecaoQuartos') dialogSelecaoQuartos!: TemplateRef<any>;
@@ -90,7 +92,7 @@ export class GruposComponent implements OnInit {
   modoVisualizacao: 'camarata' | 'atividade' = 'camarata';
 
   filtroLocal: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
-  todosOsTurnosConfig: any = null;
+  todosOsTurnosConfig: ConfigTurnos | null = null;
   listaTurnos: string[] = [];
 
   qtdQuartosM = 2;
@@ -146,7 +148,7 @@ export class GruposComponent implements OnInit {
   }
 
   atualizarListaTurnos() {
-    const turnosDoLocal = this.todosOsTurnosConfig[this.filtroLocal] || [];
+    const turnosDoLocal = this.todosOsTurnosConfig?.[this.filtroLocal] || [];
     this.listaTurnos = turnosDoLocal.map((t: any) => t.nome);
 
     this.turnoSelecionado = '';
@@ -279,12 +281,13 @@ export class GruposComponent implements OnInit {
     this.poolVisual = criancasTurno.filter((k) => k.id && !atribuidosIds.has(k.id));
   }
 
-  inicializarQuartos() {
-    if (
-      this.colunasCamaratas.length > 0 &&
-      !confirm('Reiniciar estrutura? Dados não guardados serão perdidos.')
-    )
-      return;
+  async inicializarQuartos() {
+    if (this.colunasCamaratas.length > 0) {
+      const ok = await this.confirmService.confirmar(
+        'Reiniciar estrutura? Dados não guardados serão perdidos.',
+      );
+      if (!ok) return;
+    }
 
     this.colunasCamaratas.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasCamaratas = [];
@@ -393,8 +396,11 @@ export class GruposComponent implements OnInit {
     else this.snackBar.open(`Lados trocados!`, 'OK', { duration: 2000 });
   }
 
-  gerarGruposAtividade() {
-    if (this.colunasAtividades.length > 0 && !confirm('Reiniciar grupos?')) return;
+  async gerarGruposAtividade() {
+    if (this.colunasAtividades.length > 0) {
+      const ok = await this.confirmService.confirmar('Reiniciar grupos?');
+      if (!ok) return;
+    }
     this.colunasAtividades.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasAtividades = [];
 
@@ -439,14 +445,12 @@ export class GruposComponent implements OnInit {
     else this.colunasAtividades.push(novaColuna);
   }
 
-  removerColuna(col: ColunaGrupo) {
+  async removerColuna(col: ColunaGrupo) {
     if (col.lista.length > 0) {
-      if (
-        !confirm(
-          `Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`,
-        )
-      )
-        return;
+      const ok = await this.confirmService.confirmar(
+        `Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`,
+      );
+      if (!ok) return;
       this.poolVisual.push(...col.lista);
     }
     if (col.tipo === 'camarata')
