@@ -71,6 +71,7 @@ export class MonitoresComponent implements OnInit {
   monitoresDisponiveis: Monitor[] = [];
 
   pesquisa: string = '';
+  localSelecionado: string = '';
   turnoSelecionado: string = '';
   filtroFormacao: string = '';
   filtroFaltaAlcunha: boolean = false;
@@ -78,7 +79,13 @@ export class MonitoresComponent implements OnInit {
 
   listaFormacoes: string[] = [];
   listaTurnos: string[] = [];
+  listaTurnosPorLocal: { local: string; turnos: string[] }[] = [];
   todosTurnosConfig: any = {};
+
+  get turnosDoLocalSelecionado(): string[] {
+    if (!this.localSelecionado) return [];
+    return this.listaTurnosPorLocal.find((g) => g.local === this.localSelecionado)?.turnos ?? [];
+  }
 
   stats = { monitores: 0, totalCriancas: 0, racio: 0 };
   monitorForm!: FormGroup;
@@ -128,12 +135,27 @@ export class MonitoresComponent implements OnInit {
   async carregarTurnosDoSistema() {
     try {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
-      const todosTurnos = [
-        ...(config.quinta || []),
-        ...(config.costaCaparica || []),
-        ...(config.quiaios || []),
+
+      const locaisMap: { key: string; label: string }[] = [
+        { key: 'quinta', label: 'Quinta da Escola' },
+        { key: 'costaCaparica', label: 'Costa da Caparica' },
+        { key: 'quiaios', label: 'Quiaios' },
       ];
-      this.listaTurnos = todosTurnos.filter((t: any) => t.ativo === true).map((t: any) => t.nome);
+
+      const allTurnos: string[] = [];
+      this.listaTurnosPorLocal = [];
+
+      for (const { key, label } of locaisMap) {
+        const turnos = ((config as any)[key] || [])
+          .filter((t: any) => t.ativo === true)
+          .map((t: any) => t.nome as string);
+        if (turnos.length > 0) {
+          this.listaTurnosPorLocal.push({ local: label, turnos });
+          allTurnos.push(...turnos);
+        }
+      }
+
+      this.listaTurnos = allTurnos;
     } catch (e) {
       console.error('Erro ao carregar turnos', e);
       this.snackBar.open('Erro ao carregar lista de turnos.', 'OK');
@@ -244,6 +266,11 @@ export class MonitoresComponent implements OnInit {
       if (m.formacoes) m.formacoes.forEach((f) => set.add(f));
     });
     this.listaFormacoes = Array.from(set).sort().reverse();
+  }
+
+  onLocalChange() {
+    this.turnoSelecionado = '';
+    this.atualizarListas();
   }
 
   toggleFiltroAlcunha(event: any) {
