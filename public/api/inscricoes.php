@@ -252,47 +252,52 @@ if ($method === 'POST' || $method === 'PUT') {
         $localChave      = $input['local'];
         $turnoEscolhido  = $input['turnoEscolhido'] ?? '';
 
-        $stmtCfg = $pdo->prepare("SELECT valor FROM configuracoes WHERE chave = 'turnos'");
-        $stmtCfg->execute();
-        $resCfg  = $stmtCfg->fetch();
-        $cfgTurnos = $resCfg ? json_decode($resCfg['valor'], true) : [];
-        $turnosDoLocal = $cfgTurnos[$localChave] ?? [];
+        // Admins podem saltar as restrições de turno (ex: importação via Excel)
+        $skipValidacao = $adminUser && !empty($input['skipValidacao']);
 
-        $turnoConfig = null;
-        foreach ($turnosDoLocal as $t) {
-            if (($t['nome'] ?? '') === $turnoEscolhido) {
-                $turnoConfig = $t;
-                break;
+        if (!$skipValidacao) {
+            $stmtCfg = $pdo->prepare("SELECT valor FROM configuracoes WHERE chave = 'turnos'");
+            $stmtCfg->execute();
+            $resCfg  = $stmtCfg->fetch();
+            $cfgTurnos = $resCfg ? json_decode($resCfg['valor'], true) : [];
+            $turnosDoLocal = $cfgTurnos[$localChave] ?? [];
+
+            $turnoConfig = null;
+            foreach ($turnosDoLocal as $t) {
+                if (($t['nome'] ?? '') === $turnoEscolhido) {
+                    $turnoConfig = $t;
+                    break;
+                }
             }
-        }
 
-        if (!$turnoConfig) {
-            http_response_code(422);
-            echo json_encode(['erro' => 'O turno selecionado não existe.']);
-            exit;
-        }
+            if (!$turnoConfig) {
+                http_response_code(422);
+                echo json_encode(['erro' => 'O turno selecionado não existe.']);
+                exit;
+            }
 
-        if (empty($turnoConfig['ativo'])) {
-            http_response_code(409);
-            echo json_encode(['erro' => 'Este turno está fechado e não aceita novas inscrições.']);
-            exit;
-        }
+            if (empty($turnoConfig['ativo'])) {
+                http_response_code(409);
+                echo json_encode(['erro' => 'Este turno está fechado e não aceita novas inscrições.']);
+                exit;
+            }
 
-        if (!empty($turnoConfig['esgotado'])) {
-            http_response_code(409);
-            echo json_encode(['erro' => 'Este turno está esgotado.']);
-            exit;
-        }
+            if (!empty($turnoConfig['esgotado'])) {
+                http_response_code(409);
+                echo json_encode(['erro' => 'Este turno está esgotado.']);
+                exit;
+            }
 
-        $limite = $turnoConfig['limite'] ?? 80;
-        $stmtContagem = $pdo->prepare("SELECT COUNT(*) FROM inscricoes WHERE turno = ? AND local = ?");
-        $stmtContagem->execute([$turnoEscolhido, $localValidacao]);
-        $totalInscritos = (int)$stmtContagem->fetchColumn();
+            $limite = $turnoConfig['limite'] ?? 80;
+            $stmtContagem = $pdo->prepare("SELECT COUNT(*) FROM inscricoes WHERE turno = ? AND local = ?");
+            $stmtContagem->execute([$turnoEscolhido, $localValidacao]);
+            $totalInscritos = (int)$stmtContagem->fetchColumn();
 
-        if ($totalInscritos >= $limite) {
-            http_response_code(409);
-            echo json_encode(['erro' => 'Este turno atingiu o limite de inscrições e está esgotado.']);
-            exit;
+            if ($totalInscritos >= $limite) {
+                http_response_code(409);
+                echo json_encode(['erro' => 'Este turno atingiu o limite de inscrições e está esgotado.']);
+                exit;
+            }
         }
         // --- FIM DA VALIDAÇÃO ---
 

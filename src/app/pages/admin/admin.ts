@@ -1458,7 +1458,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         }
 
         try {
-          await this.inscricaoService.createInscricao(inscricao, false);
+          await this.inscricaoService.createInscricao(inscricao, false, true);
         } catch (innerError: any) {
           console.error('Erro numa linha específica:', innerError);
           // O fluxo vai continuar para as outras crianças mesmo que uma falhe

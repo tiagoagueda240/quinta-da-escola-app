@@ -70,8 +70,8 @@ export class InscricaoService {
   //     MÉTODOS DE ESCRITA / CRIAÇÃO
   // ==========================================================
 
-  async createInscricao(inscricao: Partial<Inscricao>, enviarEmail = true) {
-    const payload = { ...inscricao, enviarEmail };
+  async createInscricao(inscricao: Partial<Inscricao>, enviarEmail = true, skipValidacao = false) {
+    const payload = { ...inscricao, enviarEmail, skipValidacao };
     return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=nova`, payload));
   }
 
