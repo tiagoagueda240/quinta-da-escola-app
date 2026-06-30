@@ -13,9 +13,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { Monitor } from '../models/monitor.model';
-import { InscricaoService } from '../services/inscricao.service';
-import { MonitorService } from '../services/monitor.service';
+import { Monitor } from '../../../models/monitor.model';
+import { InscricaoService } from '../../../services/inscricao.service';
+import { MonitorService } from '../../../services/monitor.service';
+import { LOCAIS_LABELS, LocalKey } from '../../../shared/locais';
 
 @Component({
   selector: 'app-config-turnos',
@@ -318,12 +319,7 @@ export class ConfigTurnosComponent implements OnInit {
   }
 
   getLabel(key: string) {
-    const map: any = {
-      quinta: 'Quinta da Escola',
-      costaCaparica: 'Costa da Caparica',
-      quiaios: 'Quiaios',
-    };
-    return map[key] || key;
+    return LOCAIS_LABELS[key as LocalKey] || key;
   }
 
   adicionarTurno(local: string) {

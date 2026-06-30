@@ -1,0 +1,134 @@
+<div mat-dialog-title style="display: flex; align-items: center; gap: 10px; padding-bottom: 4px">
+  <mat-icon style="color: #1565c0; font-size: 28px; width: 28px; height: 28px"
+    >receipt_long</mat-icon
+  >
+  <span style="font-size: 1.15rem; font-weight: 700">Exportar Faturação</span>
+</div>
+
+<mat-dialog-content style="padding-top: 12px; min-width: 360px">
+  <p style="color: #555; margin-bottom: 20px; font-size: 0.9rem">
+    Escolha o tipo de exportação para gerar o ficheiro Excel.
+  </p>
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div
+      (click)="tipoExportFaturacao = 'total'"
+      [style.border]="tipoExportFaturacao === 'total' ? '2px solid #1565c0' : '2px solid #e0e0e0'"
+      [style.background]="tipoExportFaturacao === 'total' ? '#e3f2fd' : '#fafafa'"
+      style="
+        border-radius: 10px;
+        padding: 14px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition: all 0.15s;
+      "
+    >
+      <mat-icon [style.color]="tipoExportFaturacao === 'total' ? '#1565c0' : '#aaa'"
+        >table_chart</mat-icon
+      >
+      <div>
+        <div style="font-weight: 600; font-size: 0.95rem">Faturação Total</div>
+        <div style="font-size: 0.8rem; color: #777">Todos os participantes visíveis</div>
+      </div>
+    </div>
+
+    <div
+      (click)="tipoExportFaturacao = 'turno'"
+      [style.border]="tipoExportFaturacao === 'turno' ? '2px solid #2e7d32' : '2px solid #e0e0e0'"
+      [style.background]="tipoExportFaturacao === 'turno' ? '#e8f5e9' : '#fafafa'"
+      style="
+        border-radius: 10px;
+        padding: 14px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition: all 0.15s;
+      "
+    >
+      <mat-icon [style.color]="tipoExportFaturacao === 'turno' ? '#2e7d32' : '#aaa'"
+        >calendar_month</mat-icon
+      >
+      <div style="flex: 1">
+        <div style="font-weight: 600; font-size: 0.95rem">Por Turno</div>
+        <div style="font-size: 0.8rem; color: #777; margin-bottom: 8px">
+          Apenas participantes do turno selecionado
+        </div>
+        <mat-form-field
+          *ngIf="tipoExportFaturacao === 'turno'"
+          appearance="outline"
+          style="width: 100%"
+          (click)="$event.stopPropagation()"
+        >
+          <mat-label>Turno</mat-label>
+          <mat-select [(ngModel)]="turnoExportFaturacao">
+            <mat-option *ngFor="let t of data.listaTurnos" [value]="t">{{ t }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div
+      (click)="data.empresasUnicas.length > 0 && (tipoExportFaturacao = 'empresa')"
+      [style.border]="tipoExportFaturacao === 'empresa' ? '2px solid #e65100' : '2px solid #e0e0e0'"
+      [style.background]="
+        tipoExportFaturacao === 'empresa'
+          ? '#fff3e0'
+          : data.empresasUnicas.length === 0
+            ? '#f5f5f5'
+            : '#fafafa'
+      "
+      [style.opacity]="data.empresasUnicas.length === 0 ? '0.5' : '1'"
+      [style.cursor]="data.empresasUnicas.length === 0 ? 'not-allowed' : 'pointer'"
+      style="
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition: all 0.15s;
+      "
+    >
+      <mat-icon [style.color]="tipoExportFaturacao === 'empresa' ? '#e65100' : '#aaa'"
+        >business</mat-icon
+      >
+      <div style="flex: 1">
+        <div style="font-weight: 600; font-size: 0.95rem">Por Empresa / Instituição</div>
+        <div style="font-size: 0.8rem; color: #777; margin-bottom: 8px">
+          {{
+            data.empresasUnicas.length === 0
+              ? 'Nenhuma empresa disponível'
+              : 'Apenas participantes da empresa selecionada'
+          }}
+        </div>
+        <mat-form-field
+          *ngIf="tipoExportFaturacao === 'empresa'"
+          appearance="outline"
+          style="width: 100%"
+          (click)="$event.stopPropagation()"
+        >
+          <mat-label>Empresa</mat-label>
+          <mat-select [(ngModel)]="empresaExportFaturacao">
+            <mat-option *ngFor="let e of data.empresasUnicas" [value]="e">{{ e }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 16px; gap: 8px">
+  <button mat-button mat-dialog-close>Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="
+      (tipoExportFaturacao === 'turno' && !turnoExportFaturacao) ||
+      (tipoExportFaturacao === 'empresa' && !empresaExportFaturacao)
+    "
+    (click)="exportarFaturacao()"
+  >
+    <mat-icon>download</mat-icon> Exportar Excel
+  </button>
+</mat-dialog-actions>

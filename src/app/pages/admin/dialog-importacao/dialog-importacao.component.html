@@ -1,0 +1,257 @@
+<h2 mat-dialog-title style="padding-bottom: 0">Resumo da Importação</h2>
+<mat-dialog-content style="padding-top: 15px">
+  <div style="display: flex; gap: 15px; margin-bottom: 10px; align-items: stretch">
+    <mat-form-field appearance="outline" style="flex: 1">
+      <mat-label>1. Local de Destino</mat-label>
+      <mat-select
+        [(ngModel)]="localDestinoImportacao"
+        (selectionChange)="atualizarTurnosImportacao()"
+      >
+        <mat-option value="quinta">Quinta da Escola</mat-option>
+        <mat-option value="costaCaparica">Costa da Caparica</mat-option>
+        <mat-option value="quiaios">Quiaios</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field
+      appearance="outline"
+      style="flex: 1"
+      *ngIf="localDestinoImportacao !== 'quinta'"
+    >
+      <mat-label>2. Turno de Destino</mat-label>
+      <mat-select
+        [(ngModel)]="turnoDestinoImportacao"
+        (selectionChange)="processarFicheiroSelecionado()"
+        [disabled]="!localDestinoImportacao"
+      >
+        <mat-option *ngFor="let t of listaTurnosImportacao" [value]="t">{{ t }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div
+      *ngIf="localDestinoImportacao === 'quinta'"
+      style="
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 16px;
+        background: #e8f5e9;
+        border-radius: 8px;
+        border: 1px solid #a5d6a7;
+      "
+    >
+      <mat-icon style="color: #2e7d32; flex-shrink: 0">auto_awesome</mat-icon>
+      <span style="font-size: 0.85rem; color: #2e7d32; line-height: 1.4">
+        O turno é lido da coluna <strong>"Data do Turno"</strong> e atribuído automaticamente a cada
+        participante.
+      </span>
+    </div>
+  </div>
+
+  <!-- Estado: sem dados extraídos para a Quinta -->
+  <div
+    *ngIf="dadosImportacao.total === 0 && localDestinoImportacao === 'quinta'"
+    style="padding: 30px 20px; text-align: center; color: #888"
+  >
+    <mat-icon style="font-size: 48px; height: 48px; width: 48px; color: #c8e6c9"
+      >table_view</mat-icon
+    >
+    <p style="margin-top: 10px">Não foram encontrados dados válidos no ficheiro.</p>
+    <p style="font-size: 0.8rem; color: #aaa">
+      Colunas esperadas:
+      <em
+        >Nome Completo · Género · Data Nasc (dd/mm/aaaa) · Transporte (Sim ou Não) · E-mail ·
+        Alergias/Medicação · Observações · Telefone contacto · Data do Turno</em
+      >
+    </p>
+  </div>
+
+  <!-- Estado: a aguardar turno (Costa da Caparica / Quiaios) -->
+  <div
+    *ngIf="
+      dadosImportacao.total === 0 && turnoDestinoImportacao && localDestinoImportacao !== 'quinta'
+    "
+    style="padding: 20px; text-align: center; color: #666"
+  >
+    <p>A extrair dados do ficheiro...</p>
+    <mat-progress-bar mode="indeterminate" style="margin-top: 15px"></mat-progress-bar>
+  </div>
+
+  <!-- Estado: sem turno selecionado (Costa da Caparica / Quiaios) -->
+  <div
+    *ngIf="
+      dadosImportacao.total === 0 && !turnoDestinoImportacao && localDestinoImportacao !== 'quinta'
+    "
+    style="padding: 20px; text-align: center; color: #888"
+  >
+    <mat-icon style="font-size: 40px; height: 40px; width: 40px; color: #ccc">rule</mat-icon>
+    <p>Por favor, selecione o Turno para iniciar a extração de dados do ficheiro.</p>
+  </div>
+
+  <div *ngIf="dadosImportacao.total > 0">
+    <div class="import-summary" style="margin-top: 0">
+      <div class="summary-box success">
+        <h3>Válidos para Importar</h3>
+        <span class="big-num">{{ dadosImportacao.validos.length }}</span>
+      </div>
+      <div class="summary-box warn">
+        <h3>Duplicados (Ignorados)</h3>
+        <span class="big-num">{{ dadosImportacao.duplicados }}</span>
+      </div>
+    </div>
+
+    <div
+      style="margin-top: 15px"
+      *ngIf="!isLocalEspecialImportacao && localDestinoImportacao !== 'quinta'"
+    >
+      <mat-form-field appearance="outline" style="width: 100%">
+        <mat-label>Nome da Empresa / Instituição (Opcional)</mat-label>
+        <mat-icon matPrefix>business</mat-icon>
+        <input
+          matInput
+          [(ngModel)]="empresaImportacao"
+          placeholder="Ex: Câmara Municipal, Empresa X..."
+        />
+      </mat-form-field>
+    </div>
+
+    <!-- Tabela de pré-visualização: Costa da Caparica / Quiaios -->
+    <div
+      *ngIf="dadosImportacao.validos.length > 0 && localDestinoImportacao !== 'quinta'"
+      class="import-preview-table mat-elevation-z1"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="isLocalEspecialImportacao" style="width: 130px">Nº Benef.</th>
+            <th>Nome da Criança</th>
+            <th style="width: 140px">Data Nasc.</th>
+            <th style="width: 90px">Sexo</th>
+            <th style="width: 60px">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of dadosImportacao.validos; let idx = index">
+            <td *ngIf="isLocalEspecialImportacao">
+              <input [(ngModel)]="item.numeroBeneficiario" class="inline-input" />
+            </td>
+            <td><input [(ngModel)]="item.participante.nomeCompleto" class="inline-input" /></td>
+            <td><input [(ngModel)]="item.participante.dataNascimento" class="inline-input" /></td>
+            <td>
+              <select [(ngModel)]="item.participante.genero" class="inline-input">
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </td>
+            <td style="text-align: center">
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="removerImportacao(idx)"
+                style="transform: scale(0.85)"
+                matTooltip="Eliminar Linha"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabela de pré-visualização: Quinta da Escola -->
+    <div
+      *ngIf="dadosImportacao.validos.length > 0 && localDestinoImportacao === 'quinta'"
+      class="import-preview-table mat-elevation-z1"
+      style="overflow-x: auto"
+    >
+      <table style="min-width: 1300px">
+        <thead>
+          <tr>
+            <th style="min-width: 190px">Nome Completo</th>
+            <th style="width: 68px">Género</th>
+            <th style="width: 115px">Data Nasc.</th>
+            <th style="width: 175px">Transporte</th>
+            <th style="min-width: 165px">E-mail</th>
+            <th style="min-width: 140px">Alergias / Med.</th>
+            <th style="min-width: 120px">Observações</th>
+            <th style="width: 110px">Telefone</th>
+            <th style="min-width: 200px">Turno</th>
+            <th style="width: 55px">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of dadosImportacao.validos; let idx = index">
+            <td><input [(ngModel)]="item.participante.nomeCompleto" class="inline-input" /></td>
+            <td>
+              <select [(ngModel)]="item.participante.genero" class="inline-input">
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </td>
+            <td><input [(ngModel)]="item.participante.dataNascimento" class="inline-input" /></td>
+            <td>
+              <select [(ngModel)]="item.transporte" class="inline-input">
+                <option *ngFor="let op of opcoesTransporte" [value]="op.label">
+                  {{ op.label }}
+                </option>
+              </select>
+            </td>
+            <td><input [(ngModel)]="item.ee.email" class="inline-input" /></td>
+            <td><input [(ngModel)]="item.saude.detalheAlergiaAlimentar" class="inline-input" /></td>
+            <td><input [(ngModel)]="item.observacoes" class="inline-input" /></td>
+            <td><input [(ngModel)]="item.ee.telefone" class="inline-input" /></td>
+            <td>
+              <select [(ngModel)]="item.turnoEscolhido" class="inline-input">
+                <option *ngFor="let t of listaTurnosImportacao" [value]="t">{{ t }}</option>
+              </select>
+            </td>
+            <td style="text-align: center">
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="removerImportacao(idx)"
+                style="transform: scale(0.85)"
+                matTooltip="Eliminar Linha"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p
+      style="
+        margin-top: 15px;
+        font-size: 0.85rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      "
+    >
+      <mat-icon style="font-size: 16px; height: 16px; color: #ffa726">info</mat-icon>
+      Por favor reveja, edite ou elimine os dados incorretos da tabela antes de prosseguir.
+    </p>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 15px 24px">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="
+      dadosImportacao.validos.length === 0 ||
+      estaAImportar ||
+      (!turnoDestinoImportacao && localDestinoImportacao !== 'quinta')
+    "
+    (click)="confirmarImportacao()"
+  >
+    <span *ngIf="!estaAImportar">Confirmar e Gravar</span>
+    <span *ngIf="estaAImportar">A Gravar...</span>
+  </button>
+</mat-dialog-actions>

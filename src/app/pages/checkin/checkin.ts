@@ -3,6 +3,10 @@ import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { from, Observable } from 'rxjs';
+import {
+  DialogRelatorioTurnoComponent,
+  DialogRelatorioTurnoResult,
+} from '../../components/dialog-relatorio-turno/dialog-relatorio-turno.component';
 import { Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
@@ -20,8 +24,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { LOCAIS_LABELS, LocalKey } from '../../shared/locais';
+import { gerarPDFCozinha, gerarPDFTransporte } from '../../shared/pdf-reports';
 
 @Component({
   selector: 'app-checkin',
@@ -52,6 +56,10 @@ export class CheckinComponent implements OnInit {
   totalPresentes = 0;
   listaTurnos: string[] = [];
   turnoSelecionado: string = '';
+  filtroLocal: LocalKey = 'quinta';
+  locaisDisponiveis: LocalKey[] = [];
+  readonly LOCAIS_LABELS = LOCAIS_LABELS;
+  private turnosPorLocal: Partial<Record<LocalKey, string[]>> = {};
 
   // Variáveis Temporárias (Dialog)
   tempInscricao: Inscricao | null = null;
@@ -69,11 +77,9 @@ export class CheckinComponent implements OnInit {
   private pinSessao = '';
 
   @ViewChild('dialogEntrada') dialogEntrada!: TemplateRef<any>;
-  @ViewChild('dialogRelatorio') dialogRelatorio!: TemplateRef<any>;
 
   // Relatórios
   acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
-  turnoParaDialog: string = '';
 
   private inscricaoService = inject(InscricaoService);
   private authService = inject(AuthService);
@@ -130,13 +136,25 @@ export class CheckinComponent implements OnInit {
     this.loading = true;
     try {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
-      const todosTurnos = [
-        ...(config.quinta || []),
-        ...(config.costaCaparica || []),
-        ...(config.quiaios || []),
-      ];
+      const locais: LocalKey[] = ['quinta', 'costaCaparica', 'quiaios'];
 
-      this.listaTurnos = todosTurnos.filter((t: any) => t.ativo === true).map((t: any) => t.nome);
+      this.turnosPorLocal = {};
+      this.locaisDisponiveis = [];
+
+      for (const local of locais) {
+        const turnos = (config[local] || [])
+          .filter((t: any) => t.ativo === true)
+          .map((t: any) => t.nome as string);
+        if (turnos.length > 0) {
+          this.turnosPorLocal[local] = turnos;
+          this.locaisDisponiveis.push(local);
+        }
+      }
+
+      if (this.locaisDisponiveis.length > 0) {
+        this.filtroLocal = this.locaisDisponiveis[0];
+        this.listaTurnos = this.turnosPorLocal[this.filtroLocal] || [];
+      }
 
       this.inscricaoService.getInscricoes().subscribe({
         next: (dados) => {
@@ -169,6 +187,13 @@ export class CheckinComponent implements OnInit {
     if (this.modoLink) {
       const turnosUnicos = [...new Set(dados.map((i) => i.turnoEscolhido))];
       this.listaTurnos = turnosUnicos.sort();
+
+      if (dados.length > 0) {
+        const localRaw = (dados[0].local || '').toLowerCase();
+        if (localRaw.includes('caparica')) this.filtroLocal = 'costaCaparica';
+        else if (localRaw.includes('quiaios')) this.filtroLocal = 'quiaios';
+        else this.filtroLocal = 'quinta';
+      }
     }
 
     if (this.listaTurnos.length > 0) {
@@ -179,6 +204,13 @@ export class CheckinComponent implements OnInit {
     } else {
       this.inscricoesFiltradas = this.inscricoes;
     }
+  }
+
+  mudarLocal(local: LocalKey) {
+    this.filtroLocal = local;
+    this.listaTurnos = this.turnosPorLocal[local] || [];
+    this.turnoSelecionado = this.listaTurnos[0] || '';
+    this.filtrar();
   }
 
   mudarTurno(turno: string) {
@@ -321,57 +353,26 @@ export class CheckinComponent implements OnInit {
   }
 
   // --- RELATÓRIOS ---
-  get filtroLocal(): 'quinta' | 'costaCaparica' | 'quiaios' {
-    const match = this.inscricoes.find((i) => i.turnoEscolhido === this.turnoSelecionado);
-    if (!match) return 'quinta';
-    const localRaw = (match.local || '').toLowerCase();
-    if (localRaw.includes('caparica')) return 'costaCaparica';
-    if (localRaw.includes('quiaios')) return 'quiaios';
-    return 'quinta';
-  }
-
   abrirRelatorio(acao: 'cozinha' | 'transporte') {
     this.acaoDialog = acao;
-    this.turnoParaDialog = this.turnoSelecionado;
-    this.dialog.open(this.dialogRelatorio, { width: '400px' });
-  }
-
-  confirmarGeracaoPDF() {
-    if (this.acaoDialog === 'cozinha') this.gerarPDFCozinha(this.turnoParaDialog);
-    else this.gerarPDFTransporte(this.turnoParaDialog);
-    this.dialog.closeAll();
+    const dialogRef = this.dialog.open(DialogRelatorioTurnoComponent, {
+      width: '400px',
+      data: { listaTurnos: this.listaTurnos, turnoInicial: this.turnoSelecionado },
+    });
+    dialogRef.afterClosed().subscribe((result: DialogRelatorioTurnoResult | undefined) => {
+      if (result?.turno) {
+        if (this.acaoDialog === 'cozinha') this.gerarPDFCozinha(result.turno);
+        else this.gerarPDFTransporte(result.turno);
+      }
+    });
   }
 
   gerarPDFCozinha(turno: string) {
-    const doc = new jsPDF();
-    const lista = this.inscricoes.filter(
-      (i) =>
-        i.turnoEscolhido === turno && (i.saude.temAlergiaAlimentar || i.saude.temOutrasAlergias),
-    );
-    doc.text(`Restrições Alimentares - ${turno}`, 14, 20);
-    autoTable(doc, {
-      head: [['Participante', 'Alergia/Restrição']],
-      body: lista.map((i) => [
-        i.participante.nomeCompleto,
-        i.saude.detalheAlergiaAlimentar || i.saude.detalheOutrasAlergias || 'Não especificado',
-      ]),
-      startY: 30,
-    });
-    doc.save(`Cozinha_${turno}.pdf`);
+    gerarPDFCozinha(this.inscricoes, turno, turno);
   }
 
   gerarPDFTransporte(turno: string) {
-    const doc = new jsPDF();
-    const lista = this.inscricoes.filter(
-      (i) => i.turnoEscolhido === turno && i.transporte !== 'Não (Entregue pelos pais)',
-    );
-    doc.text(`Lista de Transportes - ${turno}`, 14, 20);
-    autoTable(doc, {
-      head: [['Participante', 'Tipo Transporte', 'Contacto']],
-      body: lista.map((i) => [i.participante.nomeCompleto, i.transporte, i.ee.telefone]),
-      startY: 30,
-    });
-    doc.save(`Transportes_${turno}.pdf`);
+    gerarPDFTransporte(this.inscricoes, turno, turno);
   }
 
   hasHealthInfo(i: Inscricao): boolean {

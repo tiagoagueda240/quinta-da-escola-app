@@ -5,6 +5,10 @@
   font-family: 'Lato', sans-serif;
   padding-top: 200px;
   padding-bottom: 40px;
+
+  &.has-local-filter {
+    padding-top: 248px;
+  }
 }
 
 .header-area {
@@ -58,6 +62,53 @@
 .counter-badge.has-people {
   background: #e8f5e9;
   color: #2e7d32;
+}
+
+.local-scroller {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 20px 6px;
+  scrollbar-width: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+.local-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.local-chip {
+  white-space: nowrap;
+  background: #f0f2f5;
+  color: #666;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+
+  &.active {
+    background: #1565c0;
+    color: white;
+    box-shadow: 0 3px 8px rgba(21, 101, 192, 0.3);
+  }
+}
+
+.local-badge-row {
+  padding: 4px 20px 6px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.local-badge {
+  display: inline-block;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
 }
 
 .shift-scroller {

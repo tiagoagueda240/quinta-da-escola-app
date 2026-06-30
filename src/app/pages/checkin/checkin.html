@@ -1,4 +1,4 @@
-<div class="mobile-layout">
+<div class="mobile-layout" [class.has-local-filter]="!modoLink && locaisDisponiveis.length > 1">
   <div class="security-overlay" *ngIf="modoLink && !pinValidado">
     <div class="pin-card">
       <mat-icon class="lock-icon">lock</mat-icon>
@@ -71,6 +71,27 @@
         {{ totalPresentes }} Presentes
       </div>
     </div>
+
+    @if (!modoLink && locaisDisponiveis.length > 1) {
+      <div class="local-scroller">
+        @for (local of locaisDisponiveis; track local) {
+          <div
+            class="local-chip"
+            [class.active]="local === filtroLocal"
+            (click)="mudarLocal(local)"
+            matRipple
+          >
+            {{ LOCAIS_LABELS[local] }}
+          </div>
+        }
+      </div>
+    }
+
+    @if (modoLink && pinValidado) {
+      <div class="local-badge-row">
+        <span class="local-badge">{{ LOCAIS_LABELS[filtroLocal] }}</span>
+      </div>
+    }
 
     <div class="shift-scroller">
       @for (t of listaTurnos; track $index) {
@@ -234,27 +255,4 @@
 
     <button class="btn-confirm" (click)="confirmarEntrada()" matRipple>CONFIRMAR ENTRADA</button>
   </div>
-</ng-template>
-
-<ng-template #dialogRelatorio>
-  <h2 mat-dialog-title>Gerar Relatório</h2>
-  <mat-dialog-content>
-    <mat-form-field appearance="outline" style="width: 100%">
-      <mat-label>Selecione o Turno</mat-label>
-      <mat-select [(ngModel)]="turnoParaDialog">
-        <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
-      </mat-select>
-    </mat-form-field>
-  </mat-dialog-content>
-  <mat-dialog-actions align="end">
-    <button mat-button mat-dialog-close>Cancelar</button>
-    <button
-      mat-flat-button
-      color="primary"
-      [disabled]="!turnoParaDialog"
-      (click)="confirmarGeracaoPDF()"
-    >
-      Gerar PDF
-    </button>
-  </mat-dialog-actions>
 </ng-template>

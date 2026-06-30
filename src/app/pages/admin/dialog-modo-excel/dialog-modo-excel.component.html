@@ -1,0 +1,423 @@
+<div class="excel-modal-container">
+  <div class="excel-header">
+    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap">
+      <div style="display: flex; align-items: center; gap: 8px" *ngIf="!modoFaturacao">
+        <mat-icon style="color: #1d6f42">grid_on</mat-icon>
+        <h2
+          style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #333"
+        >
+          Modo Excel ({{ dadosExcelFiltrados.length }})
+        </h2>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px" *ngIf="modoFaturacao">
+        <mat-icon style="color: #1976d2">receipt_long</mat-icon>
+        <h2
+          style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #333"
+        >
+          Modo Faturação ({{ dadosExcelFiltrados.length }})
+        </h2>
+      </div>
+
+      <div class="excel-divider-vertical"></div>
+
+      <select class="excel-filter" [(ngModel)]="filtroExcelTurno">
+        <option value="">Todos os Turnos</option>
+        <option *ngFor="let t of data.listaTurnos" [value]="t">{{ t }}</option>
+      </select>
+
+      <select class="excel-filter" [(ngModel)]="filtroExcelEmpresa">
+        <option value="">Todas as Empresas</option>
+        <option value="SEM_EMPRESA">Sem Empresa / Individual</option>
+        <option *ngFor="let e of empresasUnicas" [value]="e">{{ e }}</option>
+      </select>
+
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          padding: 0 8px;
+          height: 32px;
+        "
+      >
+        <mat-icon style="font-size: 16px; color: #888; line-height: 1">search</mat-icon>
+        <input
+          [(ngModel)]="filtroExcelNome"
+          placeholder="Pesquisar nome..."
+          style="
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 0.85rem;
+            width: 160px;
+          "
+        />
+        <mat-icon
+          *ngIf="filtroExcelNome"
+          (click)="filtroExcelNome = ''"
+          style="font-size: 16px; color: #aaa; cursor: pointer; line-height: 1"
+          >close</mat-icon
+        >
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center">
+      <button
+        mat-stroked-button
+        *ngIf="!modoFaturacao"
+        (click)="abrirModoFaturacao()"
+        style="color: #1976d2; border-color: #1976d2; font-weight: 600"
+      >
+        <mat-icon>receipt_long</mat-icon> Faturação
+      </button>
+
+      <button
+        mat-stroked-button
+        *ngIf="modoFaturacao"
+        (click)="fecharModoFaturacao()"
+        style="color: #1d6f42; border-color: #1d6f42; font-weight: 600"
+      >
+        <mat-icon>grid_on</mat-icon> Voltar ao Excel
+      </button>
+
+      <button
+        mat-stroked-button
+        *ngIf="modoFaturacao"
+        (click)="abrirDialogExportFaturacao()"
+        style="color: #1565c0; border-color: #1565c0; font-weight: 600"
+      >
+        <mat-icon>download</mat-icon> Exportar Faturação
+      </button>
+
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="linhasModificadas.size === 0"
+        (click)="guardarTodasAlteracoesExcel()"
+        style="font-weight: 700"
+      >
+        <mat-icon>save</mat-icon> Guardar Alterações ({{ linhasModificadas.size }})
+      </button>
+
+      <button
+        mat-stroked-button
+        (click)="adicionarLinhaExcel()"
+        style="color: #f57c00; border-color: #f57c00; font-weight: 600"
+        *ngIf="!modoFaturacao"
+      >
+        <mat-icon>add</mat-icon> Nova Linha
+      </button>
+
+      <div class="excel-divider-vertical"></div>
+
+      <button mat-icon-button (click)="fechar()" color="warn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODO EXCEL -->
+  <div class="excel-table-wrapper" *ngIf="!modoFaturacao">
+    <table class="excel-style-table">
+      <thead>
+        <tr>
+          <th style="width: 100px">ESTADO</th>
+          <th style="width: 200px">NOME PARTICIPANTE</th>
+          <th style="width: 90px">GÉNERO</th>
+          <th style="width: 140px">NASCIMENTO</th>
+          <th style="width: 110px">NIF</th>
+          <th style="width: 110px">CC</th>
+          <th style="width: 150px">TURNO</th>
+          <th style="width: 180px">EMPRESA</th>
+          <th style="width: 200px">TRANSPORTE</th>
+          <th style="width: 180px">ENC. EDUCAÇÃO</th>
+          <th style="width: 120px">CONTACTO</th>
+          <th
+            style="width: 180px; cursor: pointer"
+            (click)="copiarEmails()"
+            matTooltip="Clica para copiar todos os emails"
+            class="th-email-copy"
+          >
+            EMAIL (EE)
+            <mat-icon style="font-size: 14px; vertical-align: middle; margin-left: 4px"
+              >content_copy</mat-icon
+            >
+          </th>
+          <th style="width: 150px">ALERGIAS</th>
+          <th style="width: 150px">MEDICAÇÃO</th>
+          <th style="width: 200px">OBSERVAÇÕES</th>
+          <th style="width: 80px">VALOR</th>
+          <th style="width: 50px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let row of dadosExcelFiltrados; trackBy: trackByFn"
+          [class.new-row]="!row.id"
+          [class.modified-row]="linhasModificadas.has(row) && row.id"
+        >
+          <td [ngClass]="row.estado_pagamento === 'pago' ? 'bg-pago' : 'bg-pendente'">
+            <select
+              class="excel-input status-select"
+              [(ngModel)]="row.estado_pagamento"
+              (ngModelChange)="marcarComoModificada(row)"
+            >
+              <option value="pendente">PENDENTE</option>
+              <option value="pago">PAGO</option>
+            </select>
+          </td>
+          <td>
+            <input
+              class="excel-input bold-input"
+              [(ngModel)]="row.participante.nomeCompleto"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Nome (Obrigatório)..."
+            />
+          </td>
+          <td>
+            <select
+              class="excel-input"
+              [(ngModel)]="row.participante.genero"
+              (ngModelChange)="marcarComoModificada(row)"
+            >
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+            </select>
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [matDatepicker]="picker"
+              [(ngModel)]="row.participante.dataNascimento"
+              (dateChange)="marcarComoModificada(row)"
+              (click)="picker.open()"
+              (focus)="picker.open()"
+              placeholder="DD/MM/AAAA"
+              readonly
+              style="cursor: pointer"
+            />
+            <mat-datepicker #picker></mat-datepicker>
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.participante.nif"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.participante.cc"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <select
+              class="excel-input"
+              [(ngModel)]="row.turnoEscolhido"
+              (ngModelChange)="marcarComoModificada(row)"
+            >
+              <option *ngFor="let t of data.listaTurnos" [value]="t">{{ t }}</option>
+            </select>
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.nomeInstituicao"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <select
+              class="excel-input"
+              [(ngModel)]="row.transporte"
+              (ngModelChange)="marcarComoModificada(row)"
+            >
+              <option value="Não (Entregue pelos pais)">Não (Entregue pelos pais)</option>
+              <option *ngFor="let op of opcoesTransporte" [value]="op.label">{{ op.label }}</option>
+            </select>
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.ee.nome"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Nome EE..."
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.ee.telefone"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Tel..."
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.ee.email"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Email..."
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input text-danger"
+              [(ngModel)]="row.saude.detalheAlergiaAlimentar"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input text-danger"
+              [(ngModel)]="row.saude.detalheMedicacao"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.observacoes"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              class="excel-input bold-input align-right"
+              [(ngModel)]="row.valor_total"
+              (ngModelChange)="marcarComoModificada(row)"
+            />
+          </td>
+          <td style="text-align: center; padding: 0">
+            <button
+              mat-icon-button
+              color="warn"
+              style="transform: scale(0.8)"
+              (click)="apagarLinhaExcel(row)"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MODO FATURAÇÃO -->
+  <div class="excel-table-wrapper" *ngIf="modoFaturacao">
+    <table class="excel-style-table">
+      <thead>
+        <tr>
+          <th style="width: 200px">NOME PARTICIPANTE</th>
+          <th style="width: 120px">Código Postal</th>
+          <th style="width: 120px">NIF</th>
+          <th
+            style="width: 200px; cursor: pointer"
+            (click)="copiarEmails()"
+            matTooltip="Clica para copiar todos os emails"
+            class="th-email-copy"
+          >
+            eMail
+            <mat-icon style="font-size: 14px; vertical-align: middle; margin-left: 4px"
+              >content_copy</mat-icon
+            >
+          </th>
+          <th style="width: 100px">VALOR</th>
+          <th style="width: 150px">Data de Pagamento</th>
+          <th style="width: 200px">Nome de Pagamento</th>
+          <th style="width: 150px">Nº da Fatura</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let row of dadosExcelFiltrados; trackBy: trackByFn"
+          [class.modified-row]="linhasModificadas.has(row)"
+        >
+          <td>
+            <input
+              class="excel-input bold-input"
+              [(ngModel)]="row.participante.nomeCompleto"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Nome (Obrigatório)..."
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.participante.codigoPostal"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.participante.nif"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="-"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.ee.email"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Email..."
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              class="excel-input bold-input align-right"
+              [(ngModel)]="row.valor_total"
+              (ngModelChange)="marcarComoModificada(row)"
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [matDatepicker]="pickerPag"
+              [(ngModel)]="row.dataPagamento"
+              (dateChange)="marcarComoModificada(row)"
+              (click)="pickerPag.open()"
+              (focus)="pickerPag.open()"
+              placeholder="DD/MM/AAAA"
+              readonly
+              style="cursor: pointer"
+            />
+            <mat-datepicker #pickerPag></mat-datepicker>
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.nomePagamento"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Nome Pagamento..."
+            />
+          </td>
+          <td>
+            <input
+              class="excel-input"
+              [(ngModel)]="row.numeroFatura"
+              (ngModelChange)="marcarComoModificada(row)"
+              placeholder="Nº Fatura..."
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

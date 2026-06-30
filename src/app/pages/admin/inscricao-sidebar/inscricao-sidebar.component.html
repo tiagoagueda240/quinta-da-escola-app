@@ -1,0 +1,238 @@
+<div class="sidebar-backdrop" [class.open]="isOpen" (click)="fechado.emit()"></div>
+<div class="sidebar" [class.open]="isOpen">
+  <div class="sidebar-header" *ngIf="inscricao">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <button mat-icon-button (click)="fechado.emit()"><mat-icon>close</mat-icon></button>
+      <h2 *ngIf="!isEditing && !isCreating">Ficha Técnica</h2>
+      <h2 *ngIf="isEditing && !isCreating" style="color: #2e7d32">Modo de Edição</h2>
+      <h2 *ngIf="isCreating" style="color: #1976d2">Nova Inscrição</h2>
+    </div>
+    <div class="actions">
+      <button mat-stroked-button *ngIf="!isEditing" (click)="ativarEdicao.emit()">
+        <mat-icon>edit</mat-icon> Editar
+      </button>
+      <button mat-flat-button color="primary" *ngIf="isEditing" (click)="guardado.emit()">
+        <mat-icon>save</mat-icon> Guardar
+      </button>
+    </div>
+  </div>
+
+  <div class="sidebar-content" *ngIf="inscricao">
+    <div class="student-profile">
+      <div class="avatar-large">
+        {{
+          inscricao.participante.nomeCompleto ? inscricao.participante.nomeCompleto.charAt(0) : '?'
+        }}
+      </div>
+      <div style="width: 100%">
+        <h3 *ngIf="!isEditing">{{ inscricao.participante.nomeCompleto }}</h3>
+        <mat-form-field *ngIf="isEditing" appearance="outline" class="edit-field full">
+          <mat-label>Nome Completo do Participante</mat-label>
+          <input matInput [(ngModel)]="inscricao.participante.nomeCompleto" />
+        </mat-form-field>
+
+        <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px" *ngIf="!isEditing">
+          <p class="chip-turno" style="margin: 0">{{ inscricao.turnoEscolhido }}</p>
+          <p class="chip-company" style="margin: 0" *ngIf="inscricao.nomeInstituicao">
+            <mat-icon>business</mat-icon> {{ inscricao.nomeInstituicao }}
+          </p>
+        </div>
+
+        <div *ngIf="isEditing" style="display: flex; gap: 10px; margin-top: 10px">
+          <mat-form-field appearance="outline" class="edit-field" style="flex: 1">
+            <mat-label>Turno</mat-label>
+            <mat-select [(ngModel)]="inscricao.turnoEscolhido">
+              <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="edit-field" style="flex: 1">
+            <mat-label>Empresa (Opcional)</mat-label>
+            <input matInput [(ngModel)]="inscricao.nomeInstituicao" placeholder="Ex: Câmara" />
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-box status-box">
+      <div class="row-between">
+        <span
+          >Valor Total: <strong>{{ inscricao.valor_total }}€</strong></span
+        >
+        <button
+          mat-stroked-button
+          [color]="inscricao.estado_pagamento === 'pago' ? 'primary' : 'warn'"
+          (click)="togglePagamento.emit(inscricao)"
+        >
+          Status: {{ inscricao.estado_pagamento | uppercase }}
+        </button>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Encarregado de Educação</h4>
+      <div *ngIf="!isEditing">
+        <div class="info-row"><mat-icon>person</mat-icon> {{ inscricao.ee.nome }}</div>
+        <div class="info-row clickable" (click)="abrirWhatsApp.emit(inscricao.ee.telefone)">
+          <mat-icon>phone</mat-icon> {{ inscricao.ee.telefone }} (WhatsApp)
+        </div>
+        <div class="info-row"><mat-icon>email</mat-icon> {{ inscricao.ee.email }}</div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Nome EE</mat-label><input matInput [(ngModel)]="inscricao.ee.nome" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Telefone</mat-label><input matInput [(ngModel)]="inscricao.ee.telefone" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Email</mat-label><input matInput [(ngModel)]="inscricao.ee.email" />
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Dados Pessoais</h4>
+      <div *ngIf="!isEditing" class="info-grid">
+        <div *ngIf="filtroLocal === 'costaCaparica' || filtroLocal === 'quiaios'">
+          <small>Nº Benef.</small>
+          <p>{{ inscricao.numeroBeneficiario || '--' }}</p>
+        </div>
+        <div>
+          <small>NIF</small>
+          <p>{{ inscricao.participante.nif || '--' }}</p>
+        </div>
+        <div>
+          <small>CC</small>
+          <p>{{ inscricao.participante.cc || '--' }}</p>
+        </div>
+        <div>
+          <small>Nascimento</small>
+          <p>{{ inscricao.participante.dataNascimento | date: 'dd/MM/yyyy' }}</p>
+        </div>
+        <div>
+          <small>Sistema Saúde</small>
+          <p>{{ inscricao.participante.sistemaSaude || '--' }}</p>
+        </div>
+        <div class="full-width">
+          <small>Código Postal</small>
+          <p>{{ inscricao.participante.codigoPostal || '--' }}</p>
+        </div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field
+          *ngIf="filtroLocal === 'costaCaparica' || filtroLocal === 'quiaios'"
+          appearance="outline"
+          class="edit-field full"
+        >
+          <mat-label>Nº Beneficiário</mat-label>
+          <input matInput [(ngModel)]="inscricao.numeroBeneficiario" />
+        </mat-form-field>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+          <mat-form-field appearance="outline" class="edit-field">
+            <mat-label>NIF</mat-label><input matInput [(ngModel)]="inscricao.participante.nif" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="edit-field">
+            <mat-label>CC</mat-label><input matInput [(ngModel)]="inscricao.participante.cc" />
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Código Postal</mat-label>
+          <input
+            matInput
+            [(ngModel)]="inscricao.participante.codigoPostal"
+            placeholder="0000-000"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Sistema Saúde</mat-label>
+          <input matInput [(ngModel)]="inscricao.participante.sistemaSaude" />
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="section-box">
+      <h4>Logística</h4>
+      <div *ngIf="!isEditing">
+        <div class="info-row">
+          <mat-icon>directions_bus</mat-icon> {{ inscricao.transporte || 'Sem transporte' }}
+        </div>
+        <div class="info-row">
+          <mat-icon>photo_camera</mat-icon> Fotos: {{ inscricao.autorizaFotoVideo ? 'Sim' : 'Não' }}
+        </div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Transporte</mat-label>
+          <mat-select [(ngModel)]="inscricao.transporte">
+            <mat-option *ngFor="let op of opcoesTransporte" [value]="op.label">{{
+              op.label
+            }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-checkbox [(ngModel)]="inscricao.autorizaFotoVideo">Autoriza Fotos?</mat-checkbox>
+      </div>
+    </div>
+
+    <div
+      class="section-box health-alert"
+      *ngIf="
+        inscricao.saude.temAlergiaAlimentar ||
+        inscricao.saude.temOutrasAlergias ||
+        inscricao.saude.tomaMedicacao === true ||
+        isEditing
+      "
+    >
+      <h4><mat-icon>medical_services</mat-icon> Saúde & Alertas</h4>
+      <div *ngIf="!isEditing">
+        <div *ngIf="inscricao.saude.temAlergiaAlimentar" class="alert-item">
+          <strong>Alergia:</strong> {{ inscricao.saude.detalheAlergiaAlimentar }}
+        </div>
+        <div *ngIf="inscricao.saude.tomaMedicacao === true" class="alert-item">
+          <strong>Medicação:</strong> {{ inscricao.saude.detalheMedicacao }}
+        </div>
+      </div>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Alergias</mat-label>
+          <input matInput [(ngModel)]="inscricao.saude.detalheAlergiaAlimentar" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Medicação</mat-label>
+          <input matInput [(ngModel)]="inscricao.saude.detalheMedicacao" />
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div
+      class="section-box"
+      style="border-color: #ffe082; background: #fffde7"
+      *ngIf="inscricao.observacoes || isEditing"
+    >
+      <h4 style="color: #f57f17"><mat-icon>notes</mat-icon> Observações</h4>
+      <p *ngIf="!isEditing" style="white-space: pre-wrap">{{ inscricao.observacoes || '--' }}</p>
+      <div *ngIf="isEditing" class="edit-group">
+        <mat-form-field appearance="outline" class="edit-field full">
+          <mat-label>Observações</mat-label>
+          <textarea matInput [(ngModel)]="inscricao.observacoes" rows="3"></textarea>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="section-box" style="border-color: #bbdefb; background: #e3f2fd" *ngIf="!isCreating">
+      <h4 style="color: #1976d2"><mat-icon>mail</mat-icon> Comunicação</h4>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 0.85rem; color: #555">O pai não recebeu o comprovativo?</span>
+        <button mat-stroked-button color="primary" (click)="reenviarEmail.emit(inscricao)">
+          <mat-icon>send</mat-icon> Reenviar Email
+        </button>
+      </div>
+    </div>
+
+    <div class="delete-area" *ngIf="isEditing && !isCreating">
+      <button mat-button color="warn" (click)="apagar.emit(inscricao.id)" style="width: 100%">
+        <mat-icon>delete_forever</mat-icon> Apagar Inscrição Definitivamente
+      </button>
+    </div>
+  </div>
+</div>

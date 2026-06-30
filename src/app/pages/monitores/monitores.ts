@@ -12,6 +12,7 @@ import { Inscricao, TurnoConfig } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
 import { MonitorService } from '../../services/monitor.service';
+import { LOCAIS_LABELS, LocalKey } from '../../shared/locais';
 
 // Material Imports
 import {
@@ -136,11 +137,10 @@ export class MonitoresComponent implements OnInit {
     try {
       const config = await this.inscricaoService.getConfiguracoesTurnos();
 
-      const locaisMap: { key: string; label: string }[] = [
-        { key: 'quinta', label: 'Quinta da Escola' },
-        { key: 'costaCaparica', label: 'Costa da Caparica' },
-        { key: 'quiaios', label: 'Quiaios' },
-      ];
+      const locaisMap = Object.entries(LOCAIS_LABELS).map(([key, label]) => ({
+        key: key as LocalKey,
+        label,
+      }));
 
       const allTurnos: string[] = [];
       this.listaTurnosPorLocal = [];
