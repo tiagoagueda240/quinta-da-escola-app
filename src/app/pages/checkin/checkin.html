@@ -18,10 +18,16 @@
   </div>
 
   <div class="header-area">
-    <div class="top-info">
+    <div class="top-info" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <div class="brand">
         <mat-icon>forest</mat-icon> CHECK-IN
       </div>
+
+      <button mat-stroked-button color="primary" (click)="irParaGrupos()" *ngIf="pinValidado"
+        style="background: white; border-radius: 20px;">
+        <mat-icon>hotel</mat-icon> Grupos
+      </button>
+
       <div class="counter-badge" [class.has-people]="totalPresentes > 0">
         {{ totalPresentes }} Presentes
       </div>

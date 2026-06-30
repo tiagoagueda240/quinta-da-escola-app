@@ -18,7 +18,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { lastValueFrom } from 'rxjs';
-import { ConfigTurnos, Inscricao } from '../../models/inscricao.model';
+import { Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
 import { OPCOES_TRANSPORTE } from '../../shared/transport-options';
@@ -30,7 +30,6 @@ import * as XLSX from 'xlsx';
 
 import { ConfigTurnosComponent } from '../../components/config-turnos.component';
 import { DialogGerarAcessoComponent } from '../../components/gerar-acesso.component';
-import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 @Component({
   selector: 'app-admin',
@@ -71,7 +70,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   ];
   selection = new SelectionModel<Inscricao>(true, []);
 
-  todosOsTurnosConfig: ConfigTurnos | null = null;
+  todosOsTurnosConfig: any = null;
   listaTurnos: string[] = [];
 
   readonly opcoesTransporte = OPCOES_TRANSPORTE;
@@ -82,6 +81,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
   totalRapazes = 0;
   totalRaparigas = 0;
   ocupacaoPorTurno: { nome: string; count: number; total: number; percent: number }[] = [];
+
   // Filtros Dashboard
   filtroLocal: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
   filtroTexto = '';
@@ -117,6 +117,13 @@ export class AdminComponent implements OnInit, AfterViewInit {
   empresaExportFaturacao = '';
 
   estaAImportar = false;
+  fileToProcess: XLSX.WorkBook | null = null;
+
+  localDestinoImportacao: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
+  turnoDestinoImportacao = '';
+  listaTurnosImportacao: string[] = [];
+  isLocalEspecialImportacao = false;
+
   empresaImportacao: string = '';
   dadosImportacao = { validos: [] as any[], duplicados: 0, total: 0 };
 
@@ -140,15 +147,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
-  private confirmService = inject(ConfirmService);
 
   async ngOnInit() {
-    try {
-      this.configurarFiltroAvancado();
-      await this.recarregarDadosCompletos();
-    } catch (error) {
-      this.mostrarNotificacao('Erro ao inicializar a aplicação.', 'error');
-    }
+    this.configurarFiltroAvancado();
+    await this.recarregarDadosCompletos();
   }
 
   ngAfterViewInit() {
@@ -157,14 +159,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   // --- CARREGAMENTO DE DADOS ---
-
   async recarregarDadosCompletos() {
     try {
-      // Primeiro carregamos as configs (limites, preços, nomes)
       const config = await this.inscricaoService.getConfiguracoesTurnos();
       if (config) {
         this.todosOsTurnosConfig = config;
-        // Atualizamos a lista de nomes de turnos para os filtros
         this.atualizarListaDeTurnosPorLocal();
       }
 
@@ -180,14 +179,12 @@ export class AdminComponent implements OnInit, AfterViewInit {
     if (this.todosOsTurnosConfig) {
       const listaBruta = this.todosOsTurnosConfig[this.filtroLocal] || [];
       this.listaTurnos = listaBruta.map((t: any) => t.nome);
-
       this.filtroTurno = '';
       this.atualizarFiltros();
     }
   }
 
   // --- FILTROS E PESQUISA ---
-
   configurarFiltroAvancado() {
     this.dataSource.filterPredicate = (data: Inscricao, filter: string) => {
       const searchTerms = JSON.parse(filter);
@@ -265,7 +262,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   // --- INTERAÇÕES UI DASHBOARD ---
-
   isAllSelected() {
     return this.selection.selected.length === this.dataSource.filteredData.length;
   }
@@ -296,12 +292,9 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  async marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
+  marcarSelecionadosComo(novoEstado: 'pago' | 'pendente') {
     const selecionados = this.selection.selected;
-    const ok = await this.confirmService.confirmar(
-      `Alterar ${selecionados.length} inscrições para ${novoEstado}?`,
-    );
-    if (ok) {
+    if (confirm(`Alterar ${selecionados.length} inscrições para ${novoEstado}?`)) {
       const updates = selecionados.map((i) => {
         const update: any = { id: i.id!, estado_pagamento: novoEstado };
         if (novoEstado === 'pago') {
@@ -317,28 +310,17 @@ export class AdminComponent implements OnInit, AfterViewInit {
     }
   }
 
-  async apagarSelecionados() {
+  apagarSelecionados() {
     const selecionados = this.selection.selected;
-    const ok = await this.confirmService.confirmar(
-      `Apagar ${selecionados.length} registos permanentemente?`,
-      { cor: 'warn', confirmar: 'Apagar' },
-    );
-    if (ok) {
-      const ids = new Set(selecionados.map((i) => String(i.id)));
-      // Remoção imediata da tabela
-      this.dataSource.data = this.dataSource.data.filter((i) => !ids.has(String(i.id)));
-      this.selection.clear();
-      try {
-        await Promise.all(
-          selecionados.map((i) =>
-            i.id ? this.inscricaoService.deleteInscricao(i.id) : Promise.resolve(),
-          ),
-        );
+    if (confirm(`Apagar ${selecionados.length} registos permanentemente?`)) {
+      const promessas = selecionados.map((i) =>
+        i.id ? this.inscricaoService.deleteInscricao(i.id) : Promise.resolve(),
+      );
+      Promise.all(promessas).then(() => {
+        this.recarregarDadosCompletos();
+        this.selection.clear();
         this.mostrarNotificacao('Apagado.', 'error');
-      } catch {
-        this.mostrarNotificacao('Erro ao apagar alguns registos.', 'error');
-      }
-      await this.recarregarDadosCompletos();
+      });
     }
   }
 
@@ -389,8 +371,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   // --- ADICIONAR MANUAL E EXPORTAR EXCEL ---
-
-  /** Devolve o precoBase do turno a partir da config carregada, ou 300 como fallback */
   private getPrecoTurno(turnoNome: string): number {
     if (!this.todosOsTurnosConfig || !turnoNome) return 300;
     const lista: any[] = this.todosOsTurnosConfig[this.filtroLocal] || [];
@@ -413,6 +393,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
       estado_pagamento: 'pendente',
       tipoCliente: 'individual',
       nomeInstituicao: '',
+      numeroBeneficiario: '',
       participante: {
         nomeCompleto: '',
         genero: 'M',
@@ -422,7 +403,13 @@ export class AdminComponent implements OnInit, AfterViewInit {
         codigoPostal: '',
         sistemaSaude: '',
       },
-      ee: { nome: '', email: '', telefone: '' },
+      ee: {
+        nome: '',
+        email: '',
+        telefone: '',
+        nif: '',
+        contactoEmergencia: ''
+      },
       saude: {
         temAlergiaAlimentar: false,
         detalheAlergiaAlimentar: '',
@@ -471,9 +458,8 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   // ==========================================================
-  //     MODO EXCEL INTERATIVO (OTIMIZADO LOTE)
+  //     MODO EXCEL INTERATIVO E FATURAÇÃO
   // ==========================================================
-
   abrirModoExcel() {
     this.linhasModificadas.clear();
     this.dialog.open(this.dialogModoExcel, {
@@ -486,12 +472,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  async fecharModoExcel() {
+  fecharModoExcel() {
     if (this.linhasModificadas.size > 0) {
-      const ok = await this.confirmService.confirmar(
-        'Tens alterações por guardar! Queres mesmo sair e perder os dados?',
-      );
-      if (!ok) return;
+      if (!confirm('Tens alterações por guardar! Queres mesmo sair e perder os dados?')) {
+        return;
+      }
     }
     this.linhasModificadas.clear();
     this.dialog.closeAll();
@@ -552,7 +537,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
     const ws = wb.addWorksheet('Faturação', { views: [{ state: 'frozen', ySplit: 3 }] });
 
-    // ── Linha de título ────────────────────────────────────────────
     ws.mergeCells('A1:J1');
     const tituloCell = ws.getCell('A1');
     tituloCell.value = titulo;
@@ -561,7 +545,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     tituloCell.alignment = { vertical: 'middle', horizontal: 'center' };
     ws.getRow(1).height = 30;
 
-    // ── Linha de subtítulo ─────────────────────────────────────────
     ws.mergeCells('A2:J2');
     const subCell = ws.getCell('A2');
     subCell.value = `Exportado em ${new Date().toLocaleDateString('pt-PT')}  |  ${dados.length} participante${dados.length !== 1 ? 's' : ''}`;
@@ -570,7 +553,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
     subCell.alignment = { vertical: 'middle', horizontal: 'center' };
     ws.getRow(2).height = 18;
 
-    // ── Colunas ────────────────────────────────────────────────────
     ws.columns = [
       { key: 'nome', width: 32 },
       { key: 'cp', width: 14 },
@@ -584,7 +566,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
       { key: 'fatura', width: 16 },
     ];
 
-    // ── Cabeçalho ──────────────────────────────────────────────────
     const cabecalhos = [
       'Nome Participante',
       'Código Postal',
@@ -597,7 +578,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
       'Nome de Pagamento',
       'Nº Fatura',
     ];
-    const headerRow = ws.addRow(cabecalhos); // row 3
+    const headerRow = ws.addRow(cabecalhos);
     headerRow.height = 22;
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E7D32' } };
@@ -611,7 +592,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
       };
     });
 
-    // ── Dados ──────────────────────────────────────────────────────
     const borderLight = {
       top: { style: 'hair' as const, color: { argb: 'FFD0D0D0' } },
       bottom: { style: 'hair' as const, color: { argb: 'FFD0D0D0' } },
@@ -634,8 +614,8 @@ export class AdminComponent implements OnInit, AfterViewInit {
       });
       row.height = 18;
 
-      const bgPar = 'FFF1F8E9'; // verde muito claro
-      const bgImpar = 'FFFFFFFF'; // branco
+      const bgPar = 'FFF1F8E9';
+      const bgImpar = 'FFFFFFFF';
       row.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.fill = {
           type: 'pattern',
@@ -647,13 +627,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
         cell.font = { size: 10 };
       });
 
-      // Colorir verde se pago
       if (i.estado_pagamento === 'pago') {
         ws.getCell(`G${row.number}`).font = { bold: true, color: { argb: 'FF2E7D32' }, size: 10 };
       }
     });
 
-    // ── Linha de total ─────────────────────────────────────────────
     const totalValor = dados.reduce((s, i) => s + (i.valor_total || 0), 0);
     const totalRow = ws.addRow({
       nome: 'TOTAL',
@@ -672,7 +650,6 @@ export class AdminComponent implements OnInit, AfterViewInit {
       cell.alignment = { vertical: 'middle', horizontal: col === 7 ? 'right' : 'left' };
     });
 
-    // ── Download ───────────────────────────────────────────────────
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -752,6 +729,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
           ? 'instituicao'
           : 'individual',
       nomeInstituicao: this.filtroExcelEmpresa !== 'SEM_EMPRESA' ? this.filtroExcelEmpresa : '',
+      numeroBeneficiario: '',
       participante: {
         nomeCompleto: '',
         genero: 'M',
@@ -761,7 +739,13 @@ export class AdminComponent implements OnInit, AfterViewInit {
         codigoPostal: '',
         sistemaSaude: '',
       },
-      ee: { nome: '', email: '', telefone: '' },
+      ee: {
+        nome: '',
+        email: '',
+        telefone: '',
+        nif: '',
+        contactoEmergencia: ''
+      },
       saude: {
         temAlergiaAlimentar: false,
         detalheAlergiaAlimentar: '',
@@ -787,12 +771,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
     try {
       this.mostrarNotificacao('A guardar dados no servidor...', 'success');
 
-      // 1. Gravar Novas Linhas
       for (const nova of novasLinhas) {
         if (nova.participante.dataNascimento instanceof Date) {
           nova.participante.dataNascimento = new Date(
             nova.participante.dataNascimento.getTime() -
-              nova.participante.dataNascimento.getTimezoneOffset() * 60000,
+            nova.participante.dataNascimento.getTimezoneOffset() * 60000,
           )
             .toISOString()
             .split('T')[0];
@@ -801,13 +784,12 @@ export class AdminComponent implements OnInit, AfterViewInit {
         nova.id = res.id;
       }
 
-      // 2. Atualizar Linhas Existentes
       if (linhasExistentes.length > 0) {
         const payloadBatch = linhasExistentes.map((l) => {
           if (l.participante.dataNascimento instanceof Date) {
             l.participante.dataNascimento = new Date(
               l.participante.dataNascimento.getTime() -
-                l.participante.dataNascimento.getTimezoneOffset() * 60000,
+              l.participante.dataNascimento.getTimezoneOffset() * 60000,
             )
               .toISOString()
               .split('T')[0];
@@ -829,22 +811,22 @@ export class AdminComponent implements OnInit, AfterViewInit {
     }
   }
 
-  async apagarLinhaExcel(row: Inscricao) {
+  apagarLinhaExcel(row: Inscricao) {
     if (!row.id) {
       this.dataSource.data = this.dataSource.data.filter((r) => r !== row);
       this.linhasModificadas.delete(row);
       return;
     }
-    const ok = await this.confirmService.confirmar('Apagar esta linha permanentemente?', {
-      cor: 'warn',
-      confirmar: 'Apagar',
-    });
-    if (ok) {
-      await this.inscricaoService.deleteInscricao(row.id);
-      this.dataSource.data = this.dataSource.data.filter((r) => r.id !== row.id);
-      this.linhasModificadas.delete(row);
-      this.atualizarKPIs(this.dataSource.filteredData);
-      this.snackBar.open('Linha eliminada', 'OK', { duration: 1500, panelClass: 'snackbar-error' });
+    if (confirm('Apagar esta linha permanentemente?')) {
+      this.inscricaoService.deleteInscricao(row.id).then(() => {
+        this.dataSource.data = this.dataSource.data.filter((r) => r.id !== row.id);
+        this.linhasModificadas.delete(row);
+        this.atualizarKPIs(this.dataSource.filteredData);
+        this.snackBar.open('Linha eliminada', 'OK', {
+          duration: 1500,
+          panelClass: 'snackbar-error',
+        });
+      });
     }
   }
 
@@ -858,62 +840,196 @@ export class AdminComponent implements OnInit, AfterViewInit {
     const target: DataTransfer = <DataTransfer>event.target;
     if (target.files.length !== 1) return;
 
-    this.estaAImportar = false;
-    this.empresaImportacao = '';
-    this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
-    this.dialog.open(this.dialogImportacao, { width: '500px', disableClose: true });
-
     const reader: FileReader = new FileReader();
     reader.onload = (e: any) => {
-      const bstr: string = e.target.result;
-      const wb: XLSX.WorkBook = XLSX.read(bstr, { type: 'binary' });
+      // Usar ArrayBuffer para prevenir a corrupção de caracteres em UTF-8 (ex: POÃ‡O)
+      const data = new Uint8Array(e.target.result);
+      this.fileToProcess = XLSX.read(data, { type: 'array' });
 
-      let inscricoesProcessadas: any[] = [];
-      let duplicadosContador = 0;
+      this.estaAImportar = false;
+      this.empresaImportacao = '';
+      this.localDestinoImportacao = this.filtroLocal; // Iniciar com local atual
+      this.atualizarTurnosImportacao();
+      this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
 
-      wb.SheetNames.forEach((sheetName) => {
-        const ws: XLSX.WorkSheet = wb.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        if (rawData.length < 2) return;
-
-        const cabecalhosRaw = rawData[0];
-        const mapaIndex = this.mapearCabecalhos(cabecalhosRaw);
-        const turnoAdivinhado = this.adivinharTurnoDaAba(sheetName);
-
-        for (let i = 1; i < rawData.length; i++) {
-          const row = rawData[i];
-          if (!row || row.length === 0 || !row[mapaIndex.nome]) continue;
-
-          const nomeInscrito = String(row[mapaIndex.nome]).trim();
-          if (nomeInscrito.length < 2) continue;
-
-          const isDuplicado = this.verificarDuplicadoGlobal(
-            nomeInscrito,
-            turnoAdivinhado,
-            inscricoesProcessadas,
-          );
-
-          if (isDuplicado) {
-            duplicadosContador++;
-            continue;
-          }
-
-          const nova = this.construirObjetoInscricao(row, mapaIndex, turnoAdivinhado);
-          inscricoesProcessadas.push(nova);
-        }
-      });
-
-      this.dadosImportacao = {
-        validos: inscricoesProcessadas,
-        duplicados: duplicadosContador,
-        total: inscricoesProcessadas.length + duplicadosContador,
-      };
+      this.dialog.open(this.dialogImportacao, { width: '950px', disableClose: true });
 
       if (this.fileInput && this.fileInput.nativeElement) {
         this.fileInput.nativeElement.value = '';
       }
     };
-    reader.readAsBinaryString(target.files[0]);
+    reader.readAsArrayBuffer(target.files[0]); // Isto resolve os caracteres manchados
+  }
+
+  atualizarTurnosImportacao() {
+    if (this.todosOsTurnosConfig) {
+      const lista = this.todosOsTurnosConfig[this.localDestinoImportacao] || [];
+      this.listaTurnosImportacao = lista.map((t: any) => t.nome);
+    }
+    this.isLocalEspecialImportacao = (this.localDestinoImportacao === 'costaCaparica' || this.localDestinoImportacao === 'quiaios');
+    this.turnoDestinoImportacao = '';
+    this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
+  }
+
+  processarFicheiroSelecionado() {
+    if (!this.fileToProcess || !this.turnoDestinoImportacao) return;
+
+    if (this.isLocalEspecialImportacao) {
+      this.processarImportacaoEspecial(this.fileToProcess);
+    } else {
+      this.processarImportacaoNormal(this.fileToProcess);
+    }
+  }
+
+  private processarImportacaoEspecial(wb: XLSX.WorkBook) {
+    let inscricoesProcessadas: any[] = [];
+    let duplicadosContador = 0;
+
+    wb.SheetNames.forEach((sheetName) => {
+      const ws: XLSX.WorkSheet = wb.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+      if (rawData.length < 2) return;
+
+      let headerRowIndex = -1;
+      let colMap = { benef: -1, nome: -1, nasc: -1, sexo: -1 };
+
+      for (let r = 0; r < Math.min(rawData.length, 30); r++) {
+        const row = rawData[r];
+        if (!row || !Array.isArray(row)) continue;
+        let found = 0;
+        for (let c = 0; c < row.length; c++) {
+          const val = String(row[c]).toLowerCase().trim();
+          if (val === 'nº. benef.' || val === 'nº benef.' || val === 'nº benef' || val.includes('benef')) { colMap.benef = c; found++; }
+          if (val === 'nome da criança' || val.includes('nome da criança') || val === 'nome') { colMap.nome = c; found++; }
+          if (val === 'data nasc.' || val === 'data nasc' || val.includes('data nasc')) { colMap.nasc = c; found++; }
+          if (val === 'sexo' || val === 'género' || val === 'genero') { colMap.sexo = c; found++; }
+        }
+        if (found >= 3) {
+          headerRowIndex = r;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) return;
+
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || !Array.isArray(row) || row.length === 0) continue;
+
+        const benef = colMap.benef !== -1 ? String(row[colMap.benef]).trim() : '';
+        const nome = colMap.nome !== -1 ? String(row[colMap.nome]).trim() : '';
+        let nasc = colMap.nasc !== -1 ? row[colMap.nasc] : '';
+        const sexoRaw = colMap.sexo !== -1 ? String(row[colMap.sexo]).trim().toUpperCase() : '';
+
+        let sexo = '';
+        if (sexoRaw.startsWith('F')) sexo = 'F';
+        if (sexoRaw.startsWith('M')) sexo = 'M';
+
+        if (!benef || !nome || !nasc || !sexo || nome.length < 2) continue;
+
+        if (typeof nasc === 'number') {
+          const dataExcel = new Date(Math.round((nasc - 25569) * 86400 * 1000));
+          nasc = dataExcel.toISOString().split('T')[0];
+        } else {
+          nasc = String(nasc).trim();
+          if (nasc.length < 4) continue;
+        }
+
+        const isDuplicado = this.verificarDuplicadoGlobal(nome, this.turnoDestinoImportacao, inscricoesProcessadas);
+        if (isDuplicado) {
+          duplicadosContador++;
+          continue;
+        }
+
+        inscricoesProcessadas.push({
+          turnoEscolhido: this.turnoDestinoImportacao,
+          local: this.localDestinoImportacao,
+          valor_total: this.getPrecoTurnoImportacao(this.turnoDestinoImportacao, this.localDestinoImportacao),
+          transporte: 'Não (Entregue pelos pais)',
+          autorizaFotoVideo: false,
+          estado_pagamento: 'pendente',
+          tipoCliente: 'individual',
+          nomeInstituicao: '',
+          numeroBeneficiario: benef,
+          participante: {
+            nomeCompleto: nome,
+            genero: sexo,
+            dataNascimento: nasc,
+            nif: '',
+            codigoPostal: '',
+            cc: '',
+            sistemaSaude: '',
+          },
+          ee: {
+            nome: 'EE de ' + nome,
+            email: '',
+            telefone: '',
+            nif: '',
+            contactoEmergencia: '',
+          },
+          saude: {
+            temAlergiaAlimentar: false,
+            detalheAlergiaAlimentar: '',
+            tomaMedicacao: false,
+            detalheMedicacao: '',
+          }
+        });
+      }
+    });
+
+    this.dadosImportacao = {
+      validos: inscricoesProcessadas,
+      duplicados: duplicadosContador,
+      total: inscricoesProcessadas.length + duplicadosContador,
+    };
+  }
+
+  private processarImportacaoNormal(wb: XLSX.WorkBook) {
+    let inscricoesProcessadas: any[] = [];
+    let duplicadosContador = 0;
+
+    wb.SheetNames.forEach((sheetName) => {
+      const ws: XLSX.WorkSheet = wb.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+      if (rawData.length < 2) return;
+
+      const cabecalhosRaw = rawData[0];
+      const mapaIndex = this.mapearCabecalhos(cabecalhosRaw);
+
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || row.length === 0 || !row[mapaIndex.nome]) continue;
+
+        const nomeInscrito = String(row[mapaIndex.nome]).trim();
+        if (nomeInscrito.length < 2) continue;
+
+        const isDuplicado = this.verificarDuplicadoGlobal(nomeInscrito, this.turnoDestinoImportacao, inscricoesProcessadas);
+        if (isDuplicado) {
+          duplicadosContador++;
+          continue;
+        }
+
+        const nova = this.construirObjetoInscricao(row, mapaIndex, this.turnoDestinoImportacao);
+        inscricoesProcessadas.push(nova);
+      }
+    });
+
+    this.dadosImportacao = {
+      validos: inscricoesProcessadas,
+      duplicados: duplicadosContador,
+      total: inscricoesProcessadas.length + duplicadosContador,
+    };
+  }
+
+  removerImportacao(idx: number) {
+    this.dadosImportacao.validos.splice(idx, 1);
+    this.dadosImportacao.total--;
+  }
+
+  aplicarTurnoATodos() {
+    if (this.turnoDestinoImportacao && this.dadosImportacao.validos.length > 0) {
+      this.dadosImportacao.validos.forEach(i => i.turnoEscolhido = this.turnoDestinoImportacao);
+    }
   }
 
   private mapearCabecalhos(cabecalhos: string[]): any {
@@ -934,33 +1050,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   private adivinharTurnoDaAba(sheetName: string): string {
     const nomeNorm = this.normalizarTexto(sheetName);
-
     for (let t of this.listaTurnos) {
-      if (
-        this.normalizarTexto(t).includes(nomeNorm) ||
-        nomeNorm.includes(this.normalizarTexto(t))
-      ) {
+      if (this.normalizarTexto(t).includes(nomeNorm) || nomeNorm.includes(this.normalizarTexto(t))) {
         return t;
       }
     }
-
-    const matchNumero = sheetName.match(/(\d+)º/);
-    if (matchNumero) {
-      const t = this.listaTurnos.find((turno) => turno.includes(`${matchNumero[1]}º`));
-      if (t) return t;
-    }
-
-    if (nomeNorm.includes('pascoa'))
-      return (
-        this.listaTurnos.find((t) => this.normalizarTexto(t).includes('pascoa')) ||
-        this.listaTurnos[0]
-      );
-    if (nomeNorm.includes('natal'))
-      return (
-        this.listaTurnos.find((t) => this.normalizarTexto(t).includes('natal')) ||
-        this.listaTurnos[0]
-      );
-
     return this.listaTurnos.length > 0 ? this.listaTurnos[0] : 'Turno Importado';
   }
 
@@ -982,12 +1076,19 @@ export class AdminComponent implements OnInit, AfterViewInit {
     return existeFila;
   }
 
+  private getPrecoTurnoImportacao(turnoNome: string, local: string): number {
+    if (!this.todosOsTurnosConfig || !turnoNome || !local) return 300;
+    const lista: any[] = this.todosOsTurnosConfig[local] || [];
+    const t = lista.find((x: any) => x.nome === turnoNome);
+    return t?.precoBase ?? 300;
+  }
+
   private construirObjetoInscricao(row: any[], mapa: any, turno: string): any {
     let dataNasc = '';
     if (mapa.nascimento !== undefined && row[mapa.nascimento]) {
       const val = row[mapa.nascimento];
       if (typeof val === 'number') {
-        const dataExcel = new Date((val - (25567 + 2)) * 86400 * 1000);
+        const dataExcel = new Date(Math.round((val - 25569) * 86400 * 1000));
         dataNasc = dataExcel.toISOString().split('T')[0];
       } else {
         dataNasc = val;
@@ -996,11 +1097,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
     return {
       turnoEscolhido: turno,
-      local: this.filtroLocal,
+      local: this.localDestinoImportacao,
       valor_total:
         mapa.preco !== undefined && row[mapa.preco]
           ? Number(row[mapa.preco])
-          : this.getPrecoTurno(turno),
+          : this.getPrecoTurnoImportacao(turno, this.localDestinoImportacao),
       transporte:
         mapa.transporte !== undefined && row[mapa.transporte]
           ? String(row[mapa.transporte])
@@ -1056,24 +1157,35 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   async confirmarImportacao() {
+    if (!this.turnoDestinoImportacao) {
+      this.mostrarNotificacao('É obrigatório selecionar o Turno de Destino.', 'error');
+      return;
+    }
+
     this.estaAImportar = true;
 
     try {
       for (const inscricao of this.dadosImportacao.validos) {
-        if (this.empresaImportacao && this.empresaImportacao.trim() !== '') {
+        if (!this.isLocalEspecialImportacao && this.empresaImportacao && this.empresaImportacao.trim() !== '') {
           inscricao.tipoCliente = 'instituicao';
           inscricao.nomeInstituicao = this.empresaImportacao.trim();
         }
-        await this.inscricaoService.createInscricao(inscricao);
+
+        try {
+          await this.inscricaoService.createInscricao(inscricao);
+        } catch (innerError: any) {
+          console.error("Erro numa linha específica:", innerError);
+          // O fluxo vai continuar para as outras crianças mesmo que uma falhe
+        }
       }
 
       this.mostrarNotificacao(
-        `${this.dadosImportacao.validos.length} Inscrições importadas com sucesso!`,
+        `${this.dadosImportacao.validos.length} Inscrições processadas. A recarregar...`,
       );
       this.recarregarDadosCompletos();
     } catch (error) {
       console.error(error);
-      this.mostrarNotificacao('Ocorreu um erro na importação de algumas linhas.', 'error');
+      this.mostrarNotificacao('Ocorreu um erro geral.', 'error');
     } finally {
       this.estaAImportar = false;
       this.empresaImportacao = '';
@@ -1084,11 +1196,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
   cancelarImportacao() {
     this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
     this.empresaImportacao = '';
+    this.fileToProcess = null;
     if (this.fileInput && this.fileInput.nativeElement) this.fileInput.nativeElement.value = '';
   }
 
   // --- PDF & HELPERS ---
-
   verificarTurnoParaCozinha() {
     this.acaoDialog = 'cozinha';
     this.turnoParaDialog = this.filtroTurno;
@@ -1166,33 +1278,27 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   async reenviarEmail(inscricao: Inscricao) {
-    const ok = await this.confirmService.confirmar(
-      `Enviar email de confirmação para ${inscricao.ee.email}?`,
-    );
-    if (!ok) return;
+    if (!confirm(`Enviar email de confirmação para ${inscricao.ee.email}?`)) return;
+
     this.mostrarNotificacao('A processar pedido...', 'success');
-    this.inscricaoService.enviarEmailSeguro(inscricao);
-    this.mostrarNotificacao('Email enviado para o servidor de correio!');
+
+    try {
+      await this.inscricaoService.reenviarEmail(inscricao);
+      this.mostrarNotificacao('Email enviado com sucesso!');
+    } catch (erro) {
+      console.error(erro);
+      this.mostrarNotificacao('Erro ao enviar email.', 'error');
+    }
   }
 
-  async apagarInscricao(id?: string) {
+  apagarInscricao(id?: string) {
     if (!id) return;
-    const ok = await this.confirmService.confirmar('Eliminar permanentemente?', {
-      cor: 'warn',
-      confirmar: 'Eliminar',
-    });
-    if (ok) {
-      // Remoção imediata da tabela para feedback instantâneo
-      this.dataSource.data = this.dataSource.data.filter((i) => String(i.id) !== String(id));
-      this.fecharDetalhes();
-      try {
-        await this.inscricaoService.deleteInscricao(id);
-        this.mostrarNotificacao('Apagado com sucesso.', 'error');
-      } catch {
-        this.mostrarNotificacao('Erro ao apagar. A recarregar dados...', 'error');
-      }
-      // Reload em background para garantir sincronismo com o servidor
-      await this.recarregarDadosCompletos();
+    if (confirm('Eliminar permanentemente?')) {
+      this.inscricaoService.deleteInscricao(id).then(() => {
+        this.recarregarDadosCompletos();
+        this.fecharDetalhes();
+        this.mostrarNotificacao('Apagado.', 'error');
+      });
     }
   }
 

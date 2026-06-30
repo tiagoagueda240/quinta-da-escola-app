@@ -2,11 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { from, Observable } from 'rxjs'; // <--- IMPORTANTE
+import { from, Observable } from 'rxjs';
 import { Inscricao } from '../../models/inscricao.model';
 import { AuthService } from '../../services/auth.service';
 import { InscricaoService } from '../../services/inscricao.service';
-import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -68,32 +67,26 @@ export class CheckinComponent implements OnInit {
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private confirmService = inject(ConfirmService);
 
   async ngOnInit() {
-    try {
-      this.token = this.route.snapshot.queryParamMap.get('token');
+    this.token = this.route.snapshot.queryParamMap.get('token');
 
-      if (this.token) {
-        this.modoLink = true;
-        this.loading = false;
-        const pinSalvo = sessionStorage.getItem('access_pin_' + this.token);
-        if (pinSalvo) {
-          this.pinInput = pinSalvo;
-          this.validarPin();
-        }
-      } else {
-        if (this.authService.getToken()) {
-          this.modoLink = false;
-          this.pinValidado = true;
-          await this.carregarDadosAdmin();
-        } else {
-          this.router.navigate(['/login']);
-        }
-      }
-    } catch (error) {
-      this.mostrarToast('Erro ao inicializar.');
+    if (this.token) {
+      this.modoLink = true;
       this.loading = false;
+      const pinSalvo = sessionStorage.getItem('access_pin_' + this.token);
+      if (pinSalvo) {
+        this.pinInput = pinSalvo;
+        this.validarPin();
+      }
+    } else {
+      if (this.authService.getToken()) {
+        this.modoLink = false;
+        this.pinValidado = true;
+        await this.carregarDadosAdmin();
+      } else {
+        this.router.navigate(['/login']);
+      }
     }
   }
 
@@ -149,7 +142,6 @@ export class CheckinComponent implements OnInit {
 
   processarDadosRecebidos(dados: Inscricao[]) {
     this.inscricoes = dados.map((i) => {
-      // CORREÇÃO: Adicionada dataEntrada fictícia para satisfazer o tipo Date
       if (!i.checkin)
         i.checkin = {
           status: 'fora',
@@ -207,7 +199,6 @@ export class CheckinComponent implements OnInit {
 
   confirmarEntrada() {
     const inscricaoAlvo = this.tempInscricao;
-    // CORREÇÃO: Validação de ID segura
     if (!inscricaoAlvo || !inscricaoAlvo.id) return;
     const idSeguro = inscricaoAlvo.id;
 
@@ -232,13 +223,11 @@ export class CheckinComponent implements OnInit {
         this.pinSessao,
       );
     } else {
-      // CORREÇÃO: Converter Promise para Observable para usar .subscribe()
       observable$ = from(this.inscricaoService.updateInscricaoBatch([payload]));
     }
 
     observable$.subscribe({
       next: () => {
-        // CORREÇÃO: Verificar se checkin existe antes de atribuir
         if (!inscricaoAlvo.checkin) {
           inscricaoAlvo.checkin = {
             status: 'dentro',
@@ -253,7 +242,6 @@ export class CheckinComponent implements OnInit {
         this.dialog.closeAll();
         this.mostrarToast(`Bem-vindo(a) ${inscricaoAlvo.participante.nomeCompleto.split(' ')[0]}!`);
       },
-      // CORREÇÃO: Tipagem do erro
       error: (err: any) => {
         console.error(err);
         this.mostrarToast('Erro ao registar entrada.');
@@ -261,14 +249,11 @@ export class CheckinComponent implements OnInit {
     });
   }
 
-  async registarSaida(inscricao: Inscricao) {
+  registarSaida(inscricao: Inscricao) {
     if (!inscricao.id) return;
     const idSeguro = inscricao.id;
 
-    const ok = await this.confirmService.confirmar(
-      `Confirmar saída de ${inscricao.participante.nomeCompleto}?`,
-    );
-    if (!ok) return;
+    if (!confirm(`Confirmar saída de ${inscricao.participante.nomeCompleto}?`)) return;
 
     const payload = {
       id: idSeguro,
@@ -307,5 +292,10 @@ export class CheckinComponent implements OnInit {
   getNomeCurtoTurno(t: string): string {
     if (!t) return '';
     return t.split(' – ')[0].split('-')[0];
+  }
+
+  // --- NAVEGAÇÃO ---
+  irParaGrupos() {
+    this.router.navigate(['/grupos'], { queryParams: this.modoLink ? { token: this.token } : {} });
   }
 }

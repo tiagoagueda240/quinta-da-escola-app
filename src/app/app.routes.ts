@@ -1,7 +1,18 @@
 import { Routes } from '@angular/router';
+
+// Componentes
+import { AdminComponent } from './pages/admin/admin';
+import { CheckinComponent } from './pages/checkin/checkin';
+import { GruposComponent } from './pages/grupos/grupos';
+import { InscricaoComponent } from './pages/inscricao/inscricao';
+import { LoginComponent } from './pages/login/login';
+import { MonitoresComponent } from './pages/monitores/monitores';
+
 import { authGuard } from './guards/auth.guard';
 import { checkinGuard } from './guards/checkin.guard';
 import { loginGuard } from './guards/login.guard';
+import { ForgotPassword } from './pages/forgot-password/forgot-password';
+import { ResetPassword } from './pages/reset-password/reset-password';
 
 export const routes: Routes = [
   {
@@ -11,51 +22,42 @@ export const routes: Routes = [
   },
   {
     path: 'inscricao',
-    loadComponent: () => import('./pages/inscricao/inscricao').then((m) => m.InscricaoComponent),
+    component: InscricaoComponent,
+    // Esta rota é pública, não precisa de guarda
   },
   {
     path: 'login',
-    loadComponent: () => import('./pages/login/login').then((m) => m.LoginComponent),
-    canActivate: [loginGuard],
+    component: LoginComponent,
+    canActivate: [loginGuard], // Se já tiver logado, não deixa entrar aqui e manda para monitores
   },
 
   // --- ÁREA PROTEGIDA (Requer Login) ---
   {
     path: 'admin',
-    loadComponent: () => import('./pages/admin/admin').then((m) => m.AdminComponent),
+    component: AdminComponent,
     canActivate: [authGuard],
   },
   {
     path: 'checkin',
-    loadComponent: () => import('./pages/checkin/checkin').then((m) => m.CheckinComponent),
+    component: CheckinComponent,
     canActivate: [checkinGuard],
   },
   {
     path: 'grupos',
-    loadComponent: () => import('./pages/grupos/grupos').then((m) => m.GruposComponent),
-    canActivate: [authGuard],
+    component: GruposComponent,
+    canActivate: [checkinGuard], // <-- ALTERADO PARA PERMITIR TOKEN (COLEGA/COORDENADOR)
   },
   {
     path: 'monitores',
-    loadComponent: () => import('./pages/monitores/monitores').then((m) => m.MonitoresComponent),
+    component: MonitoresComponent,
     canActivate: [authGuard],
   },
   {
     path: 'forgot-password',
-    loadComponent: () =>
-      import('./pages/forgot-password/forgot-password').then((m) => m.ForgotPasswordComponent),
+    component: ForgotPassword,
   },
   {
     path: 'reset-password',
-    loadComponent: () =>
-      import('./pages/reset-password/reset-password').then((m) => m.ResetPasswordComponent),
+    component: ResetPassword,
   },
-  {
-    path: 'politica-privacidade',
-    loadComponent: () =>
-      import('./pages/politica-privacidade/politica-privacidade').then(
-        (m) => m.PoliticaPrivacidadeComponent,
-      ),
-  },
-  { path: '**', redirectTo: 'inscricao' },
 ];

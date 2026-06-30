@@ -2,6 +2,15 @@
 // api/inscricoes.php
 require 'config.php';
 
+// Importar as classes do PHPMailer
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Requerer os ficheiros do PHPMailer (ajusta o caminho se a pasta tiver outro nome)
+require 'PHPMailer/src/Exception.php';
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+
 $method = $_SERVER['REQUEST_METHOD'];
 $acao = $_GET['acao'] ?? 'listar';
 
@@ -25,7 +34,7 @@ function get_auth_header() {
     return $authHeader;
 }
 
-// ADICIONADO: Exceção para 'turnos_publicos'
+// Exceção para endpoints abertos
 if ($acao !== 'nova' && $acao !== 'config_turnos' && $acao !== 'turnos_publicos') {
     $authHeader = get_auth_header();
 
@@ -69,7 +78,7 @@ if ($acao !== 'nova' && $acao !== 'config_turnos' && $acao !== 'turnos_publicos'
 // ===================================================================================
 if ($method === 'GET') {
 
-    // NOVO: Endpoint público para ver turnos disponíveis e preços sem expor dados
+    // Endpoint público para ver turnos disponíveis e preços sem expor dados
     if ($acao === 'turnos_publicos') {
         $localReq = $_GET['local'] ?? 'quinta';
 
@@ -86,7 +95,7 @@ if ($method === 'GET') {
 
         $stmtCount = $pdo->prepare("SELECT turno, COUNT(id) as total FROM inscricoes WHERE local = ? GROUP BY turno");
         $stmtCount->execute([$localSql]);
-        $contagens = $stmtCount->fetchAll(PDO::FETCH_KEY_PAIR); // Devolve array: ['Turno 1' => 45]
+        $contagens = $stmtCount->fetchAll(PDO::FETCH_KEY_PAIR);
 
         // 3. Filtrar turnos passados e preparar dados de envio
         $turnosDisponiveis = [];
@@ -120,14 +129,14 @@ if ($method === 'GET') {
 
     if ($acao === 'listar') {
         try {
-            // QUERY: Busca tudo.
-            // IMPORTANTE: i.id AS id deve vir NO FINAL para não ser sobrescrito por p.id
-            // (quando há SELECT i.*, p.*, o PDO FETCH_ASSOC usa o último valor de colunas com nome duplicado)
+            // QUERY: Busca tudo. 
             $sqlBase = "
                 SELECT 
-                    i.*,
-                    p.*,
-                    i.id AS id
+                    i.*, 
+                    p.nome_completo, p.data_nascimento, p.genero,
+                    p.email_ee, p.nome_ee, p.telefone_ee, p.nif_ee, p.contacto_emergencia,
+                    p.intolerancias, p.medicacao,
+                    p.morada, p.cc, p.nif, p.sistema_saude
                 FROM inscricoes i
                 JOIN participantes p ON i.participante_id = p.id
             ";
@@ -156,7 +165,6 @@ if ($method === 'GET') {
             // --- MAPEAMENTO ---
             foreach ($result as &$row) {
                 
-                // Garantir que os IDs relacionais são enviados (cast para int ou null)
                 $row['camarata_id'] = isset($row['camarata_id']) ? (int)$row['camarata_id'] : null;
                 $row['grupo_id']    = isset($row['grupo_id']) ? (int)$row['grupo_id'] : null;
 
@@ -173,8 +181,7 @@ if ($method === 'GET') {
                     'nif'            => $row['nif'] ?? '',
                     'cc'             => $row['cc'] ?? '',
                     'codigoPostal'   => $row['morada'] ?? '',
-                    'sistemaSaude'   => $row['sistema_saude'] ?? '',
-                    'tamanhoTshirt'  => $row['tamanho_tshirt'] ?? 'S'
+                    'sistemaSaude'   => $row['sistema_saude'] ?? ''
                 ];
 
                 $row['ee'] = [
@@ -188,8 +195,8 @@ if ($method === 'GET') {
                 $row['saude'] = [
                     'temAlergiaAlimentar'     => !empty($row['intolerancias']),
                     'detalheAlergiaAlimentar' => $row['intolerancias'],
-                    'tomaMedicacao'            => !empty($row['medicacao']),
-                    'detalheMedicacao'         => $row['medicacao']
+                    'tomaMedicacao'           => !empty($row['medicacao']),
+                    'detalheMedicacao'        => $row['medicacao']
                 ];
 
                 $row['checkin'] = [
@@ -201,9 +208,8 @@ if ($method === 'GET') {
                 $row['autorizaFotoVideo'] = (bool)$row['autoriza_foto_video'];
                 $row['observacoes'] = $row['observacoes'] ?? '';
                 
-                // Limpeza
                 unset($row['nome_completo'], $row['nome_ee'], $row['email_ee'], $row['telefone_ee'], $row['nif_ee'], $row['contacto_emergencia'],
-                      $row['intolerancias'], $row['medicacao'], $row['tamanho_tshirt'], $row['morada'], $row['cc'], $row['nif'], $row['sistema_saude']);
+                      $row['intolerancias'], $row['medicacao'], $row['morada'], $row['cc'], $row['nif'], $row['sistema_saude']);
             }
             
             echo json_encode($result);
@@ -241,8 +247,8 @@ if ($method === 'POST' || $method === 'PUT') {
                 $sqlPart = "INSERT INTO participantes 
                     (email_ee, nome_completo, data_nascimento, genero, 
                      nome_ee, telefone_ee, nif_ee, contacto_emergencia, intolerancias, medicacao,
-                     morada, cc, nif, sistema_saude, tamanho_tshirt) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     morada, cc, nif, sistema_saude) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 
                 $stmtPart = $pdo->prepare($sqlPart);
                 $stmtPart->execute([
@@ -259,13 +265,12 @@ if ($method === 'POST' || $method === 'PUT') {
                     $input['participante']['codigoPostal'] ?? '',
                     $input['participante']['cc'] ?? '',
                     $input['participante']['nif'] ?? '',
-                    $input['participante']['sistemaSaude'] ?? '',
-                    $input['participante']['tamanhoTshirt'] ?? 'S'
+                    $input['participante']['sistemaSaude'] ?? ''
                 ]);
                 $participanteId = $pdo->lastInsertId();
             }
 
-            // CORREÇÃO: Inserção da inscrição garantindo compatibilidade com colunas institucionais
+            // Inserção da inscrição
             $sqlInsc = "INSERT INTO inscricoes 
                 (participante_id, turno, local, ano, valor_total, autoriza_foto_video, transporte, estado_pagamento, tipo_cliente, nome_instituicao, dataPagamento, nomePagamento, numeroFatura, observacoes) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?)";
@@ -288,6 +293,150 @@ if ($method === 'POST' || $method === 'PUT') {
             ]);
 
             $pdo->commit();
+
+            // ==========================================================
+            // PREPARAÇÃO DE EMAILS (Conteúdo)
+            // ==========================================================
+            $paraAdmin = 'info@quintadaescola.com';
+            $assuntoAdmin = 'Nova Inscrição: ' . $input['participante']['nomeCompleto'] . ' - ' . $input['turnoEscolhido'];
+
+            $mensagemAdmin = "
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 20px; }
+                .info-block { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+                p { margin: 5px 0; }
+              </style>
+            </head>
+            <body>
+                <h1>Nova Inscrição Recebida 🎉</h1>
+                
+                <div class='info-block'>
+                    <h2>Resumo</h2>
+                    <p><strong>Turno:</strong> {$input['turnoEscolhido']}</p>
+                    <p><strong>Local:</strong> {$input['local']}</p>
+                    <p><strong>Tipo de Cliente:</strong> " . ucfirst($input['tipoCliente'] ?? 'individual') . "</p>
+                    <p><strong>Transporte:</strong> {$input['transporte']}</p>
+                    <p><strong>Valor Total:</strong> {$input['valor_total']}€</p>
+                </div>
+
+                <div class='info-block'>
+                    <h2>Dados do Participante</h2>
+                    <p><strong>Nome Completo:</strong> {$input['participante']['nomeCompleto']}</p>
+                    <p><strong>Data de Nascimento:</strong> {$input['participante']['dataNascimento']}</p>
+                    <p><strong>NIF:</strong> " . (!empty($input['participante']['nif']) ? $input['participante']['nif'] : 'Não preenchido') . "</p>
+                    <p><strong>Cartão Cidadão:</strong> {$input['participante']['cc']}</p>
+                    <p><strong>Sistema de Saúde:</strong> {$input['participante']['sistemaSaude']}</p>
+                </div>
+
+                <div class='info-block'>
+                    <h2>Encarregado de Educação</h2>
+                    <p><strong>Nome:</strong> {$input['ee']['nome']}</p>
+                    <p><strong>Email:</strong> {$input['ee']['email']}</p>
+                    <p><strong>Telemóvel:</strong> {$input['ee']['telefone']}</p>
+                    <p><strong>Contacto de Emergência:</strong> " . (!empty($input['ee']['contactoEmergencia']) ? $input['ee']['contactoEmergencia'] : 'Não preenchido') . "</p>
+                </div>
+
+                <div class='info-block'>
+                    <h2>Saúde e Cuidados</h2>
+                    <p><strong>Alergias:</strong> " . (!empty($input['saude']['alergiaDetalhes']) ? $input['saude']['alergiaDetalhes'] : 'Nenhuma') . "</p>
+                    <p><strong>Medicação Habitual:</strong> " . (!empty($input['saude']['medicacaoHabitual']) ? $input['saude']['medicacaoHabitual'] : 'Nenhuma') . "</p>
+                </div>
+
+                <div class='info-block'>
+                    <h2>Observações</h2>
+                    <p>" . (!empty($input['observacoes']) ? nl2br($input['observacoes']) : 'Sem observações.') . "</p>
+                </div>
+            </body>
+            </html>
+            ";
+
+            // ==========================================================
+            // ENVIO DE EMAILS VIA PHPMAILER
+            // ==========================================================
+            $mail = new PHPMailer(true);
+
+            try {
+                // Configurações do Servidor SMTP
+                $mail->isSMTP();
+                $mail->Host       = 'mail.quintadaescola.com'; // O teu host de email
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'noreply@quintadaescola.com'; // O teu email
+                $mail->Password   = 'hS99W+EanZwGHBIL';       // <-- COLOCA A TUA SENHA AQUI
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL (usa STARTTLS se a porta for 587)
+                $mail->Port       = 465; // Porta 465 para SSL
+                $mail->CharSet    = 'UTF-8'; // Garante que os acentos não ficam desconfigurados
+
+                // 1. EMAIL PARA A ADMINISTRAÇÃO (info@quintadaescola.com)
+                $mail->setFrom('info@quintadaescola.com', 'Sistema Inscrições');
+                $mail->addAddress($paraAdmin, 'Admin');
+                $mail->addReplyTo($input['ee']['email'], $input['ee']['nome']); // Para responderes direto ao cliente
+
+                $mail->isHTML(true);
+                $mail->Subject = $assuntoAdmin;
+                $mail->Body    = $mensagemAdmin;
+
+                $mail->send();
+
+                // Limpa destinatários para enviar o próximo email
+                $mail->clearAllRecipients();
+                $mail->clearReplyTos();
+
+                // 2. EMAIL PARA O ENCARREGADO DE EDUCAÇÃO (Cliente)
+                $emailEE = $input['ee']['email'];
+                
+                if (filter_var($emailEE, FILTER_VALIDATE_EMAIL)) {
+                    $nomeEE = $input['ee']['nome'];
+                    $turno = $input['turnoEscolhido'];
+                    $valor = $input['valor_total'] ?? 0;
+
+                    $assuntoEE = 'Confirmação de Inscrição - Quinta da Escola';
+                    
+                    $htmlEE = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+                        . 'body{margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f6f8;}'
+                        . '.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;}'
+                        . '.header{background:#2e7d32;padding:30px 20px;text-align:center;}'
+                        . '.header h1{color:#fff;margin:0;font-size:24px;}'
+                        . '.content{padding:40px 30px;color:#333;line-height:1.7;}'
+                        . '.info-box{background:#f1f8e9;border-left:5px solid #2e7d32;padding:20px;margin:20px 0;border-radius:4px;}'
+                        . '.label{font-weight:bold;color:#555;}'
+                        . '.value{color:#2e7d32;font-weight:bold;}'
+                        . '.btn{display:inline-block;background:#2e7d32;color:#fff !important;padding:12px 25px;text-decoration:none;border-radius:50px;font-weight:bold;margin-top:20px;}'
+                        . '</style></head><body>'
+                        . '<div class="container">'
+                        . '<div class="header"><h1>QUINTA DA ESCOLA</h1></div>'
+                        . '<div class="content">'
+                        . '<h2 style="color:#333;margin-top:0;">Olá, ' . htmlspecialchars($nomeEE) . '!</h2>'
+                        . '<p>Ficamos muito contentes de ter escolhido a Quinta da Escola para mais umas férias fantásticas!</p>'
+                        . '<p>A inscrição está confirmada e agora pode avançar para a próxima fase.</p>'
+                        . '<p>O pagamento deverá ser efetuado e o respetivo comprovativo enviado para <strong>info@quintadaescola.com</strong> com o nome do participante.</p>'
+                        . '<p><strong>IBAN:</strong> PT50 0045 5242 4038 3330 5293 2</p>'
+                        . '<p>Mais perto da data enviaremos o resto das informações para que nada falte nesta aventura.</p>'
+                        . '<div class="info-box">'
+                        . '<div class="info-item"><span class="label">Turno:</span> ' . htmlspecialchars($turno) . '</div>'
+                        . '<div class="info-item"><span class="label">Valor Total:</span> <span class="value">' . htmlspecialchars($valor) . '&euro;</span></div>'
+                        . '</div>'
+                        . '<center><a href="mailto:info@quintadaescola.com" class="btn">Enviar Comprovativo</a></center>'
+                        . '</div></div></body></html>';
+
+                    $mail->setFrom('info@quintadaescola.com', 'Quinta da Escola');
+                    $mail->addAddress($emailEE, $nomeEE);
+                    $mail->addReplyTo('info@quintadaescola.com', 'Quinta da Escola');
+
+                    $mail->Subject = $assuntoEE;
+                    $mail->Body    = $htmlEE;
+
+                    $mail->send();
+                }
+
+            } catch (Exception $e) {
+                // Registar erro no log do servidor sem quebrar o retorno para o utilizador final
+                error_log("Erro ao enviar email de nova inscrição via PHPMailer: {$mail->ErrorInfo}");
+            }
+            // ==========================================================
+
             echo json_encode(["id" => $pdo->lastInsertId()]);
 
         } catch (Exception $e) {
@@ -382,7 +531,6 @@ if ($method === 'POST' || $method === 'PUT') {
                         if (isset($dados['participante']['codigoPostal'])) { $camposPart[] = "morada = ?"; $valoresPart[] = $dados['participante']['codigoPostal']; }
                         if (isset($dados['participante']['sistemaSaude'])) { $camposPart[] = "sistema_saude = ?"; $valoresPart[] = $dados['participante']['sistemaSaude']; }
                         if (isset($dados['participante']['dataNascimento'])) { $camposPart[] = "data_nascimento = ?"; $valoresPart[] = $dados['participante']['dataNascimento']; }
-                        if (isset($dados['participante']['tamanhoTshirt'])) { $camposPart[] = "tamanho_tshirt = ?"; $valoresPart[] = $dados['participante']['tamanhoTshirt']; }
 
                         if (isset($dados['ee']['nome'])) { $camposPart[] = "nome_ee = ?"; $valoresPart[] = $dados['ee']['nome']; }
                         if (isset($dados['ee']['email'])) { $camposPart[] = "email_ee = ?"; $valoresPart[] = $dados['ee']['email']; }
@@ -429,6 +577,81 @@ if ($method === 'POST' || $method === 'PUT') {
             $stmt = $pdo->prepare("DELETE FROM inscricoes WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode(["msg" => "Apagado"]);
+        }
+        exit;
+    }
+
+    // C. Reenviar Email de Confirmação
+    if ($acao === 'reenviar_email') {
+        if (!$adminUser) { 
+            http_response_code(403); 
+            echo json_encode(['erro' => 'Não autorizado']); 
+            exit; 
+        }
+
+        $para = $input['ee']['email']; // Envia para o Encarregado de Educação
+        $bcc = 'info@quintadaescola.com'; // Tu recebes uma cópia oculta
+        $assunto = 'Confirmação de Inscrição: ' . $input['participante']['nomeCompleto'] . ' - ' . $input['turnoEscolhido'];
+
+        $mensagem = "
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; border-bottom: 1px solid #ddd; }
+            .info-block { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+          </style>
+        </head>
+        <body>
+            <h1>Resumo de Inscrição 📋</h1>
+            <p>Olá <strong>{$input['ee']['nome']}</strong>, enviamos os dados da inscrição de <strong>{$input['participante']['nomeCompleto']}</strong>.</p>
+            
+            <div class='info-block'>
+                <h2>Detalhes</h2>
+                <p><strong>Turno:</strong> {$input['turnoEscolhido']}</p>
+                <p><strong>Local:</strong> {$input['local']}</p>
+                <p><strong>Valor Total:</strong> {$input['valor_total']}€</p>
+                <p><strong>Estado Pagamento:</strong> " . strtoupper($input['estado_pagamento']) . "</p>
+            </div>
+            
+            <p>Qualquer dúvida, podes responder diretamente a este email.</p>
+        </body>
+        </html>
+        ";
+
+        // ==========================================================
+        // ENVIO DO REENVIO VIA PHPMAILER
+        // ==========================================================
+        $mail = new PHPMailer(true);
+
+        try {
+            // Configurações do Servidor SMTP
+            $mail->isSMTP();
+            $mail->Host       = 'mail.quintadaescola.com'; 
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'noreply@quintadaescola.com';
+            $mail->Password   = 'hS99W+EanZwGHBIL';       // <-- COLOCA A TUA SENHA AQUI
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = 465;
+            $mail->CharSet    = 'UTF-8';
+            
+
+            // Destinatários
+            $mail->setFrom('info@quintadaescola.com', 'Quinta da Escola');
+            $mail->addAddress($para, $input['ee']['nome']);
+            $mail->addBCC($bcc); // Adiciona a cópia oculta
+
+            // Conteúdo
+            $mail->isHTML(true);
+            $mail->Subject = $assunto;
+            $mail->Body    = $mensagem;
+
+            $mail->send();
+            echo json_encode(["msg" => "Email reenviado com sucesso"]);
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["erro" => "Falha ao enviar o email através do servidor: {$mail->ErrorInfo}"]);
         }
         exit;
     }

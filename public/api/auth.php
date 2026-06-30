@@ -14,32 +14,28 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
     json_response(['erro' => 'Credenciais inválidas.'], 400);
 }
 
-try {
-    $stmt = $pdo->prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
-} catch (PDOException $e) {
-    error_log('auth.php DB error: ' . $e->getMessage());
-    json_response(['erro' => 'Erro interno do servidor.'], 500);
-}
+// CORREÇÃO: Removido o 'nome' da pesquisa
+$stmt = $pdo->prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?");
+$stmt->execute([$email]);
+$user = $stmt->fetch();
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
     json_response(['erro' => 'Email ou password incorretos.'], 401);
 }
 
+// CORREÇÃO: Removido o 'nome' da geração do Token
 $jwt = generate_jwt([
     'id'    => $user['id'],
     'email' => $user['email'],
     'role'  => $user['role'],
-    'nome'  => $user['email'],
     'exp'   => time() + 86400, // 24 horas
 ]);
 
+// CORREÇÃO: Removido o 'nome' da resposta enviada ao Angular
 json_response([
     'token' => $jwt,
     'user'  => [
         'email' => $user['email'],
-        'nome'  => $user['email'],
         'role'  => $user['role'],
     ],
 ]);

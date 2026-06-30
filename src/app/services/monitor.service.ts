@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { lastValueFrom, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -55,5 +55,10 @@ export class MonitorService {
     return await lastValueFrom(
       this.http.get<any[]>(`${this.apiUrl}?nomes=${encodeURIComponent(param)}`),
     );
+  }
+
+  getMonitoresComToken(token: string, pin: string): Observable<Monitor[]> {
+    const headers = new HttpHeaders().set('X-Access-Pin', pin);
+    return this.http.get<Monitor[]>(`${this.apiUrl}/monitores.php?token=${token}`, { headers });
   }
 }

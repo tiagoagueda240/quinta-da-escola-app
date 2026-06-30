@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { lastValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { LogisticaItem } from '../models/logistica.model';
 
 @Injectable({
@@ -27,5 +27,21 @@ export class LogisticaService {
 
   async saveLogistica(payload: any): Promise<{ msg: string; ids: { [key: string]: number } }> {
     return await lastValueFrom(this.http.post<{ msg: string; ids: any }>(this.apiUrl, payload));
+  }
+
+
+  getLayoutTemplateComToken(local: string, token: string, pin: string): Promise<any> {
+    const headers = new HttpHeaders().set('X-Access-Pin', pin);
+    return firstValueFrom(this.http.get<any>(`${this.apiUrl}/logistica.php?acao=template&local=${local}&token=${token}`, { headers }));
+  }
+
+  getLogisticaComToken(turno: string, local: string, token: string, pin: string): Promise<any[]> {
+    const headers = new HttpHeaders().set('X-Access-Pin', pin);
+    return firstValueFrom(this.http.get<any[]>(`${this.apiUrl}/logistica.php?turno=${turno}&local=${local}&token=${token}`, { headers }));
+  }
+
+  saveLogisticaComToken(data: any, token: string, pin: string): Promise<any> {
+    const headers = new HttpHeaders().set('X-Access-Pin', pin);
+    return firstValueFrom(this.http.post<any>(`${this.apiUrl}/logistica.php?token=${token}`, data, { headers }));
   }
 }

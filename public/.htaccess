@@ -19,9 +19,3 @@
   AddType application/javascript .js .mjs
   AddType text/css .css
 </IfModule>
-
-# Bloquear acesso publico a ficheiros de log e segredos
-<FilesMatch "\.(log|txt|env|sql|bak)$">
-  Require all denied
-</FilesMatch>
-

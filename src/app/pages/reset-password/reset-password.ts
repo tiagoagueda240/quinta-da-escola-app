@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
@@ -8,12 +9,11 @@ import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-reset-password',
-  imports: [FormsModule, MatInputModule, MatButtonModule],
+  imports: [CommonModule, FormsModule, MatInputModule, MatButtonModule],
   templateUrl: './reset-password.html',
   styleUrl: './reset-password.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ResetPasswordComponent implements OnInit {
+export class ResetPassword implements OnInit {
   password = '';
   token = '';
   tokenValido = false;

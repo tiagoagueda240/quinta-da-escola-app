@@ -5,21 +5,32 @@
         </div>
 
         <div class="header-center">
-            <mat-form-field appearance="outline" class="local-select" subscriptSizing="dynamic">
-                <mat-label>Local</mat-label>
-                <mat-select [(ngModel)]="filtroLocal" (selectionChange)="atualizarListaTurnos()">
-                    <mat-option value="quinta">Quinta da Escola</mat-option>
-                    <mat-option value="costaCaparica">Costa da Caparica</mat-option>
-                    <mat-option value="quiaios">Quiaios</mat-option>
-                </mat-select>
-            </mat-form-field>
+            <ng-container *ngIf="!modoLink">
+                <mat-form-field appearance="outline" class="local-select" subscriptSizing="dynamic">
+                    <mat-label>Local</mat-label>
+                    <mat-select [(ngModel)]="filtroLocal" (selectionChange)="atualizarListaTurnos()">
+                        <mat-option value="quinta">Quinta da Escola</mat-option>
+                        <mat-option value="costaCaparica">Costa da Caparica</mat-option>
+                        <mat-option value="quiaios">Quiaios</mat-option>
+                    </mat-select>
+                </mat-form-field>
 
-            <mat-form-field appearance="outline" class="turno-select" subscriptSizing="dynamic">
-                <mat-label>Turno</mat-label>
-                <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
-                    <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
-                </mat-select>
-            </mat-form-field>
+                <mat-form-field appearance="outline" class="turno-select" subscriptSizing="dynamic">
+                    <mat-label>Turno</mat-label>
+                    <mat-select [(ngModel)]="turnoSelecionado" (selectionChange)="mudarTurno()">
+                        <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </ng-container>
+
+            <ng-container *ngIf="modoLink && turnoSelecionado">
+                <div
+                    style="display: flex; gap: 15px; align-items: center; font-size: 0.95rem; color: #444; background: #f1f3f4; padding: 10px 20px; border-radius: 8px; font-weight: 500;">
+                    <span>📍 {{ filtroLocal | titlecase }}</span>
+                    <span style="color: #ccc;">|</span>
+                    <span>🗓️ {{ turnoSelecionado }}</span>
+                </div>
+            </ng-container>
 
             <div class="search-box" *ngIf="turnoSelecionado">
                 <mat-icon>search</mat-icon>
@@ -28,6 +39,10 @@
         </div>
 
         <div class="header-right">
+            <button mat-stroked-button color="primary" (click)="irParaCheckin()">
+                <mat-icon>how_to_reg</mat-icon> Check-in
+            </button>
+
             <button mat-stroked-button [disabled]="!turnoSelecionado" (click)="abrirDialogEquipa()">
                 <mat-icon>group_add</mat-icon> Equipa ({{ equipaMonitores.length }})
             </button>
@@ -236,8 +251,8 @@
             <ng-container *ngFor="let item of layoutAtualBD">
 
                 <div *ngIf="item.tipo === 'room'" class="room" [ngStyle]="getGridStyle(item)"
-                    [class.selected]="isRoomSelected(item.titulo)" [class.is-male]="getGeneroPorLado(item.lado) === 'M'"
-                    [class.is-female]="getGeneroPorLado(item.lado) === 'F'" (click)="toggleRoom(item.titulo)">
+                    [class.selected]="isRoomSelected(item.titulo)" [class.is-male]="getRoomDisplayGender(item) === 'M'"
+                    [class.is-female]="getRoomDisplayGender(item) === 'F'" (click)="toggleRoom(item.titulo)">
 
                     <span class="name">{{ item.titulo }}</span>
                     <span class="cap">{{ item.capacidade }}</span>

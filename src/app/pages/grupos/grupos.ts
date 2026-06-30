@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ConfigTurnos, Inscricao } from '../../models/inscricao.model';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Inscricao } from '../../models/inscricao.model';
 import { Monitor } from '../../models/monitor.model';
 import { InscricaoService } from '../../services/inscricao.service';
 import { LogisticaService } from '../../services/logistica.service';
 import { MonitorService } from '../../services/monitor.service';
-import { ConfirmService } from '../../shared/confirm-dialog.component';
 
 // Material & CDK
 import {
@@ -74,7 +74,8 @@ export class GruposComponent implements OnInit {
   private logisticaService = inject(LogisticaService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
-  private confirmService = inject(ConfirmService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   @ViewChild('dialogGerirEquipa') dialogGerirEquipa!: TemplateRef<any>;
   @ViewChild('dialogSelecaoQuartos') dialogSelecaoQuartos!: TemplateRef<any>;
@@ -92,7 +93,7 @@ export class GruposComponent implements OnInit {
   modoVisualizacao: 'camarata' | 'atividade' = 'camarata';
 
   filtroLocal: 'quinta' | 'costaCaparica' | 'quiaios' = 'quinta';
-  todosOsTurnosConfig: ConfigTurnos | null = null;
+  todosOsTurnosConfig: any = null;
   listaTurnos: string[] = [];
 
   qtdQuartosM = 2;
@@ -111,8 +112,27 @@ export class GruposComponent implements OnInit {
   layoutAtualBD: any[] = [];
   quartosDisponiveisSelect: any[] = [];
 
-  ngOnInit() {
-    this.carregarDadosIniciais();
+  // Variáveis para Controlo de Link
+  modoLink = false;
+  token: string | null = null;
+  pinSessao = '';
+
+  async ngOnInit() {
+    this.token = this.route.snapshot.queryParamMap.get('token');
+
+    if (this.token) {
+      this.modoLink = true;
+      this.pinSessao = sessionStorage.getItem('access_pin_' + this.token) || '';
+
+      if (!this.pinSessao) {
+        this.router.navigate(['/checkin'], { queryParams: { token: this.token } });
+        return;
+      }
+      this.carregarDadosLink();
+    } else {
+      this.carregarDadosIniciais();
+    }
+
     this.monitoresFiltrados = this.controlMonitor.valueChanges.pipe(
       startWith(''),
       map((value) => {
@@ -120,6 +140,36 @@ export class GruposComponent implements OnInit {
         return this._filterMonitores(name);
       }),
     );
+  }
+
+  carregarDadosLink() {
+    this.inscricaoService.getInscricoesComTokenEPin(this.token!, this.pinSessao).subscribe({
+      next: async (dados) => {
+        this.todosRegistos = dados;
+        if (dados.length > 0) {
+          this.turnoSelecionado = dados[0].turnoEscolhido;
+
+          const localRaw = (dados[0].local || 'quinta').toLowerCase();
+          if (localRaw.includes('caparica')) this.filtroLocal = 'costaCaparica';
+          else if (localRaw.includes('quiaios')) this.filtroLocal = 'quiaios';
+          else this.filtroLocal = 'quinta';
+
+          this.listaTurnos = [this.turnoSelecionado];
+
+          // AGORA USA O ENDPOINT COM TOKEN
+          this.monitorService.getMonitoresComToken(this.token!, this.pinSessao).subscribe((monitores) => {
+            this.monitoresGlobais = monitores;
+            this.vincularMonitoresAoTurno();
+          });
+
+          await this.mudarTurno();
+        }
+      },
+      error: () => {
+        this.snackBar.open('Sessão expirada ou PIN inválido', 'OK');
+        this.router.navigate(['/checkin'], { queryParams: { token: this.token } });
+      }
+    });
   }
 
   async carregarDadosIniciais() {
@@ -148,7 +198,9 @@ export class GruposComponent implements OnInit {
   }
 
   atualizarListaTurnos() {
-    const turnosDoLocal = this.todosOsTurnosConfig?.[this.filtroLocal] || [];
+    if (this.modoLink) return;
+
+    const turnosDoLocal = this.todosOsTurnosConfig[this.filtroLocal] || [];
     this.listaTurnos = turnosDoLocal.map((t: any) => t.nome);
 
     this.turnoSelecionado = '';
@@ -181,17 +233,24 @@ export class GruposComponent implements OnInit {
     this.vincularMonitoresAoTurno();
 
     try {
-      this.layoutAtualBD = await this.logisticaService.getLayoutTemplate(this.filtroLocal);
+      // DECIDE QUAL ENDPOINT USAR BASEADO NO ACESSO
+      if (this.modoLink) {
+        this.layoutAtualBD = await this.logisticaService.getLayoutTemplateComToken(this.filtroLocal, this.token!, this.pinSessao);
+      } else {
+        this.layoutAtualBD = await this.logisticaService.getLayoutTemplate(this.filtroLocal);
+      }
     } catch (e) {
       console.warn('Layout não encontrado, a usar vazio');
       this.layoutAtualBD = [];
     }
 
     try {
-      const logistica = await this.logisticaService.getLogistica(
-        this.turnoSelecionado,
-        this.filtroLocal,
-      );
+      let logistica: any[];
+      if (this.modoLink) {
+        logistica = await this.logisticaService.getLogisticaComToken(this.turnoSelecionado, this.filtroLocal, this.token!, this.pinSessao);
+      } else {
+        logistica = await this.logisticaService.getLogistica(this.turnoSelecionado, this.filtroLocal);
+      }
 
       this.colunasCamaratas = [];
       this.colunasAtividades = [];
@@ -241,7 +300,6 @@ export class GruposComponent implements OnInit {
 
     const criancasTurno = this.todosRegistos.filter((i) => {
       const localRegisto = (i.local || '').toLowerCase();
-      // Assim apanha quer esteja gravado como "quinta", "Quinta", "costaCaparica" ou "Costa da Caparica"
       const matchLocal =
         localRegisto === localDbFiltro || localRegisto === this.filtroLocal.toLowerCase();
 
@@ -281,13 +339,12 @@ export class GruposComponent implements OnInit {
     this.poolVisual = criancasTurno.filter((k) => k.id && !atribuidosIds.has(k.id));
   }
 
-  async inicializarQuartos() {
-    if (this.colunasCamaratas.length > 0) {
-      const ok = await this.confirmService.confirmar(
-        'Reiniciar estrutura? Dados não guardados serão perdidos.',
-      );
-      if (!ok) return;
-    }
+  inicializarQuartos() {
+    if (
+      this.colunasCamaratas.length > 0 &&
+      !confirm('Reiniciar estrutura? Dados não guardados serão perdidos.')
+    )
+      return;
 
     this.colunasCamaratas.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasCamaratas = [];
@@ -295,7 +352,7 @@ export class GruposComponent implements OnInit {
     if (this.layoutAtualBD && this.layoutAtualBD.length > 0) {
       this.quartosDisponiveisSelect = this.layoutAtualBD
         .filter((item) => item.tipo === 'room')
-        .map((q) => ({ ...q, selecionado: false }));
+        .map((q) => ({ ...q, selecionado: false, generoAtual: null }));
 
       this.dialog.open(this.dialogSelecaoQuartos, {
         width: '95vw',
@@ -320,12 +377,7 @@ export class GruposComponent implements OnInit {
     }
 
     selecionados.forEach((q) => {
-      let generoDestino: 'M' | 'F' | 'Misto' = 'Misto';
-      if (q.lado === 'Esq') {
-        generoDestino = this.configQuinta.ladoEsquerdo;
-      } else if (q.lado === 'Dir') {
-        generoDestino = this.configQuinta.ladoDireito;
-      }
+      let generoDestino = q.generoAtual || this.getGeneroPorLado(q.lado);
 
       this.colunasCamaratas.push({
         id: `temp-${q.titulo}`,
@@ -365,6 +417,12 @@ export class GruposComponent implements OnInit {
       this.configQuinta.ladoEsquerdo = 'M';
       this.configQuinta.ladoDireito = 'F';
     }
+
+    this.quartosDisponiveisSelect.forEach(q => {
+      if (q.generoAtual) {
+        q.generoAtual = q.generoAtual === 'M' ? 'F' : 'M';
+      }
+    });
   }
 
   getGeneroPorLado(lado: 'Esq' | 'Dir'): 'M' | 'F' {
@@ -396,11 +454,8 @@ export class GruposComponent implements OnInit {
     else this.snackBar.open(`Lados trocados!`, 'OK', { duration: 2000 });
   }
 
-  async gerarGruposAtividade() {
-    if (this.colunasAtividades.length > 0) {
-      const ok = await this.confirmService.confirmar('Reiniciar grupos?');
-      if (!ok) return;
-    }
+  gerarGruposAtividade() {
+    if (this.colunasAtividades.length > 0 && !confirm('Reiniciar grupos?')) return;
     this.colunasAtividades.forEach((col) => this.poolVisual.push(...col.lista));
     this.colunasAtividades = [];
 
@@ -445,12 +500,14 @@ export class GruposComponent implements OnInit {
     else this.colunasAtividades.push(novaColuna);
   }
 
-  async removerColuna(col: ColunaGrupo) {
+  removerColuna(col: ColunaGrupo) {
     if (col.lista.length > 0) {
-      const ok = await this.confirmService.confirmar(
-        `Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`,
-      );
-      if (!ok) return;
+      if (
+        !confirm(
+          `Este grupo tem ${col.lista.length} crianças. Elas voltarão para a lista de espera. Continuar?`,
+        )
+      )
+        return;
       this.poolVisual.push(...col.lista);
     }
     if (col.tipo === 'camarata')
@@ -478,7 +535,14 @@ export class GruposComponent implements OnInit {
     };
 
     try {
-      const res = await this.logisticaService.saveLogistica(payloadEstrutura);
+      let res;
+      // DECIDE QUAL ENDPOINT USAR BASEADO NO ACESSO
+      if (this.modoLink) {
+        res = await this.logisticaService.saveLogisticaComToken(payloadEstrutura, this.token!, this.pinSessao);
+      } else {
+        res = await this.logisticaService.saveLogistica(payloadEstrutura);
+      }
+
       const idsMap = res.ids;
 
       [...this.colunasCamaratas, ...this.colunasAtividades].forEach((col) => {
@@ -521,7 +585,14 @@ export class GruposComponent implements OnInit {
       });
 
       if (updatesCriancas.length > 0) {
-        await this.inscricaoService.updateBatch(updatesCriancas);
+        // As Inscrições também têm de suportar Token
+        if (this.modoLink) {
+          // Utiliza a função updateInscricaoBatch, mas com Token, tens de garantir que existe essa opção, 
+          // ou iterar chamando a updateCheckinComToken. Se tens updateBatch para token:
+          await this.inscricaoService.updateBatchComToken(updatesCriancas, this.token!, this.pinSessao);
+        } else {
+          await this.inscricaoService.updateBatch(updatesCriancas);
+        }
         this.snackBar.open(`Guardado!`, 'OK', { duration: 3000 });
       } else {
         this.snackBar.open('Estrutura guardada.', 'OK', { duration: 3000 });
@@ -564,23 +635,12 @@ export class GruposComponent implements OnInit {
     }
   }
 
-  // =========================================================================
-  // --- IDENTIFICAÇÃO DE IRMÃOS (FAMILY ID) ---
-  // =========================================================================
-
-  // Tenta extrair um identificador único para a família (ex: NIF, Email EE ou Apelidos)
   getFamilyId(i: Inscricao): string {
     const encarregado = (i as any).encarregadoEducacao || (i as any).encarregado;
-
-    // 1ª Opção: Email do Encarregado de Educação (Muito forte)
     if (encarregado && encarregado.email) return encarregado.email.toLowerCase().trim();
-
-    // 2ª Opção: NIF ou Telefone
     if (encarregado && encarregado.nif) return encarregado.nif;
     if (encarregado && encarregado.telefone) return encarregado.telefone;
 
-    // 3ª Opção (Fallback): Usar os dois últimos nomes (Apelidos) da criança
-    // Nota: Pode agrupar primos ou nomes comuns (ex: "Silva Santos"), mas é o melhor fallback possível.
     if (i.participante && i.participante.nomeCompleto) {
       const nomes = i.participante.nomeCompleto.trim().split(' ');
       if (nomes.length > 1) {
@@ -588,19 +648,13 @@ export class GruposComponent implements OnInit {
       }
       return nomes[0].toLowerCase();
     }
-
-    return Math.random().toString(); // Se não tiver dados nenhuns, não agrupa com ninguém
+    return Math.random().toString();
   }
 
-  // Verifica se uma dada criança tem um irmão na lista fornecida
   temIrmaoNaLista(crianca: Inscricao, lista: Inscricao[]): boolean {
     const meuFamilyId = this.getFamilyId(crianca);
     return lista.some((outra) => this.getFamilyId(outra) === meuFamilyId);
   }
-
-  // =========================================================================
-  // --- LÓGICAS DE DISTRIBUIÇÃO ---
-  // =========================================================================
 
   distribuirNasCamaratas() {
     if (this.colunasCamaratas.length === 0) return;
@@ -628,7 +682,6 @@ export class GruposComponent implements OnInit {
   distribuirNasAtividades() {
     if (this.colunasAtividades.length === 0) return;
 
-    // 1º Passo: Separar por género e ordenar por idade
     const rapazes = this.poolVisual
       .filter((i) => this.getGenero(i) === 'M')
       .sort((a, b) => this.getIdade(a) - this.getIdade(b));
@@ -639,17 +692,14 @@ export class GruposComponent implements OnInit {
 
     this.poolVisual = [];
 
-    // 2º Passo: Distribuir géneros em listas separadas
     this._distribuirAVez(rapazes, this.colunasAtividades);
     this._distribuirAVez(raparigas, this.colunasAtividades);
 
-    // 3º Passo (NOVO): Ordenar cada grupo final por idade
     this.colunasAtividades.forEach((grupo) => {
       grupo.lista.sort((a, b) => this.getIdade(a) - this.getIdade(b));
     });
   }
 
-  // --- ALGORITMO CAMARATAS (Equilíbrio Numérico, Idades Crescentes, Separação de Irmãos) ---
   private _distribuirAgrupadoEEquilibrado(lista: Inscricao[], alvos: ColunaGrupo[]) {
     if (alvos.length === 0) {
       this.poolVisual.push(...lista);
@@ -675,15 +725,12 @@ export class GruposComponent implements OnInit {
       let amountToTake = Math.min(targetCount, espacoLivre);
 
       if (amountToTake > 0) {
-        // Nova Lógica Anti-Irmãos: Em vez de cortar a lista cegamente,
-        // vamos procurar os "amountToTake" primeiros que NÃO tenham irmãos já neste quarto
         const toAdd: Inscricao[] = [];
         const indicesToRemove: number[] = [];
 
         for (let k = 0; k < remainingKids.length && toAdd.length < amountToTake; k++) {
           const candidato = remainingKids[k];
 
-          // Verifica se já adicionámos um irmão ao quarto atual
           if (
             !this.temIrmaoNaLista(candidato, quarto.lista) &&
             !this.temIrmaoNaLista(candidato, toAdd)
@@ -693,8 +740,6 @@ export class GruposComponent implements OnInit {
           }
         }
 
-        // Se não conseguimos encher o "amountToTake" porque a regra dos irmãos barrou,
-        // relaxamos a regra e enchemos com quem sobrar (melhor irmãos juntos do que fora do quarto)
         if (toAdd.length < amountToTake) {
           for (let k = 0; k < remainingKids.length && toAdd.length < amountToTake; k++) {
             if (!indicesToRemove.includes(k)) {
@@ -705,8 +750,6 @@ export class GruposComponent implements OnInit {
         }
 
         quarto.lista.push(...toAdd);
-
-        // Remove os que foram adicionados da lista remainingKids
         remainingKids = remainingKids.filter((_, idx) => !indicesToRemove.includes(idx));
       }
     }
@@ -716,34 +759,26 @@ export class GruposComponent implements OnInit {
     }
   }
 
-  // --- ALGORITMO ATIVIDADES (Mistura Idades, Géneros Equilibrados, Separação de Irmãos) ---
   private _distribuirAVez(lista: Inscricao[], alvos: ColunaGrupo[]) {
     lista.forEach((c) => {
-      // 1. Encontra os grupos que ainda têm capacidade
       let gruposComVaga = alvos.filter((a) => a.lista.length < a.capacidade);
 
-      // Se estiverem todos cheios, a criança volta para a lista de espera
       if (gruposComVaga.length === 0) {
         this.poolVisual.push(c);
         return;
       }
 
-      // 2. O SEGRED0: Ordena os grupos para os mais vazios ficarem em primeiro lugar
       gruposComVaga.sort((a, b) => a.lista.length - b.lista.length);
-
       let placed = false;
 
-      // 3. Tenta colocar a criança no grupo mais vazio que NÃO tenha lá um irmão
       for (let alvo of gruposComVaga) {
         if (!this.temIrmaoNaLista(c, alvo.lista)) {
           alvo.lista.push(c);
           placed = true;
-          break; // Conseguiu colocar, passa para a próxima criança
+          break;
         }
       }
 
-      // 4. PLANO B: Se todos os grupos com vaga já tiverem lá um irmão,
-      // somos obrigados a juntá-los. Coloca no grupo que estiver mais vazio de todos.
       if (!placed) {
         gruposComVaga[0].lista.push(c);
       }
@@ -775,9 +810,11 @@ export class GruposComponent implements OnInit {
     this.exibirBusca = false;
     this.dialog.open(this.dialogGerirEquipa, { width: '450px' });
   }
+
   ajustarCapacidade(col: ColunaGrupo, delta: number) {
     if (col.capacidade + delta > 0) col.capacidade += delta;
   }
+
   isMonitorDisponivel(n: string, c: ColunaGrupo): boolean {
     const lista =
       this.modoVisualizacao === 'camarata' ? this.colunasCamaratas : this.colunasAtividades;
@@ -787,6 +824,7 @@ export class GruposComponent implements OnInit {
   getGenero(i: Inscricao): 'M' | 'F' {
     return (i.participante as any).genero || 'M';
   }
+
   getIdade(i: Inscricao): number {
     if (!i.participante.dataNascimento) return 0;
     const born = new Date(i.participante.dataNascimento);
@@ -824,7 +862,31 @@ export class GruposComponent implements OnInit {
   toggleRoom(nomeTitulo: string) {
     const room = this.quartosDisponiveisSelect.find((q) => q.titulo === nomeTitulo);
     if (room) {
-      room.selecionado = !room.selecionado;
+      if (!room.selecionado) {
+        room.selecionado = true;
+        room.generoAtual = this.getGeneroPorLado(room.lado);
+      } else {
+        const generoOriginalAla = this.getGeneroPorLado(room.lado);
+        if (room.generoAtual === generoOriginalAla) {
+          room.generoAtual = room.generoAtual === 'M' ? 'F' : 'M';
+        } else {
+          room.selecionado = false;
+          room.generoAtual = null;
+        }
+      }
     }
+  }
+
+  getRoomDisplayGender(item: any): 'M' | 'F' {
+    const room = this.quartosDisponiveisSelect.find((q) => q.titulo === item.titulo);
+    if (room && room.selecionado && room.generoAtual) {
+      return room.generoAtual;
+    }
+    return this.getGeneroPorLado(item.lado);
+  }
+
+  // --- NAVEGAÇÃO DE VOLTA PARA O CHECKIN ---
+  irParaCheckin() {
+    this.router.navigate(['/checkin'], { queryParams: this.modoLink ? { token: this.token } : {} });
   }
 }

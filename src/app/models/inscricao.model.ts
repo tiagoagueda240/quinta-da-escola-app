@@ -16,7 +16,7 @@ export interface Inscricao {
   grupo?: string;
   monitorCamarata?: string;
   monitorGrupo?: string;
-
+  numeroBeneficiario?: string; // Nova Coluna
   participante: {
     nomeCompleto: string;
     genero: 'M' | 'F';

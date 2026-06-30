@@ -17,6 +17,7 @@ $allowed_origins = [
     'https://turnos.quintadaescola.com',
     'http://localhost:4200',
     'http://localhost:8100',
+    'https://app-turnos-qe.web.app'
 ];
 
 if (in_array($http_origin, $allowed_origins, true)) {

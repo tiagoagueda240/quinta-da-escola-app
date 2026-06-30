@@ -1,7 +1,8 @@
+
+
+
 <router-outlet />
 
 @if (authService.isLoggedIn$ | async) {
   <app-hidden-menu></app-hidden-menu>
 }
-
-<app-cookie-banner></app-cookie-banner>
