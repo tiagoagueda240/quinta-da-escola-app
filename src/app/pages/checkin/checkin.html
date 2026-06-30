@@ -6,10 +6,21 @@
       <p>Insira o PIN de 4 dígitos fornecido pelo administrador.</p>
 
       <div class="pin-input-area">
-        <input type="tel" [(ngModel)]="pinInput" maxlength="4" placeholder="----" class="pin-field">
+        <input
+          type="tel"
+          [(ngModel)]="pinInput"
+          maxlength="4"
+          placeholder="----"
+          class="pin-field"
+        />
       </div>
 
-      <button mat-flat-button color="primary" (click)="validarPin()" [disabled]="pinInput.length < 4">
+      <button
+        mat-flat-button
+        color="primary"
+        (click)="validarPin()"
+        [disabled]="pinInput.length < 4"
+      >
         DESBLOQUEAR
       </button>
 
@@ -18,15 +29,43 @@
   </div>
 
   <div class="header-area">
-    <div class="top-info" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-      <div class="brand">
-        <mat-icon>forest</mat-icon> CHECK-IN
-      </div>
+    <div
+      class="top-info"
+      style="display: flex; justify-content: space-between; align-items: center; width: 100%"
+    >
+      <div class="brand"><mat-icon>forest</mat-icon> CHECK-IN</div>
 
-      <button mat-stroked-button color="primary" (click)="irParaGrupos()" *ngIf="pinValidado"
-        style="background: white; border-radius: 20px;">
-        <mat-icon>hotel</mat-icon> Grupos
-      </button>
+      <div *ngIf="pinValidado" style="display: flex; gap: 8px; align-items: center">
+        <button
+          mat-stroked-button
+          color="primary"
+          (click)="irParaGrupos()"
+          style="background: white; border-radius: 20px"
+        >
+          <mat-icon>hotel</mat-icon> Grupos
+        </button>
+
+        <button
+          mat-stroked-button
+          [matMenuTriggerFor]="menuRelatorios"
+          style="background: white; border-radius: 20px"
+        >
+          <mat-icon>assessment</mat-icon>
+          <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #menuRelatorios="matMenu">
+          @if (filtroLocal === 'quinta') {
+            <button mat-menu-item (click)="abrirRelatorio('transporte')">
+              <mat-icon color="primary">directions_bus</mat-icon>
+              <span>Lista de Transportes</span>
+            </button>
+          }
+          <button mat-menu-item (click)="abrirRelatorio('cozinha')">
+            <mat-icon color="warn">restaurant</mat-icon>
+            <span>Alergias / Cozinha</span>
+          </button>
+        </mat-menu>
+      </div>
 
       <div class="counter-badge" [class.has-people]="totalPresentes > 0">
         {{ totalPresentes }} Presentes
@@ -34,81 +73,119 @@
     </div>
 
     <div class="shift-scroller">
-
       @for (t of listaTurnos; track $index) {
-      <div class="shift-chip" [class.active]="t === turnoSelecionado" (click)="mudarTurno(t)" matRipple>
-        {{ getNomeCurtoTurno(t) }}
-      </div>
+        <div
+          class="shift-chip"
+          [class.active]="t === turnoSelecionado"
+          (click)="mudarTurno(t)"
+          matRipple
+        >
+          {{ getNomeCurtoTurno(t) }}
+        </div>
       }
-
     </div>
 
     <div class="search-wrapper">
       <div class="search-box">
         <mat-icon>search</mat-icon>
-        <input type="text" [(ngModel)]="pesquisa" (keyup)="filtrar()" placeholder="Procurar criança...">
+        <input
+          type="text"
+          [(ngModel)]="pesquisa"
+          (keyup)="filtrar()"
+          placeholder="Procurar criança..."
+        />
         @if (pesquisa) {
-        <button mat-icon-button (click)="pesquisa=''; filtrar()"><mat-icon>close</mat-icon></button>
+          <button mat-icon-button (click)="pesquisa = ''; filtrar()">
+            <mat-icon>close</mat-icon>
+          </button>
         }
       </div>
     </div>
   </div>
 
   <div class="content-area">
-
     @for (item of inscricoesFiltradas; track $index) {
-    <div class="kid-card" [class.checked-in]="item.checkin?.status === 'dentro'">
-      <div class="card-body">
-        <div class="avatar-ring">
-          <div class="avatar">{{ item.participante.nomeCompleto.charAt(0) }}</div>
-          <div class="status-dot"></div>
+      <div class="kid-card" [class.checked-in]="item.checkin?.status === 'dentro'">
+        <div class="card-body">
+          <div class="avatar-ring">
+            <div class="avatar">{{ item.participante.nomeCompleto.charAt(0) }}</div>
+            <div class="status-dot"></div>
+          </div>
+
+          <div class="info">
+            <h3>{{ item.participante.nomeCompleto }}</h3>
+            @if (item.checkin?.status !== 'dentro') {
+              <div class="meta-info">
+                <span class="status-label">A aguardar</span>
+                @if (item.saude.temAlergiaAlimentar) {
+                  <mat-icon
+                    class="card-alert-icon allergy"
+                    [matTooltip]="'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')"
+                    >warning</mat-icon
+                  >
+                }
+                @if (item.saude.tomaMedicacao) {
+                  <mat-icon
+                    class="card-alert-icon med"
+                    [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')"
+                    >medication</mat-icon
+                  >
+                }
+                @if (item.observacoes) {
+                  <mat-icon class="card-alert-icon obs" [matTooltip]="'Obs: ' + item.observacoes"
+                    >notes</mat-icon
+                  >
+                }
+              </div>
+            }
+
+            @if (item.checkin?.status === 'dentro') {
+              <div class="checkin-details">
+                <span class="time"
+                  ><mat-icon>access_time</mat-icon>
+                  {{ item.checkin?.dataEntrada | date: 'HH:mm' }}</span
+                >
+                @if (item.checkin?.dinheiroBolso) {
+                  <span class="money"
+                    ><mat-icon>euro</mat-icon> {{ item.checkin?.dinheiroBolso }}</span
+                  >
+                }
+                @if (item.checkin?.notasCheckin) {
+                  <span class="note"><mat-icon>note</mat-icon> Nota</span>
+                }
+                @if (hasHealthInfo(item)) {
+                  <span
+                    class="health"
+                    [matTooltip]="getHealthTooltip(item)"
+                    matTooltipClass="multiline-tooltip"
+                  >
+                    <mat-icon>health_and_safety</mat-icon>
+                  </span>
+                }
+              </div>
+            }
+          </div>
         </div>
 
-        <div class="info">
-          <h3>{{ item.participante.nomeCompleto }}</h3>
-          @if (item.checkin?.status !== 'dentro') {
-          <div class="meta-info">
-            <span class="status-label">A aguardar</span>
-          </div>
-          }
-
+        <div class="card-action">
           @if (item.checkin?.status === 'dentro') {
-          <div>
-            <span class="time"><mat-icon>access_time</mat-icon> {{ item.checkin?.dataEntrada | date:'HH:mm' }}</span>
-            @if (item.checkin?.dinheiroBolso) {
-            <span class="money"><mat-icon>euro</mat-icon> {{
-              item.checkin?.dinheiroBolso }}</span>
-            }
-
-            @if (item.checkin?.notasCheckin) {
-            <span class="note"><mat-icon>note</mat-icon> Nota</span>
-            }
-          </div>
+            <button class="btn-action leave" (click)="registarSaida(item)" matRipple>SAIR</button>
+          } @else {
+            <button class="btn-action enter" (click)="abrirCheckin(item)" matRipple>RECEBER</button>
           }
         </div>
       </div>
-
-      <div class="card-action">
-
-        @if (item.checkin?.status === 'dentro') {
-        <button class="btn-action leave" (click)="registarSaida(item)" matRipple>
-          SAIR
-        </button>
-        }@else {
-        <button class="btn-action enter" (click)="abrirCheckin(item)" matRipple>
-          RECEBER
-        </button>
-        }
-      </div>
-    </div>
     }
 
-
     @if (inscricoesFiltradas.length === 0) {
-    <div class="empty-state">
-      <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="80" style="opacity: 0.3">
-      <p>Ninguém encontrado neste turno.</p>
-    </div>
+      <div class="empty-state">
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png"
+          width="80"
+          style="opacity: 0.3"
+        />
+        <p>Ninguém encontrado neste turno.</p>
+      </div>
     }
   </div>
 </div>
@@ -118,9 +195,36 @@
     <h3>Check-in</h3>
     <p class="subtitle">{{ tempInscricao?.participante?.nomeCompleto }}</p>
 
+    @if (
+      tempInscricao?.saude?.temAlergiaAlimentar ||
+      tempInscricao?.saude?.tomaMedicacao ||
+      tempInscricao?.observacoes
+    ) {
+      <div class="health-info-dialog">
+        @if (tempInscricao?.saude?.temAlergiaAlimentar) {
+          <div class="health-row-dialog">
+            <mat-icon class="hi-icon allergy">warning</mat-icon>
+            <span>{{ tempInscricao?.saude?.detalheAlergiaAlimentar || 'Alergia alimentar' }}</span>
+          </div>
+        }
+        @if (tempInscricao?.saude?.tomaMedicacao) {
+          <div class="health-row-dialog">
+            <mat-icon class="hi-icon med">medication</mat-icon>
+            <span>{{ tempInscricao?.saude?.detalheMedicacao || 'Toma medicação' }}</span>
+          </div>
+        }
+        @if (tempInscricao?.observacoes) {
+          <div class="health-row-dialog">
+            <mat-icon class="hi-icon obs">notes</mat-icon>
+            <span>{{ tempInscricao?.observacoes }}</span>
+          </div>
+        }
+      </div>
+    }
+
     <div class="input-row">
       <mat-icon>euro</mat-icon>
-      <input type="number" [(ngModel)]="tempDinheiro" placeholder="Dinheiro">
+      <input type="number" [(ngModel)]="tempDinheiro" placeholder="Dinheiro" />
     </div>
 
     <div class="input-row">
@@ -130,4 +234,27 @@
 
     <button class="btn-confirm" (click)="confirmarEntrada()" matRipple>CONFIRMAR ENTRADA</button>
   </div>
+</ng-template>
+
+<ng-template #dialogRelatorio>
+  <h2 mat-dialog-title>Gerar Relatório</h2>
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" style="width: 100%">
+      <mat-label>Selecione o Turno</mat-label>
+      <mat-select [(ngModel)]="turnoParaDialog">
+        <mat-option *ngFor="let t of listaTurnos" [value]="t">{{ t }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button
+      mat-flat-button
+      color="primary"
+      [disabled]="!turnoParaDialog"
+      (click)="confirmarGeracaoPDF()"
+    >
+      Gerar PDF
+    </button>
+  </mat-dialog-actions>
 </ng-template>

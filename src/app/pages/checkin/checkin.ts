@@ -14,8 +14,14 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 @Component({
   selector: 'app-checkin',
@@ -31,6 +37,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatDialogModule,
     MatRippleModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
+    MatMenuModule,
+    MatSelectModule,
   ],
   templateUrl: './checkin.html',
   styleUrls: ['./checkin.scss'],
@@ -60,6 +69,11 @@ export class CheckinComponent implements OnInit {
   private pinSessao = '';
 
   @ViewChild('dialogEntrada') dialogEntrada!: TemplateRef<any>;
+  @ViewChild('dialogRelatorio') dialogRelatorio!: TemplateRef<any>;
+
+  // Relatórios
+  acaoDialog: 'cozinha' | 'transporte' = 'cozinha';
+  turnoParaDialog: string = '';
 
   private inscricaoService = inject(InscricaoService);
   private authService = inject(AuthService);
@@ -209,10 +223,17 @@ export class CheckinComponent implements OnInit {
       notasCheckin: this.tempNotas,
     };
 
-    const payload = {
+    const payload: any = {
       id: idSeguro,
       checkin: novoCheckin,
     };
+
+    if (this.tempNotas.trim()) {
+      const novasObs =
+        (inscricaoAlvo.observacoes ? inscricaoAlvo.observacoes + '\n' : '') + this.tempNotas.trim();
+      payload.observacoes = novasObs;
+      inscricaoAlvo.observacoes = novasObs;
+    }
 
     let observable$: Observable<any>;
 
@@ -297,5 +318,73 @@ export class CheckinComponent implements OnInit {
   // --- NAVEGAÇÃO ---
   irParaGrupos() {
     this.router.navigate(['/grupos'], { queryParams: this.modoLink ? { token: this.token } : {} });
+  }
+
+  // --- RELATÓRIOS ---
+  get filtroLocal(): 'quinta' | 'costaCaparica' | 'quiaios' {
+    const match = this.inscricoes.find((i) => i.turnoEscolhido === this.turnoSelecionado);
+    if (!match) return 'quinta';
+    const localRaw = (match.local || '').toLowerCase();
+    if (localRaw.includes('caparica')) return 'costaCaparica';
+    if (localRaw.includes('quiaios')) return 'quiaios';
+    return 'quinta';
+  }
+
+  abrirRelatorio(acao: 'cozinha' | 'transporte') {
+    this.acaoDialog = acao;
+    this.turnoParaDialog = this.turnoSelecionado;
+    this.dialog.open(this.dialogRelatorio, { width: '400px' });
+  }
+
+  confirmarGeracaoPDF() {
+    if (this.acaoDialog === 'cozinha') this.gerarPDFCozinha(this.turnoParaDialog);
+    else this.gerarPDFTransporte(this.turnoParaDialog);
+    this.dialog.closeAll();
+  }
+
+  gerarPDFCozinha(turno: string) {
+    const doc = new jsPDF();
+    const lista = this.inscricoes.filter(
+      (i) =>
+        i.turnoEscolhido === turno && (i.saude.temAlergiaAlimentar || i.saude.temOutrasAlergias),
+    );
+    doc.text(`Restrições Alimentares - ${turno}`, 14, 20);
+    autoTable(doc, {
+      head: [['Participante', 'Alergia/Restrição']],
+      body: lista.map((i) => [
+        i.participante.nomeCompleto,
+        i.saude.detalheAlergiaAlimentar || i.saude.detalheOutrasAlergias || 'Não especificado',
+      ]),
+      startY: 30,
+    });
+    doc.save(`Cozinha_${turno}.pdf`);
+  }
+
+  gerarPDFTransporte(turno: string) {
+    const doc = new jsPDF();
+    const lista = this.inscricoes.filter(
+      (i) => i.turnoEscolhido === turno && i.transporte !== 'Não (Entregue pelos pais)',
+    );
+    doc.text(`Lista de Transportes - ${turno}`, 14, 20);
+    autoTable(doc, {
+      head: [['Participante', 'Tipo Transporte', 'Contacto']],
+      body: lista.map((i) => [i.participante.nomeCompleto, i.transporte, i.ee.telefone]),
+      startY: 30,
+    });
+    doc.save(`Transportes_${turno}.pdf`);
+  }
+
+  hasHealthInfo(i: Inscricao): boolean {
+    return !!(i.saude?.temAlergiaAlimentar || i.saude?.tomaMedicacao || i.observacoes);
+  }
+
+  getHealthTooltip(i: Inscricao): string {
+    const parts: string[] = [];
+    if (i.saude?.temAlergiaAlimentar)
+      parts.push('Intoler\u00e2ncias: ' + (i.saude.detalheAlergiaAlimentar || 'sim'));
+    if (i.saude?.tomaMedicacao)
+      parts.push('Medica\u00e7\u00e3o: ' + (i.saude.detalheMedicacao || 'sim'));
+    if (i.observacoes) parts.push('Obs: ' + i.observacoes);
+    return parts.join('\n');
   }
 }
