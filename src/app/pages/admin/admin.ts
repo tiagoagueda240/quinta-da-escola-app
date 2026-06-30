@@ -968,6 +968,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         const isDuplicado = this.verificarDuplicadoGlobal(
           nome,
           this.turnoDestinoImportacao,
+          this.localDestinoImportacao,
           inscricoesProcessadas,
         );
         if (isDuplicado) {
@@ -1043,6 +1044,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         const isDuplicado = this.verificarDuplicadoGlobal(
           nomeInscrito,
           this.turnoDestinoImportacao,
+          this.localDestinoImportacao,
           inscricoesProcessadas,
         );
         if (isDuplicado) {
@@ -1204,7 +1206,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
             ? String(row[colMap['telefone']]).trim().replace(/\s+/g, '')
             : '';
 
-        if (this.verificarDuplicadoGlobal(nome, turnoFinal, inscricoesProcessadas)) {
+        if (this.verificarDuplicadoGlobal(nome, turnoFinal, 'quinta', inscricoesProcessadas)) {
           duplicadosContador++;
           continue;
         }
@@ -1319,20 +1321,36 @@ export class AdminComponent implements OnInit, AfterViewInit {
     return this.listaTurnos.length > 0 ? this.listaTurnos[0] : 'Turno Importado';
   }
 
-  private verificarDuplicadoGlobal(nome: string, turno: string, filaProcessamento: any[]): boolean {
+  private verificarDuplicadoGlobal(
+    nome: string,
+    turno: string,
+    local: string,
+    filaProcessamento: any[],
+  ): boolean {
     const nomeNorm = this.normalizarTexto(nome);
+    // O local é guardado na BD no formato formal; a chave interna é 'quinta'/'costaCaparica'/'quiaios'
+    const mapaLocaisFormal: Record<string, string> = {
+      quinta: 'Quinta',
+      costaCaparica: 'Costa da Caparica',
+      quiaios: 'Quiaios',
+    };
+    const localFormal = mapaLocaisFormal[local] ?? local;
 
+    // Duplicado na BD: mesmo nome, mesmo turno E mesmo local
     const existeBD = this.dataSource.data.some(
       (i) =>
         this.normalizarTexto(i.participante.nomeCompleto) === nomeNorm &&
-        i.turnoEscolhido === turno,
+        i.turnoEscolhido === turno &&
+        i.local === localFormal,
     );
     if (existeBD) return true;
 
+    // Duplicado dentro do próprio ficheiro Excel (fila de processamento): mesmo nome, turno e local
     const existeFila = filaProcessamento.some(
       (i) =>
         this.normalizarTexto(i.participante.nomeCompleto) === nomeNorm &&
-        i.turnoEscolhido === turno,
+        i.turnoEscolhido === turno &&
+        i.local === local,
     );
     return existeFila;
   }
