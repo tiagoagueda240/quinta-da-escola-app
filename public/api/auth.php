@@ -14,7 +14,6 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
     json_response(['erro' => 'Credenciais inválidas.'], 400);
 }
 
-// CORREÇÃO: Removido o 'nome' da pesquisa
 $stmt = $pdo->prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?");
 $stmt->execute([$email]);
 $user = $stmt->fetch();
@@ -23,7 +22,6 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
     json_response(['erro' => 'Email ou password incorretos.'], 401);
 }
 
-// CORREÇÃO: Removido o 'nome' da geração do Token
 $jwt = generate_jwt([
     'id'    => $user['id'],
     'email' => $user['email'],
@@ -31,7 +29,9 @@ $jwt = generate_jwt([
     'exp'   => time() + 86400, // 24 horas
 ]);
 
-// CORREÇÃO: Removido o 'nome' da resposta enviada ao Angular
+// REGISTO DE AUDITORIA: Login com sucesso
+registar_log($pdo, $user['email'], 'LOGIN', 'auth', $user['email'], null);
+
 json_response([
     'token' => $jwt,
     'user'  => [

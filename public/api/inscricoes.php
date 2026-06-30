@@ -73,6 +73,14 @@ if ($acao !== 'nova' && $acao !== 'config_turnos' && $acao !== 'turnos_publicos'
     }
 }
 
+// IDENTIFICAÇÃO DO ATOR PARA OS LOGS DE AUDITORIA
+$atorAtivo = 'Sistema/Público';
+if ($adminUser) {
+    $atorAtivo = $adminUser['email'];
+} elseif ($tokenData) {
+    $atorAtivo = $tokenData['nome_coordenador'] . ' (Coord)';
+}
+
 // ===================================================================================
 // 1. GET (LEITURA)
 // ===================================================================================
@@ -174,6 +182,8 @@ if ($method === 'GET') {
                 $row['nomePagamento'] = $row['nomePagamento'] ?? null;
                 $row['numeroFatura'] = $row['numeroFatura'] ?? null;
 
+                $row['numeroBeneficiario'] = $row['numero_beneficiario'] ?? null;
+
                 $row['participante'] = [
                     'nomeCompleto'   => $row['nome_completo'],
                     'dataNascimento' => $row['data_nascimento'],
@@ -215,10 +225,9 @@ if ($method === 'GET') {
             echo json_encode($result);
             exit;
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             http_response_code(500);
-            $msg = $is_dev_request ? 'Erro na consulta: ' . $e->getMessage() : 'Erro interno.';
-            echo json_encode(['erro' => $msg]);
+            echo json_encode(['erro' => 'Erro na consulta', 'detalhe' => $e->getMessage()]);
             exit;
         }
     }
@@ -234,8 +243,8 @@ if ($method === 'POST' || $method === 'PUT') {
     if ($acao === 'nova') {
         $pdo->beginTransaction();
         try {
-            // Verifica duplicado
-            $stmtCheck = $pdo->prepare("SELECT id FROM participantes WHERE email_ee = ? AND nome_completo = ?");
+            // SOLUÇÃO: CONVERT EXPLICITO PARA EVITAR ERRO 1267 MIX DE COLLATIONS
+            $stmtCheck = $pdo->prepare("SELECT id FROM participantes WHERE email_ee = CONVERT(? USING latin1) AND nome_completo = CONVERT(? USING latin1)");
             $stmtCheck->execute([$input['ee']['email'], $input['participante']['nomeCompleto']]);
             $participanteExistente = $stmtCheck->fetch();
 
@@ -260,8 +269,8 @@ if ($method === 'POST' || $method === 'PUT') {
                     $input['ee']['telefone'],
                     $input['ee']['nif'] ?? '',
                     $input['ee']['contactoEmergencia'] ?? '',
-                    $input['saude']['alergiaDetalhes'] ?? '',
-                    $input['saude']['medicacaoHabitual'] ?? '',
+                    $input['saude']['alergiaDetalhes'] ?? $input['saude']['detalheAlergiaAlimentar'] ?? '',
+                    $input['saude']['medicacaoHabitual'] ?? $input['saude']['detalheMedicacao'] ?? '',
                     $input['participante']['codigoPostal'] ?? '',
                     $input['participante']['cc'] ?? '',
                     $input['participante']['nif'] ?? '',
@@ -270,16 +279,22 @@ if ($method === 'POST' || $method === 'PUT') {
                 $participanteId = $pdo->lastInsertId();
             }
 
-            // Inserção da inscrição
+            $mapaLocaisFormal = [
+                'quinta' => 'Quinta',
+                'costaCaparica' => 'Costa da Caparica',
+                'quiaios' => 'Quiaios'
+            ];
+            $localSalvar = $mapaLocaisFormal[$input['local']] ?? $input['local'];
+
             $sqlInsc = "INSERT INTO inscricoes 
-                (participante_id, turno, local, ano, valor_total, autoriza_foto_video, transporte, estado_pagamento, tipo_cliente, nome_instituicao, dataPagamento, nomePagamento, numeroFatura, observacoes) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?)";
+                (participante_id, turno, local, ano, valor_total, autoriza_foto_video, transporte, estado_pagamento, tipo_cliente, nome_instituicao, dataPagamento, nomePagamento, numeroFatura, observacoes, numero_beneficiario) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?, ?)";
             
             $stmtInsc = $pdo->prepare($sqlInsc);
             $stmtInsc->execute([
                 $participanteId,
                 $input['turnoEscolhido'],
-                $input['local'],
+                $localSalvar,
                 date('Y'),
                 $input['valor_total'] ?? ($input['valorTotal'] ?? 300),
                 isset($input['autorizaFotoVideo']) && $input['autorizaFotoVideo'] ? 1 : 0,
@@ -289,10 +304,23 @@ if ($method === 'POST' || $method === 'PUT') {
                 $input['dataPagamento'] ?? null,
                 $input['nomePagamento'] ?? null,
                 $input['numeroFatura'] ?? null,
-                $input['observacoes'] ?? null
+                $input['observacoes'] ?? null,
+                $input['numeroBeneficiario'] ?? null
             ]);
+            
+            $novaInscricaoId = $pdo->lastInsertId();
 
             $pdo->commit();
+
+            registar_log(
+                $pdo, 
+                $atorAtivo, 
+                'CREATE', 
+                'inscricao', 
+                $input['participante']['nomeCompleto'], 
+                $input['ee']['email'], 
+                ['turno' => $input['turnoEscolhido']]
+            );
 
             // ==========================================================
             // PREPARAÇÃO DE EMAILS (Conteúdo)
@@ -316,7 +344,8 @@ if ($method === 'POST' || $method === 'PUT') {
                 <div class='info-block'>
                     <h2>Resumo</h2>
                     <p><strong>Turno:</strong> {$input['turnoEscolhido']}</p>
-                    <p><strong>Local:</strong> {$input['local']}</p>
+                    <p><strong>Local:</strong> {$localSalvar}</p>
+                    <p><strong>Nº Beneficiário:</strong> " . (!empty($input['numeroBeneficiario']) ? $input['numeroBeneficiario'] : '--') . "</p>
                     <p><strong>Tipo de Cliente:</strong> " . ucfirst($input['tipoCliente'] ?? 'individual') . "</p>
                     <p><strong>Transporte:</strong> {$input['transporte']}</p>
                     <p><strong>Valor Total:</strong> {$input['valor_total']}€</p>
@@ -353,41 +382,37 @@ if ($method === 'POST' || $method === 'PUT') {
             </html>
             ";
 
-            // ==========================================================
-            // ENVIO DE EMAILS VIA PHPMAILER
-            // ==========================================================
             $mail = new PHPMailer(true);
 
             try {
-                // Configurações do Servidor SMTP
                 $mail->isSMTP();
-                $mail->Host       = 'mail.quintadaescola.com'; // O teu host de email
+                $mail->Host       = 'mail.quintadaescola.com'; 
                 $mail->SMTPAuth   = true;
-                $mail->Username   = 'noreply@quintadaescola.com'; // O teu email
-                $mail->Password   = 'hS99W+EanZwGHBIL';       // <-- COLOCA A TUA SENHA AQUI
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL (usa STARTTLS se a porta for 587)
-                $mail->Port       = 465; // Porta 465 para SSL
-                $mail->CharSet    = 'UTF-8'; // Garante que os acentos não ficam desconfigurados
+                $mail->Username   = 'noreply@quintadaescola.com'; 
+                $mail->Password   = 'hS99W+EanZwGHBIL';        
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
+                $mail->Port       = 465; 
+                $mail->CharSet    = 'UTF-8'; 
 
-                // 1. EMAIL PARA A ADMINISTRAÇÃO (info@quintadaescola.com)
                 $mail->setFrom('info@quintadaescola.com', 'Sistema Inscrições');
                 $mail->addAddress($paraAdmin, 'Admin');
-                $mail->addReplyTo($input['ee']['email'], $input['ee']['nome']); // Para responderes direto ao cliente
+                
+                $emailEE = $input['ee']['email'] ?? '';
+                if (!empty($emailEE) && filter_var($emailEE, FILTER_VALIDATE_EMAIL)) {
+                    $mail->addReplyTo($emailEE, $input['ee']['nome'] ?? '');
+                } else {
+                    $mail->addReplyTo('info@quintadaescola.com', 'Sistema Inscrições');
+                }
 
                 $mail->isHTML(true);
                 $mail->Subject = $assuntoAdmin;
                 $mail->Body    = $mensagemAdmin;
 
                 $mail->send();
-
-                // Limpa destinatários para enviar o próximo email
                 $mail->clearAllRecipients();
                 $mail->clearReplyTos();
-
-                // 2. EMAIL PARA O ENCARREGADO DE EDUCAÇÃO (Cliente)
-                $emailEE = $input['ee']['email'];
                 
-                if (filter_var($emailEE, FILTER_VALIDATE_EMAIL)) {
+                if (!empty($emailEE) && filter_var($emailEE, FILTER_VALIDATE_EMAIL)) {
                     $nomeEE = $input['ee']['nome'];
                     $turno = $input['turnoEscolhido'];
                     $valor = $input['valor_total'] ?? 0;
@@ -427,22 +452,18 @@ if ($method === 'POST' || $method === 'PUT') {
 
                     $mail->Subject = $assuntoEE;
                     $mail->Body    = $htmlEE;
-
                     $mail->send();
                 }
-
-            } catch (Exception $e) {
-                // Registar erro no log do servidor sem quebrar o retorno para o utilizador final
-                error_log("Erro ao enviar email de nova inscrição via PHPMailer: {$mail->ErrorInfo}");
+            } catch (\Throwable $e) {
+                error_log("Erro ao enviar email de nova inscrição via PHPMailer: " . $e->getMessage());
             }
-            // ==========================================================
+            
+            echo json_encode(["id" => $novaInscricaoId]);
 
-            echo json_encode(["id" => $pdo->lastInsertId()]);
-
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['erro' => $is_dev_request ? 'Erro SQL: ' . $e->getMessage() : 'Erro interno.']);
+            echo json_encode(['erro' => 'Erro na Inserção', 'detalhe' => $e->getMessage()]);
         }
         exit;
     }
@@ -455,7 +476,6 @@ if ($method === 'POST' || $method === 'PUT') {
             foreach ($input as $item) {
                 $id = $item['id'];
                 
-                // Segurança Coordenador
                 if ($tokenData) {
                     $checkStmt = $pdo->prepare("SELECT local, turno FROM inscricoes WHERE id = ?");
                     $checkStmt->execute([$id]);
@@ -471,6 +491,8 @@ if ($method === 'POST' || $method === 'PUT') {
                 $dados = $item['data'] ?? $item;
                 $campos = [];
                 $valores = [];
+                $camposPart = [];
+                $valoresPart = [];
 
                 if (isset($dados['camarata_id'])) { 
                     $campos[] = "camarata_id = ?"; 
@@ -496,9 +518,9 @@ if ($method === 'POST' || $method === 'PUT') {
                 if (isset($dados['dataPagamento'])) { $campos[] = "dataPagamento = ?"; $valores[] = $dados['dataPagamento']; }
                 if (isset($dados['nomePagamento'])) { $campos[] = "nomePagamento = ?"; $valores[] = $dados['nomePagamento']; }
                 if (isset($dados['numeroFatura'])) { $campos[] = "numeroFatura = ?"; $valores[] = $dados['numeroFatura']; }
-
                 if (isset($dados['tipoCliente'])) { $campos[] = "tipo_cliente = ?"; $valores[] = $dados['tipoCliente']; }
                 if (isset($dados['nomeInstituicao'])) { $campos[] = "nome_instituicao = ?"; $valores[] = $dados['nomeInstituicao']; }
+                if (array_key_exists('numeroBeneficiario', $dados)) { $campos[] = "numero_beneficiario = ?"; $valores[] = $dados['numeroBeneficiario']; }
                 if (array_key_exists('observacoes', $dados)) { $campos[] = "observacoes = ?"; $valores[] = $dados['observacoes']; }
 
                 if (isset($dados['checkin'])) {
@@ -519,13 +541,8 @@ if ($method === 'POST' || $method === 'PUT') {
                     $partId = $stmtPid->fetchColumn();
 
                     if ($partId) {
-                        $camposPart = [];
-                        $valoresPart = [];
-
                         if (isset($dados['participante']['nomeCompleto'])) { $camposPart[] = "nome_completo = ?"; $valoresPart[] = $dados['participante']['nomeCompleto']; }
-                        
                         if (isset($dados['participante']['genero'])) { $camposPart[] = "genero = ?"; $valoresPart[] = $dados['participante']['genero']; }
-                        
                         if (isset($dados['participante']['nif'])) { $camposPart[] = "nif = ?"; $valoresPart[] = $dados['participante']['nif']; }
                         if (isset($dados['participante']['cc'])) { $camposPart[] = "cc = ?"; $valoresPart[] = $dados['participante']['cc']; }
                         if (isset($dados['participante']['codigoPostal'])) { $camposPart[] = "morada = ?"; $valoresPart[] = $dados['participante']['codigoPostal']; }
@@ -549,13 +566,34 @@ if ($method === 'POST' || $method === 'PUT') {
                         }
                     }
                 }
+
+                if (!empty($campos) || !empty($camposPart)) {
+                    $stmtInfo = $pdo->prepare("
+                        SELECT p.nome_completo, p.email_ee 
+                        FROM inscricoes i 
+                        JOIN participantes p ON i.participante_id = p.id 
+                        WHERE i.id = ?
+                    ");
+                    $stmtInfo->execute([$id]);
+                    $registo = $stmtInfo->fetch();
+                    
+                    $alvoNome = $registo ? $registo['nome_completo'] : 'Desconhecido';
+                    $alvoEmail = $registo ? $registo['email_ee'] : 'Desconhecido';
+
+                    $camposAlterados = array_merge(
+                        array_map(function($c) { return explode(' =', $c)[0]; }, $campos ?? []),
+                        array_map(function($c) { return explode(' =', $c)[0]; }, $camposPart ?? [])
+                    );
+                    
+                    registar_log($pdo, $atorAtivo, 'UPDATE', 'inscricao', $alvoNome, $alvoEmail, ['alterou' => $camposAlterados]);
+                }
             }
             $pdo->commit();
             echo json_encode(["msg" => "OK"]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['erro' => $is_dev_request ? $e->getMessage() : 'Erro interno.']);
+            echo json_encode(['erro' => 'Erro interno na atualização batch.', 'detalhe' => $e->getMessage()]);
         }
         exit;
     }
@@ -565,6 +603,7 @@ if ($method === 'POST' || $method === 'PUT') {
         if (!$adminUser) { http_response_code(403); exit; }
         $stmt = $pdo->prepare("REPLACE INTO configuracoes (chave, valor) VALUES ('turnos', ?)");
         $stmt->execute([json_encode($input)]);
+        registar_log($pdo, $atorAtivo, 'UPDATE', 'configuracoes', 'Turnos', null, ['detalhe' => 'Turnos atualizados']);
         echo json_encode(["msg" => "OK"]);
         exit;
     }
@@ -574,8 +613,15 @@ if ($method === 'POST' || $method === 'PUT') {
         if (!$adminUser) { http_response_code(403); exit; }
         $id = $input['id'] ?? null;
         if ($id) {
+            $stmtInfo = $pdo->prepare("SELECT p.nome_completo, p.email_ee FROM inscricoes i JOIN participantes p ON i.participante_id = p.id WHERE i.id = ?");
+            $stmtInfo->execute([$id]);
+            $registo = $stmtInfo->fetch();
+            $alvoNome = $registo ? $registo['nome_completo'] : 'Desconhecido';
+            $alvoEmail = $registo ? $registo['email_ee'] : 'Desconhecido';
+
             $stmt = $pdo->prepare("DELETE FROM inscricoes WHERE id = ?");
             $stmt->execute([$id]);
+            registar_log($pdo, $atorAtivo, 'DELETE', 'inscricao', $alvoNome, $alvoEmail);
             echo json_encode(["msg" => "Apagado"]);
         }
         exit;
@@ -583,14 +629,10 @@ if ($method === 'POST' || $method === 'PUT') {
 
     // C. Reenviar Email de Confirmação
     if ($acao === 'reenviar_email') {
-        if (!$adminUser) { 
-            http_response_code(403); 
-            echo json_encode(['erro' => 'Não autorizado']); 
-            exit; 
-        }
+        if (!$adminUser) { http_response_code(403); echo json_encode(['erro' => 'Não autorizado']); exit; }
 
-        $para = $input['ee']['email']; // Envia para o Encarregado de Educação
-        $bcc = 'info@quintadaescola.com'; // Tu recebes uma cópia oculta
+        $para = $input['ee']['email']; 
+        $bcc = 'info@quintadaescola.com'; 
         $assunto = 'Confirmação de Inscrição: ' . $input['participante']['nomeCompleto'] . ' - ' . $input['turnoEscolhido'];
 
         $mensagem = "
@@ -605,7 +647,6 @@ if ($method === 'POST' || $method === 'PUT') {
         <body>
             <h1>Resumo de Inscrição 📋</h1>
             <p>Olá <strong>{$input['ee']['nome']}</strong>, enviamos os dados da inscrição de <strong>{$input['participante']['nomeCompleto']}</strong>.</p>
-            
             <div class='info-block'>
                 <h2>Detalhes</h2>
                 <p><strong>Turno:</strong> {$input['turnoEscolhido']}</p>
@@ -613,45 +654,38 @@ if ($method === 'POST' || $method === 'PUT') {
                 <p><strong>Valor Total:</strong> {$input['valor_total']}€</p>
                 <p><strong>Estado Pagamento:</strong> " . strtoupper($input['estado_pagamento']) . "</p>
             </div>
-            
             <p>Qualquer dúvida, podes responder diretamente a este email.</p>
         </body>
         </html>
         ";
 
-        // ==========================================================
-        // ENVIO DO REENVIO VIA PHPMAILER
-        // ==========================================================
         $mail = new PHPMailer(true);
 
         try {
-            // Configurações do Servidor SMTP
             $mail->isSMTP();
             $mail->Host       = 'mail.quintadaescola.com'; 
             $mail->SMTPAuth   = true;
             $mail->Username   = 'noreply@quintadaescola.com';
-            $mail->Password   = 'hS99W+EanZwGHBIL';       // <-- COLOCA A TUA SENHA AQUI
+            $mail->Password   = 'hS99W+EanZwGHBIL';        
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             $mail->Port       = 465;
             $mail->CharSet    = 'UTF-8';
             
-
-            // Destinatários
             $mail->setFrom('info@quintadaescola.com', 'Quinta da Escola');
             $mail->addAddress($para, $input['ee']['nome']);
-            $mail->addBCC($bcc); // Adiciona a cópia oculta
+            $mail->addBCC($bcc); 
 
-            // Conteúdo
             $mail->isHTML(true);
             $mail->Subject = $assunto;
             $mail->Body    = $mensagem;
 
             $mail->send();
-            echo json_encode(["msg" => "Email reenviado com sucesso"]);
+            registar_log($pdo, $atorAtivo, 'EMAIL_SENT', 'inscricao', $input['participante']['nomeCompleto'], $para, ['assunto' => 'Reenvio Confirmação']);
             
-        } catch (Exception $e) {
+            echo json_encode(["msg" => "Email reenviado com sucesso"]);
+        } catch (\Throwable $e) {
             http_response_code(500);
-            echo json_encode(["erro" => "Falha ao enviar o email através do servidor: {$mail->ErrorInfo}"]);
+            echo json_encode(["erro" => "Falha ao enviar o email através do servidor: " . $e->getMessage()]);
         }
         exit;
     }

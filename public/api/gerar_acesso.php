@@ -40,6 +40,12 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$token, $nome, $local, json_encode($turnos), $expira, $pinHash]);
 
+// REGISTO DE AUDITORIA: Geração de link temporário
+registar_log($pdo, $user['email'], 'CREATE', 'acesso_coord', $nome, null, [
+    'local' => $local,
+    'turnos' => $turnos
+]);
+
 json_response([
     'msg'  => 'Acesso criado com sucesso.',
     'link' => 'https://turnos.quintadaescola.com/checkin?token=' . $token,

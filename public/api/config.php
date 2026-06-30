@@ -110,3 +110,16 @@ function verificarAuth(): array
 
     return $payload;
 }
+
+// Função global para registar auditoria
+function registar_log($pdo, $utilizador, $acao, $entidade, $alvoNome = null, $alvoEmail = null, $detalhes = []) {
+    try {
+        $sql = "INSERT INTO audit_logs (utilizador, acao, entidade, alvo_nome, alvo_email, detalhes) VALUES (?, ?, ?, ?, ?, ?)";
+        $jsonDetalhes = empty($detalhes) ? null : json_encode($detalhes, JSON_UNESCAPED_UNICODE);
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$utilizador, $acao, $entidade, $alvoNome, $alvoEmail, $jsonDetalhes]);
+    } catch (Exception $e) {
+        error_log("Erro ao gravar log de auditoria: " . $e->getMessage());
+    }
+}
