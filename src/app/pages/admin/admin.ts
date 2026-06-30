@@ -408,7 +408,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         email: '',
         telefone: '',
         nif: '',
-        contactoEmergencia: ''
+        contactoEmergencia: '',
       },
       saude: {
         temAlergiaAlimentar: false,
@@ -744,7 +744,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         email: '',
         telefone: '',
         nif: '',
-        contactoEmergencia: ''
+        contactoEmergencia: '',
       },
       saude: {
         temAlergiaAlimentar: false,
@@ -775,7 +775,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         if (nova.participante.dataNascimento instanceof Date) {
           nova.participante.dataNascimento = new Date(
             nova.participante.dataNascimento.getTime() -
-            nova.participante.dataNascimento.getTimezoneOffset() * 60000,
+              nova.participante.dataNascimento.getTimezoneOffset() * 60000,
           )
             .toISOString()
             .split('T')[0];
@@ -789,7 +789,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
           if (l.participante.dataNascimento instanceof Date) {
             l.participante.dataNascimento = new Date(
               l.participante.dataNascimento.getTime() -
-              l.participante.dataNascimento.getTimezoneOffset() * 60000,
+                l.participante.dataNascimento.getTimezoneOffset() * 60000,
             )
               .toISOString()
               .split('T')[0];
@@ -849,10 +849,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
       this.estaAImportar = false;
       this.empresaImportacao = '';
       this.localDestinoImportacao = this.filtroLocal; // Iniciar com local atual
-      this.atualizarTurnosImportacao();
-      this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
+      this.atualizarTurnosImportacao(); // Faz reset e processa automaticamente para a Quinta
 
-      this.dialog.open(this.dialogImportacao, { width: '950px', disableClose: true });
+      const dialogWidth = this.localDestinoImportacao === 'quinta' ? '1400px' : '950px';
+      this.dialog.open(this.dialogImportacao, { width: dialogWidth, disableClose: true });
 
       if (this.fileInput && this.fileInput.nativeElement) {
         this.fileInput.nativeElement.value = '';
@@ -866,13 +866,26 @@ export class AdminComponent implements OnInit, AfterViewInit {
       const lista = this.todosOsTurnosConfig[this.localDestinoImportacao] || [];
       this.listaTurnosImportacao = lista.map((t: any) => t.nome);
     }
-    this.isLocalEspecialImportacao = (this.localDestinoImportacao === 'costaCaparica' || this.localDestinoImportacao === 'quiaios');
+    this.isLocalEspecialImportacao =
+      this.localDestinoImportacao === 'costaCaparica' || this.localDestinoImportacao === 'quiaios';
     this.turnoDestinoImportacao = '';
     this.dadosImportacao = { validos: [], duplicados: 0, total: 0 };
+
+    // Para a Quinta, o turno é lido do ficheiro — processa imediatamente sem seleção manual
+    if (this.localDestinoImportacao === 'quinta' && this.fileToProcess) {
+      this.processarImportacaoQuinta(this.fileToProcess);
+    }
   }
 
   processarFicheiroSelecionado() {
-    if (!this.fileToProcess || !this.turnoDestinoImportacao) return;
+    if (!this.fileToProcess) return;
+
+    if (this.localDestinoImportacao === 'quinta') {
+      this.processarImportacaoQuinta(this.fileToProcess);
+      return;
+    }
+
+    if (!this.turnoDestinoImportacao) return;
 
     if (this.isLocalEspecialImportacao) {
       this.processarImportacaoEspecial(this.fileToProcess);
@@ -899,10 +912,27 @@ export class AdminComponent implements OnInit, AfterViewInit {
         let found = 0;
         for (let c = 0; c < row.length; c++) {
           const val = String(row[c]).toLowerCase().trim();
-          if (val === 'nº. benef.' || val === 'nº benef.' || val === 'nº benef' || val.includes('benef')) { colMap.benef = c; found++; }
-          if (val === 'nome da criança' || val.includes('nome da criança') || val === 'nome') { colMap.nome = c; found++; }
-          if (val === 'data nasc.' || val === 'data nasc' || val.includes('data nasc')) { colMap.nasc = c; found++; }
-          if (val === 'sexo' || val === 'género' || val === 'genero') { colMap.sexo = c; found++; }
+          if (
+            val === 'nº. benef.' ||
+            val === 'nº benef.' ||
+            val === 'nº benef' ||
+            val.includes('benef')
+          ) {
+            colMap.benef = c;
+            found++;
+          }
+          if (val === 'nome da criança' || val.includes('nome da criança') || val === 'nome') {
+            colMap.nome = c;
+            found++;
+          }
+          if (val === 'data nasc.' || val === 'data nasc' || val.includes('data nasc')) {
+            colMap.nasc = c;
+            found++;
+          }
+          if (val === 'sexo' || val === 'género' || val === 'genero') {
+            colMap.sexo = c;
+            found++;
+          }
         }
         if (found >= 3) {
           headerRowIndex = r;
@@ -935,7 +965,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
           if (nasc.length < 4) continue;
         }
 
-        const isDuplicado = this.verificarDuplicadoGlobal(nome, this.turnoDestinoImportacao, inscricoesProcessadas);
+        const isDuplicado = this.verificarDuplicadoGlobal(
+          nome,
+          this.turnoDestinoImportacao,
+          inscricoesProcessadas,
+        );
         if (isDuplicado) {
           duplicadosContador++;
           continue;
@@ -944,7 +978,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
         inscricoesProcessadas.push({
           turnoEscolhido: this.turnoDestinoImportacao,
           local: this.localDestinoImportacao,
-          valor_total: this.getPrecoTurnoImportacao(this.turnoDestinoImportacao, this.localDestinoImportacao),
+          valor_total: this.getPrecoTurnoImportacao(
+            this.turnoDestinoImportacao,
+            this.localDestinoImportacao,
+          ),
           transporte: 'Não (Entregue pelos pais)',
           autorizaFotoVideo: false,
           estado_pagamento: 'pendente',
@@ -972,7 +1009,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
             detalheAlergiaAlimentar: '',
             tomaMedicacao: false,
             detalheMedicacao: '',
-          }
+          },
         });
       }
     });
@@ -1003,7 +1040,11 @@ export class AdminComponent implements OnInit, AfterViewInit {
         const nomeInscrito = String(row[mapaIndex.nome]).trim();
         if (nomeInscrito.length < 2) continue;
 
-        const isDuplicado = this.verificarDuplicadoGlobal(nomeInscrito, this.turnoDestinoImportacao, inscricoesProcessadas);
+        const isDuplicado = this.verificarDuplicadoGlobal(
+          nomeInscrito,
+          this.turnoDestinoImportacao,
+          inscricoesProcessadas,
+        );
         if (isDuplicado) {
           duplicadosContador++;
           continue;
@@ -1021,6 +1062,223 @@ export class AdminComponent implements OnInit, AfterViewInit {
     };
   }
 
+  // --- IMPORTAÇÃO ESPECÍFICA QUINTA DA ESCOLA ---
+  // O Excel da Quinta contém a coluna "Data do Turno" com o nome do turno do site.
+  // Colunas esperadas: Nome Completo, Género, Data Nasc (dd/mm/aaaa), Transporte (Sim ou Não),
+  //                    E-mail, Alergias/Medicação, Observações, Telefone contacto, Data do Turno
+  private processarImportacaoQuinta(wb: XLSX.WorkBook) {
+    const inscricoesProcessadas: any[] = [];
+    let duplicadosContador = 0;
+
+    wb.SheetNames.forEach((sheetName) => {
+      const ws: XLSX.WorkSheet = wb.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+      if (rawData.length < 2) return;
+
+      let headerRowIndex = -1;
+      const colMap: Record<string, number> = {
+        nome: -1,
+        genero: -1,
+        nasc: -1,
+        transporte: -1,
+        email: -1,
+        alergias: -1,
+        observacoes: -1,
+        telefone: -1,
+        turno: -1,
+      };
+
+      // Detetar linha de cabeçalho (pesquisa até à linha 10)
+      for (let r = 0; r < Math.min(rawData.length, 10); r++) {
+        const row = rawData[r];
+        if (!row || !Array.isArray(row)) continue;
+        let found = 0;
+        for (let c = 0; c < row.length; c++) {
+          const v = this.normalizarTexto(String(row[c]));
+          if ((v === 'nomecompleto' || v === 'nome') && colMap['nome'] === -1) {
+            colMap['nome'] = c;
+            found++;
+          }
+          if ((v.includes('genero') || v === 'sexo') && colMap['genero'] === -1) {
+            colMap['genero'] = c;
+            found++;
+          }
+          if (
+            (v.includes('datanasc') || (v.includes('nasc') && !v.includes('turno'))) &&
+            colMap['nasc'] === -1
+          ) {
+            colMap['nasc'] = c;
+            found++;
+          }
+          if (v.includes('transporte') && colMap['transporte'] === -1) {
+            colMap['transporte'] = c;
+            found++;
+          }
+          if ((v.includes('email') || v.includes('mail')) && colMap['email'] === -1) {
+            colMap['email'] = c;
+            found++;
+          }
+          if (
+            (v.includes('alergia') ||
+              v === 'alergiasmedicacao' ||
+              (v.includes('medicac') && !v.includes('turno'))) &&
+            colMap['alergias'] === -1
+          ) {
+            colMap['alergias'] = c;
+            found++;
+          }
+          if (v.includes('observac') && colMap['observacoes'] === -1) {
+            colMap['observacoes'] = c;
+            found++;
+          }
+          if ((v.includes('telefone') || v.includes('telemovel')) && colMap['telefone'] === -1) {
+            colMap['telefone'] = c;
+            found++;
+          }
+          if (
+            (v.includes('datadoturno') || (v.includes('turno') && v.includes('data'))) &&
+            colMap['turno'] === -1
+          ) {
+            colMap['turno'] = c;
+            found++;
+          }
+        }
+        if (found >= 3 && colMap['nome'] !== -1) {
+          headerRowIndex = r;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1 || colMap['nome'] === -1) return;
+
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || !Array.isArray(row)) continue;
+
+        const nome = String(row[colMap['nome']] ?? '').trim();
+        if (!nome || nome.length < 2) continue;
+
+        // Parsear data de nascimento (suporta dd/mm/aaaa, dd-mm-aaaa e número Excel)
+        let nasc = '';
+        if (colMap['nasc'] !== -1) {
+          const val = row[colMap['nasc']];
+          if (typeof val === 'number') {
+            nasc = new Date(Math.round((val - 25569) * 86400 * 1000)).toISOString().split('T')[0];
+          } else {
+            const strVal = String(val).trim();
+            const parts = strVal.split(/[\/\-]/);
+            if (parts.length === 3 && parts[2].length === 4) {
+              nasc = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            } else {
+              nasc = strVal;
+            }
+          }
+        }
+
+        // Parsear género
+        const generoRaw =
+          colMap['genero'] !== -1 ? String(row[colMap['genero']]).trim().toUpperCase() : '';
+        const genero: 'M' | 'F' = generoRaw.startsWith('F') ? 'F' : 'M';
+
+        // Fazer match do turno do Excel com os turnos configurados
+        const turnoExcel = colMap['turno'] !== -1 ? String(row[colMap['turno']]).trim() : '';
+        const turnoFinal = this.matchTurnoQuinta(turnoExcel);
+        if (!turnoFinal) continue;
+
+        // Parsear transporte: "Sim" → primeira opção com custo; "Não" → sem transporte
+        const transporteRaw =
+          colMap['transporte'] !== -1
+            ? String(row[colMap['transporte']]).trim().toLowerCase()
+            : 'não';
+        const transporte =
+          transporteRaw === 'sim'
+            ? 'Lisboa - Quinta da Escola (+20€)'
+            : 'Não (Entregue pelos pais)';
+
+        const email = colMap['email'] !== -1 ? String(row[colMap['email']]).trim() : '';
+        const alergias = colMap['alergias'] !== -1 ? String(row[colMap['alergias']]).trim() : '';
+        const observacoes =
+          colMap['observacoes'] !== -1 ? String(row[colMap['observacoes']]).trim() : '';
+        const telefone =
+          colMap['telefone'] !== -1
+            ? String(row[colMap['telefone']]).trim().replace(/\s+/g, '')
+            : '';
+
+        if (this.verificarDuplicadoGlobal(nome, turnoFinal, inscricoesProcessadas)) {
+          duplicadosContador++;
+          continue;
+        }
+
+        inscricoesProcessadas.push({
+          turnoEscolhido: turnoFinal,
+          local: 'quinta',
+          valor_total: this.getPrecoTurnoImportacao(turnoFinal, 'quinta'),
+          transporte,
+          autorizaFotoVideo: false,
+          estado_pagamento: 'pendente',
+          tipoCliente: 'individual',
+          nomeInstituicao: '',
+          numeroBeneficiario: '',
+          observacoes,
+          participante: {
+            nomeCompleto: nome,
+            genero,
+            dataNascimento: nasc,
+            nif: '',
+            codigoPostal: '',
+            cc: '',
+            sistemaSaude: '',
+          },
+          ee: {
+            nome: '',
+            email,
+            telefone,
+            nif: '',
+            contactoEmergencia: '',
+          },
+          saude: {
+            temAlergiaAlimentar: !!alergias,
+            detalheAlergiaAlimentar: alergias,
+            tomaMedicacao: false,
+            detalheMedicacao: '',
+          },
+        });
+      }
+    });
+
+    this.dadosImportacao = {
+      validos: inscricoesProcessadas,
+      duplicados: duplicadosContador,
+      total: inscricoesProcessadas.length + duplicadosContador,
+    };
+  }
+
+  // Faz match fuzzy entre o valor da coluna "Data do Turno" do Excel e os turnos configurados
+  private matchTurnoQuinta(turnoExcel: string): string {
+    if (!turnoExcel) return '';
+    const normExcel = this.normalizarTexto(turnoExcel);
+
+    // 1. Match exacto (após normalização)
+    for (const t of this.listaTurnosImportacao) {
+      if (this.normalizarTexto(t) === normExcel) return t;
+    }
+    // 2. Match por contenção parcial
+    for (const t of this.listaTurnosImportacao) {
+      const normT = this.normalizarTexto(t);
+      if (normT.includes(normExcel) || normExcel.includes(normT)) return t;
+    }
+    // 3. Match pelo número ordinal do turno (ex: "2º" → "2")
+    const numMatch = normExcel.match(/\d+/);
+    if (numMatch) {
+      for (const t of this.listaTurnosImportacao) {
+        const normT = this.normalizarTexto(t);
+        if (new RegExp(`\\b${numMatch[0]}\\b`).test(normT)) return t;
+      }
+    }
+    // Sem match: devolve o valor bruto (visível na preview; admin pode corrigir)
+    return turnoExcel;
+  }
+
   removerImportacao(idx: number) {
     this.dadosImportacao.validos.splice(idx, 1);
     this.dadosImportacao.total--;
@@ -1028,7 +1286,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
   aplicarTurnoATodos() {
     if (this.turnoDestinoImportacao && this.dadosImportacao.validos.length > 0) {
-      this.dadosImportacao.validos.forEach(i => i.turnoEscolhido = this.turnoDestinoImportacao);
+      this.dadosImportacao.validos.forEach((i) => (i.turnoEscolhido = this.turnoDestinoImportacao));
     }
   }
 
@@ -1051,7 +1309,10 @@ export class AdminComponent implements OnInit, AfterViewInit {
   private adivinharTurnoDaAba(sheetName: string): string {
     const nomeNorm = this.normalizarTexto(sheetName);
     for (let t of this.listaTurnos) {
-      if (this.normalizarTexto(t).includes(nomeNorm) || nomeNorm.includes(this.normalizarTexto(t))) {
+      if (
+        this.normalizarTexto(t).includes(nomeNorm) ||
+        nomeNorm.includes(this.normalizarTexto(t))
+      ) {
         return t;
       }
     }
@@ -1157,7 +1418,9 @@ export class AdminComponent implements OnInit, AfterViewInit {
   }
 
   async confirmarImportacao() {
-    if (!this.turnoDestinoImportacao) {
+    const isQuinta = this.localDestinoImportacao === 'quinta';
+
+    if (!isQuinta && !this.turnoDestinoImportacao) {
       this.mostrarNotificacao('É obrigatório selecionar o Turno de Destino.', 'error');
       return;
     }
@@ -1166,7 +1429,12 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
     try {
       for (const inscricao of this.dadosImportacao.validos) {
-        if (!this.isLocalEspecialImportacao && this.empresaImportacao && this.empresaImportacao.trim() !== '') {
+        if (
+          !isQuinta &&
+          !this.isLocalEspecialImportacao &&
+          this.empresaImportacao &&
+          this.empresaImportacao.trim() !== ''
+        ) {
           inscricao.tipoCliente = 'instituicao';
           inscricao.nomeInstituicao = this.empresaImportacao.trim();
         }
@@ -1174,7 +1442,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         try {
           await this.inscricaoService.createInscricao(inscricao);
         } catch (innerError: any) {
-          console.error("Erro numa linha específica:", innerError);
+          console.error('Erro numa linha específica:', innerError);
           // O fluxo vai continuar para as outras crianças mesmo que uma falhe
         }
       }
