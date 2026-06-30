@@ -354,7 +354,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
 
     try {
       if (this.isCreating) {
-        await this.inscricaoService.createInscricao(dados);
+        await this.inscricaoService.createInscricao(dados, false);
         this.mostrarNotificacao('Nova inscrição adicionada com sucesso!');
       } else {
         if (!this.selectedInscricao.id) return;
@@ -780,7 +780,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
             .toISOString()
             .split('T')[0];
         }
-        const res: any = await this.inscricaoService.createInscricao(nova);
+        const res: any = await this.inscricaoService.createInscricao(nova, false);
         nova.id = res.id;
       }
 
@@ -1458,7 +1458,7 @@ export class AdminComponent implements OnInit, AfterViewInit {
         }
 
         try {
-          await this.inscricaoService.createInscricao(inscricao);
+          await this.inscricaoService.createInscricao(inscricao, false);
         } catch (innerError: any) {
           console.error('Erro numa linha específica:', innerError);
           // O fluxo vai continuar para as outras crianças mesmo que uma falhe

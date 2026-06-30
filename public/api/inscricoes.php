@@ -380,6 +380,13 @@ if ($method === 'POST' || $method === 'PUT') {
             // ==========================================================
             // PREPARAÇÃO DE EMAILS (Conteúdo)
             // ==========================================================
+            $enviarEmail = isset($input['enviarEmail']) ? (bool)$input['enviarEmail'] : true;
+
+            if (!$enviarEmail) {
+                echo json_encode(["id" => $novaInscricaoId]);
+                exit;
+            }
+
             $paraAdmin = 'info@quintadaescola.com';
             $assuntoAdmin = 'Nova Inscrição: ' . $input['participante']['nomeCompleto'] . ' - ' . $input['turnoEscolhido'];
 

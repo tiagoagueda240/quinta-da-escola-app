@@ -70,12 +70,13 @@ export class InscricaoService {
   //     MÉTODOS DE ESCRITA / CRIAÇÃO
   // ==========================================================
 
-  async createInscricao(inscricao: Partial<Inscricao>) {
-    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=nova`, inscricao));
+  async createInscricao(inscricao: Partial<Inscricao>, enviarEmail = true) {
+    const payload = { ...inscricao, enviarEmail };
+    return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=nova`, payload));
   }
 
   async updateInscricaoBatch(
-    updates: { id: string | number; checkin?: any;[key: string]: any }[],
+    updates: { id: string | number; checkin?: any; [key: string]: any }[],
   ) {
     return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=batch_update`, updates));
   }
@@ -132,8 +133,8 @@ export class InscricaoService {
       this.http.post<any>(
         `${this.apiUrl}/inscricoes.php?acao=batch_update&token=${token}`,
         updates,
-        { headers }
-      )
+        { headers },
+      ),
     );
   }
 }
