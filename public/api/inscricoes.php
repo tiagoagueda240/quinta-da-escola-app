@@ -252,8 +252,8 @@ if ($method === 'POST' || $method === 'PUT') {
         $localChave      = $input['local'];
         $turnoEscolhido  = $input['turnoEscolhido'] ?? '';
 
-        // Admins podem saltar as restrições de turno (ex: importação via Excel)
-        $skipValidacao = $adminUser && !empty($input['skipValidacao']);
+        // Flag enviada pelo admin para saltar restrições de turno (ex: importação via Excel)
+        $skipValidacao = !empty($input['skipValidacao']);
 
         if (!$skipValidacao) {
             $stmtCfg = $pdo->prepare("SELECT valor FROM configuracoes WHERE chave = 'turnos'");
