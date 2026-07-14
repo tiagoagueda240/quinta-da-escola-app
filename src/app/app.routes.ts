@@ -13,6 +13,7 @@ import { checkinGuard } from './guards/checkin.guard';
 import { loginGuard } from './guards/login.guard';
 import { ForgotPassword } from './pages/forgot-password/forgot-password';
 import { ResetPassword } from './pages/reset-password/reset-password';
+import { PontuacoesComponent } from './pages/pontuacoes/pontuacoes';
 
 export const routes: Routes = [
   {
@@ -59,5 +60,10 @@ export const routes: Routes = [
   {
     path: 'reset-password',
     component: ResetPassword,
+  },
+  {
+    path: 'pontuacoes',
+    component: PontuacoesComponent,
+    canActivate: [checkinGuard],
   },
 ];

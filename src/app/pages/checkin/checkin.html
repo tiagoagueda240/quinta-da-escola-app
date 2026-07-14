@@ -1,258 +1,356 @@
-<div class="mobile-layout" [class.has-local-filter]="!modoLink && locaisDisponiveis.length > 1">
-  <div class="security-overlay" *ngIf="modoLink && !pinValidado">
-    <div class="pin-card">
-      <mat-icon class="lock-icon">lock</mat-icon>
-      <h2>Acesso Restrito</h2>
-      <p>Insira o PIN de 4 dígitos fornecido pelo administrador.</p>
+<div class="app-container" [class.has-local-filter]="!modoLink && locaisDisponiveis.length > 1">
 
-      <div class="pin-input-area">
-        <input
-          type="tel"
-          [(ngModel)]="pinInput"
-          maxlength="4"
-          placeholder="----"
-          class="pin-field"
-        />
+  <!-- Ecra de Bloqueio do PIN (Só renderiza se modoLink ativo e não validado) -->
+  <div class="security-overlay" *ngIf="modoLink && !pinValidado">
+    <div class="pin-glass-card">
+      <div class="tech-icon-glow">
+        <mat-icon>shield</mat-icon>
+      </div>
+      <h2>Acesso Restrito</h2>
+      <p>Introduza o código de segurança do coordenador</p>
+
+      <div class="pin-input-wrapper">
+        <input type="tel" [(ngModel)]="pinInput" maxlength="4" placeholder="••••" class="pin-field-tech"
+          (keyup.enter)="pinInput.length >= 4 && validarPin()" />
       </div>
 
-      <button
-        mat-flat-button
-        color="primary"
-        (click)="validarPin()"
-        [disabled]="pinInput.length < 4"
-      >
-        DESBLOQUEAR
+      <button mat-flat-button class="btn-tech-primary" (click)="validarPin()" [disabled]="pinInput.length < 4">
+        AUTENTICAR <mat-icon>vpn_key</mat-icon>
       </button>
 
-      <p class="error-msg" *ngIf="erroPin">{{ erroPin }}</p>
+      <p class="error-msg-tech" *ngIf="erroPin">
+        <mat-icon>error_outline</mat-icon> {{ erroPin }}
+      </p>
     </div>
   </div>
 
-  <div class="header-area">
-    <div
-      class="top-info"
-      style="display: flex; justify-content: space-between; align-items: center; width: 100%"
-    >
-      <div class="brand"><mat-icon>forest</mat-icon> CHECK-IN</div>
+  <!-- Wrapper Principal (Só renderiza se for Admin OU se o PIN estiver validado) -->
+  <div class="adventure-layout-wrapper" [class.is-loading]="loading" *ngIf="!modoLink || pinValidado">
 
-      <div *ngIf="pinValidado" style="display: flex; gap: 8px; align-items: center">
-        <button
-          mat-stroked-button
-          color="primary"
-          (click)="irParaGrupos()"
-          style="background: white; border-radius: 20px"
-        >
-          <mat-icon>hotel</mat-icon> Grupos
-        </button>
+    <aside class="sidebar-adventure" [class.hidden]="inscricoesFiltradas.length === 0">
+      <div class="sidebar-inner">
+        <div class="vertical-tracker-title">TRILHO ATIVO</div>
 
-        <button
-          mat-stroked-button
-          [matMenuTriggerFor]="menuRelatorios"
-          style="background: white; border-radius: 20px"
-        >
-          <mat-icon>assessment</mat-icon>
-          <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
-        </button>
-        <mat-menu #menuRelatorios="matMenu">
-          @if (filtroLocal === 'quinta') {
-            <button mat-menu-item (click)="abrirRelatorio('transporte')">
-              <mat-icon color="primary">directions_bus</mat-icon>
-              <span>Lista de Transportes</span>
-            </button>
-          }
-          <button mat-menu-item (click)="abrirRelatorio('cozinha')">
-            <mat-icon color="warn">restaurant</mat-icon>
-            <span>Alergias / Cozinha</span>
-          </button>
-        </mat-menu>
+        <div class="vertical-track-wrapper">
+          <div class="tracker-track-vertical">
+            <div class="tracker-path-dashed-vertical"></div>
+            <div class="tracker-fill-vertical"
+              [style.height.%]="inscricoesFiltradas.length ? (totalPresentes / inscricoesFiltradas.length) * 100 : 0">
+            </div>
+
+            <div class="map-point start-cabin">
+              <mat-icon>home</mat-icon>
+            </div>
+
+            <div class="tracker-explorer-vertical"
+              [style.bottom.%]="inscricoesFiltradas.length ? (totalPresentes / inscricoesFiltradas.length) * 100 : 0">
+              <div class="cute-bear-camper">
+                <div class="bear-backpack"></div>
+                <div class="bear-body">
+                  <div class="bear-ears">
+                    <div class="ear left"></div>
+                    <div class="ear right"></div>
+                  </div>
+                  <div class="bear-hat"></div>
+                  <div class="bear-face">
+                    <div class="bear-eyes"></div>
+                    <div class="bear-snout"></div>
+                    <div class="bear-cheeks"></div>
+                  </div>
+                </div>
+                <div class="bear-legs">
+                  <div class="leg left"></div>
+                  <div class="leg right"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="map-point end-camp"
+              [class.reached]="inscricoesFiltradas.length > 0 && totalPresentes === inscricoesFiltradas.length">
+              <span class="campfire-glow"
+                *ngIf="inscricoesFiltradas.length > 0 && totalPresentes === inscricoesFiltradas.length"></span>
+              <mat-icon>villa</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <div class="vertical-tracker-stats">
+          <span class="percentage">
+            <mat-icon>local_fire_department</mat-icon>
+            {{ (inscricoesFiltradas.length ? ((totalPresentes / inscricoesFiltradas.length) * 100) : 0) | number:'1.0-0'
+            }}%
+          </span>
+          <span class="subtext">Aventura Ativa</span>
+        </div>
       </div>
+    </aside>
 
-      <div class="counter-badge" [class.has-people]="totalPresentes > 0">
-        {{ totalPresentes }} Presentes
-      </div>
-    </div>
+    <div class="main-content">
 
-    @if (!modoLink && locaisDisponiveis.length > 1) {
-      <div class="local-scroller">
-        @for (local of locaisDisponiveis; track local) {
-          <div
-            class="local-chip"
-            [class.active]="local === filtroLocal"
-            (click)="mudarLocal(local)"
-            matRipple
-          >
+      <header class="tech-header">
+        <div class="header-main-row">
+          <div class="brand-tech">
+            <div class="pulse-ring">
+              <mat-icon>landscape</mat-icon>
+            </div>
+            <div class="brand-text">
+              <span class="brand-title">
+                Quinta da Escola
+                <span class="brand-title-sub" *ngIf="LOCAIS_LABELS[filtroLocal] !== 'Quinta da Escola'">
+                  ({{ LOCAIS_LABELS[filtroLocal] }})
+                </span>
+              </span>
+              <span class="brand-subtitle">CAMPO DE SONHO</span>
+            </div>
+          </div>
+
+          <div class="header-right-side">
+            <div *ngIf="pinValidado" class="tech-actions">
+              <button mat-flat-button color="accent" (click)="irParaPontuacoes()">
+                <mat-icon>emoji_events</mat-icon> Leaderboard do Turno
+              </button>
+
+              <button (click)="irParaGrupos()" class="action-bubble" matTooltip="Ver Grupos">
+                <mat-icon>groups</mat-icon>
+              </button>
+
+              <button [matMenuTriggerFor]="menuRelatorios" class="action-bubble" matTooltip="Relatórios">
+                <mat-icon>analytics</mat-icon>
+              </button>
+
+              <mat-menu #menuRelatorios="matMenu" class="tech-menu-dropdown">
+                @if (filtroLocal === 'quinta') {
+                <button mat-menu-item (click)="abrirRelatorio('transporte')">
+                  <mat-icon>local_shipping</mat-icon>
+                  <span>Transportes</span>
+                </button>
+                }
+                <button mat-menu-item (click)="abrirRelatorio('cozinha')">
+                  <mat-icon>restaurant_menu</mat-icon>
+                  <span>Cozinha / Alergias</span>
+                </button>
+              </mat-menu>
+            </div>
+
+            <div class="stats-cloud">
+              <div class="badge-presentes present" [class.active]="totalPresentes > 0" matTooltip="Já chegaram">
+                <span class="indicator green"></span>
+                <strong>{{ totalPresentes }}</strong> <span class="label-txt">Chegaram</span>
+              </div>
+
+              <div class="badge-presentes pending" [class.active]="(inscricoesFiltradas.length - totalPresentes) > 0"
+                matTooltip="Ainda em falta">
+                <span class="indicator orange"></span>
+                <strong>{{ inscricoesFiltradas.length - totalPresentes }}</strong> <span class="label-txt">Faltam</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        @if (!modoLink && locaisDisponiveis.length > 1) {
+        <div class="scroll-navigation local-nav">
+          @for (local of locaisDisponiveis; track local) {
+          <button class="nav-chip" [class.active]="local === filtroLocal" (click)="mudarLocal(local)">
+            <mat-icon class="chip-dot">fiber_manual_record</mat-icon>
             {{ LOCAIS_LABELS[local] }}
-          </div>
-        }
-      </div>
-    }
-
-    @if (modoLink && pinValidado) {
-      <div class="local-badge-row">
-        <span class="local-badge">{{ LOCAIS_LABELS[filtroLocal] }}</span>
-      </div>
-    }
-
-    <div class="shift-scroller">
-      @for (t of listaTurnos; track $index) {
-        <div
-          class="shift-chip"
-          [class.active]="t === turnoSelecionado"
-          (click)="mudarTurno(t)"
-          matRipple
-        >
-          {{ getNomeCurtoTurno(t) }}
-        </div>
-      }
-    </div>
-
-    <div class="search-wrapper">
-      <div class="search-box">
-        <mat-icon>search</mat-icon>
-        <input
-          type="text"
-          [(ngModel)]="pesquisa"
-          (keyup)="filtrar()"
-          placeholder="Procurar criança..."
-        />
-        @if (pesquisa) {
-          <button mat-icon-button (click)="pesquisa = ''; filtrar()">
-            <mat-icon>close</mat-icon>
           </button>
-        }
-      </div>
-    </div>
-  </div>
-
-  <div class="content-area">
-    @for (item of inscricoesFiltradas; track $index) {
-      <div class="kid-card" [class.checked-in]="item.checkin?.status === 'dentro'">
-        <div class="card-body">
-          <div class="avatar-ring">
-            <div class="avatar">{{ item.participante.nomeCompleto.charAt(0) }}</div>
-            <div class="status-dot"></div>
-          </div>
-
-          <div class="info">
-            <h3>{{ item.participante.nomeCompleto }}</h3>
-            @if (item.checkin?.status !== 'dentro') {
-              <div class="meta-info">
-                <span class="status-label">A aguardar</span>
-                @if (item.saude.temAlergiaAlimentar) {
-                  <mat-icon
-                    class="card-alert-icon allergy"
-                    [matTooltip]="'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')"
-                    >warning</mat-icon
-                  >
-                }
-                @if (item.saude.tomaMedicacao) {
-                  <mat-icon
-                    class="card-alert-icon med"
-                    [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')"
-                    >medication</mat-icon
-                  >
-                }
-                @if (item.observacoes) {
-                  <mat-icon class="card-alert-icon obs" [matTooltip]="'Obs: ' + item.observacoes"
-                    >notes</mat-icon
-                  >
-                }
-              </div>
-            }
-
-            @if (item.checkin?.status === 'dentro') {
-              <div class="checkin-details">
-                <span class="time"
-                  ><mat-icon>access_time</mat-icon>
-                  {{ item.checkin?.dataEntrada | date: 'HH:mm' }}</span
-                >
-                @if (item.checkin?.dinheiroBolso) {
-                  <span class="money"
-                    ><mat-icon>euro</mat-icon> {{ item.checkin?.dinheiroBolso }}</span
-                  >
-                }
-                @if (item.checkin?.notasCheckin) {
-                  <span class="note"><mat-icon>note</mat-icon> Nota</span>
-                }
-                @if (hasHealthInfo(item)) {
-                  <span
-                    class="health"
-                    [matTooltip]="getHealthTooltip(item)"
-                    matTooltipClass="multiline-tooltip"
-                  >
-                    <mat-icon>health_and_safety</mat-icon>
-                  </span>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="card-action">
-          @if (item.checkin?.status === 'dentro') {
-            <button class="btn-action leave" (click)="registarSaida(item)" matRipple>SAIR</button>
-          } @else {
-            <button class="btn-action enter" (click)="abrirCheckin(item)" matRipple>RECEBER</button>
           }
         </div>
-      </div>
-    }
+        }
 
-    @if (inscricoesFiltradas.length === 0) {
-      <div class="empty-state">
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png"
-          width="80"
-          style="opacity: 0.3"
-        />
-        <p>Ninguém encontrado neste turno.</p>
+        <div class="scroll-navigation shift-nav">
+          @for (t of listaTurnos; track $index) {
+          <button class="shift-tab" [class.active]="t === turnoSelecionado" (click)="mudarTurno(t)">
+            {{ getNomeCurtoTurno(t) }}
+          </button>
+          }
+        </div>
+
+        <div class="search-container-tech">
+          <div class="search-bar-tech">
+            <mat-icon class="glass-icon">search</mat-icon>
+            <input type="text" [(ngModel)]="pesquisa" (keyup)="filtrar()" placeholder="Pesquisar participante..." />
+            @if (pesquisa) {
+            <button class="clear-btn-tech" (click)="pesquisa = ''; filtrar()">
+              <mat-icon>close</mat-icon>
+            </button>
+            }
+          </div>
+        </div>
+      </header>
+
+      <main class="cards-grid">
+        @for (item of inscricoesFiltradas; track $index) {
+        <div class="participant-card" [class.checked-in]="item.checkin?.status === 'dentro'">
+          <div class="card-glow-border"></div>
+
+          <div class="card-inner">
+            <div class="identity-section">
+              <div class="avatar-box">
+                <span class="avatar-letter">{{ item.participante.nomeCompleto.charAt(0) }}</span>
+                <div class="status-radar-ring"></div>
+              </div>
+
+              <div class="identity-details">
+                <h3 class="participant-name">{{ item.participante.nomeCompleto }}</h3>
+
+                <div class="contact-chips-row">
+                  <a href="tel:{{item.ee.telefone}}" class="contact-pill" *ngIf="item.ee.telefone" matRipple>
+                    <mat-icon>phone_iphone</mat-icon>
+                    <span>{{ item.ee.telefone }}</span>
+                  </a>
+                  <a href="tel:{{item.ee.contactoEmergencia}}" class="contact-pill emergency"
+                    *ngIf="item.ee.contactoEmergencia" matRipple>
+                    <mat-icon>contact_phone</mat-icon>
+                    <span>SOS: {{ item.ee.contactoEmergencia }}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer-action">
+              @if (item.checkin?.status !== 'dentro') {
+              <div class="health-meta-container">
+                <span class="status-badge-pending">A AGUARDAR</span>
+
+                <div class="mini-health-icons">
+                  @if (item.saude.temAlergiaAlimentar) {
+                  <div class="badge-alert-dot allergy"
+                    [matTooltip]="'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')">
+                    <mat-icon>no_meals</mat-icon>
+                  </div>
+                  }
+                  @if (item.saude.tomaMedicacao) {
+                  <div class="badge-alert-dot med"
+                    [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')">
+                    <mat-icon>vaccines</mat-icon>
+                  </div>
+                  }
+                  @if (item.observacoes) {
+                  <div class="badge-alert-dot obs" [matTooltip]="'Notas: ' + item.observacoes">
+                    <mat-icon>announcement</mat-icon>
+                  </div>
+                  }
+                </div>
+              </div>
+              }
+
+              @if (item.checkin?.status === 'dentro') {
+              <div class="active-checkin-details">
+                <div class="detail-chip duration">
+                  <mat-icon>schedule</mat-icon> {{ item.checkin?.dataEntrada | date: 'HH:mm' }}
+                </div>
+
+                <div class="detail-chip money" *ngIf="item.checkin?.dinheiroBolso">
+                  <mat-icon>savings</mat-icon> {{ item.checkin?.dinheiroBolso }}€
+                </div>
+
+                <div class="detail-chip notes-alert" *ngIf="item.checkin?.notasCheckin"
+                  [matTooltip]="item.checkin?.notasCheckin">
+                  <mat-icon>speaker_notes</mat-icon> Notas
+                </div>
+
+                <div class="detail-chip medical-alert" *ngIf="hasHealthInfo(item)"
+                  [matTooltip]="getHealthTooltip(item)">
+                  <mat-icon>medical_services</mat-icon> Ficha
+                </div>
+              </div>
+              }
+
+              <div class="action-trigger-area">
+                @if (item.checkin?.status === 'dentro') {
+                <button class="btn-action-tech exit-mode" (click)="registarSaida(item)" matRipple>
+                  SAÍDA <mat-icon>logout</mat-icon>
+                </button>
+                } @else {
+                <button class="btn-action-tech enter-mode" (click)="abrirCheckin(item)" matRipple>
+                  ENTRADA <mat-icon>login</mat-icon>
+                </button>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+      </main>
+
+      <div class="empty-state-tech" *ngIf="!loading && inscricoesFiltradas.length === 0">
+        <div class="tech-radar-scan">
+          <mat-icon>radar</mat-icon>
+        </div>
+        <p class="empty-title">Nenhum sinal detetado</p>
+        <p class="empty-subtitle">Sem participantes inscritos ou ativos.</p>
       </div>
-    }
+    </div>
+
   </div>
 </div>
 
 <ng-template #dialogEntrada>
-  <div class="popup-container">
-    <h3>Check-in</h3>
-    <p class="subtitle">{{ tempInscricao?.participante?.nomeCompleto }}</p>
+  <div class="dialog-tech-box">
+    <div class="dialog-banner">
+      <div class="user-pill-highlight">
+        <mat-icon>person</mat-icon>
+        <span>{{ tempInscricao?.participante?.nomeCompleto }}</span>
+      </div>
+      <h3>INICIAR SESSÃO / CHECK-IN</h3>
+    </div>
 
     @if (
-      tempInscricao?.saude?.temAlergiaAlimentar ||
-      tempInscricao?.saude?.tomaMedicacao ||
-      tempInscricao?.observacoes
+    tempInscricao?.saude?.temAlergiaAlimentar ||
+    tempInscricao?.saude?.tomaMedicacao ||
+    tempInscricao?.observacoes
     ) {
-      <div class="health-info-dialog">
+    <div class="medical-panel-box">
+      <div class="panel-header">
+        <mat-icon>health_and_safety</mat-icon> ALERTAS CRÍTICOS DO PARTICIPANTE
+      </div>
+      <div class="panel-rows">
         @if (tempInscricao?.saude?.temAlergiaAlimentar) {
-          <div class="health-row-dialog">
-            <mat-icon class="hi-icon allergy">warning</mat-icon>
-            <span>{{ tempInscricao?.saude?.detalheAlergiaAlimentar || 'Alergia alimentar' }}</span>
-          </div>
+        <div class="p-row-alert allergy">
+          <mat-icon>no_meals</mat-icon>
+          <span><strong>Cozinha:</strong> {{ tempInscricao?.saude?.detalheAlergiaAlimentar || 'Alergias registadas.'
+            }}</span>
+        </div>
         }
         @if (tempInscricao?.saude?.tomaMedicacao) {
-          <div class="health-row-dialog">
-            <mat-icon class="hi-icon med">medication</mat-icon>
-            <span>{{ tempInscricao?.saude?.detalheMedicacao || 'Toma medicação' }}</span>
-          </div>
+        <div class="p-row-alert med">
+          <mat-icon>vaccines</mat-icon>
+          <span><strong>Medicamentos:</strong> {{ tempInscricao?.saude?.detalheMedicacao || 'Necessita medicação.'
+            }}</span>
+        </div>
         }
         @if (tempInscricao?.observacoes) {
-          <div class="health-row-dialog">
-            <mat-icon class="hi-icon obs">notes</mat-icon>
-            <span>{{ tempInscricao?.observacoes }}</span>
-          </div>
+        <div class="p-row-alert obs">
+          <mat-icon>chat</mat-icon>
+          <span><strong>Observações:</strong> {{ tempInscricao?.observacoes }}</span>
+        </div>
         }
       </div>
+    </div>
     }
 
-    <div class="input-row">
-      <mat-icon>euro</mat-icon>
-      <input type="number" [(ngModel)]="tempDinheiro" placeholder="Dinheiro" />
+    <div class="hud-form-row">
+      <div class="hud-input-group">
+        <span class="hud-label">COFRE / DINHEIRO DE BOLSO</span>
+        <div class="hud-input-field">
+          <mat-icon>savings</mat-icon>
+          <input type="number" [(ngModel)]="tempDinheiro" placeholder="0.00" />
+          <span class="unit">EUR</span>
+        </div>
+      </div>
+
+      <div class="hud-input-group">
+        <span class="hud-label">NOTAS DE ENTRADA</span>
+        <div class="hud-input-field text-area">
+          <mat-icon>speaker_notes</mat-icon>
+          <textarea [(ngModel)]="tempNotas" rows="2" placeholder="Notas cruciais para este dia..."></textarea>
+        </div>
+      </div>
     </div>
 
-    <div class="input-row">
-      <mat-icon>edit_note</mat-icon>
-      <textarea [(ngModel)]="tempNotas" rows="2" placeholder="Notas ou recados..."></textarea>
-    </div>
-
-    <button class="btn-confirm" (click)="confirmarEntrada()" matRipple>CONFIRMAR ENTRADA</button>
+    <button class="btn-hud-confirm" (click)="confirmarEntrada()" matRipple>
+      CONFIRMAR ATIVAÇÃO <mat-icon>offline_bolt</mat-icon>
+    </button>
   </div>
 </ng-template>

@@ -36,13 +36,8 @@
         <mat-icon iconPositionEnd>arrow_drop_down</mat-icon>
       </button>
       <mat-menu #menuDados="matMenu">
-        <input
-          type="file"
-          #fileInput
-          (change)="importarExcel($event)"
-          accept=".xlsx, .xls, .csv"
-          style="display: none"
-        />
+        <input type="file" #fileInput (change)="importarExcel($event)" accept=".xlsx, .xls, .csv"
+          style="display: none" />
         <button mat-menu-item (click)="fileInput.click()">
           <mat-icon color="primary">upload_file</mat-icon> <span>Importar Inscrições</span>
         </button>
@@ -51,18 +46,14 @@
         </button>
       </mat-menu>
 
-      <button
-        mat-icon-button
-        [matMenuTriggerFor]="menuConfig"
-        matTooltip="Configurações do Sistema"
-      >
+      <button mat-icon-button [matMenuTriggerFor]="menuConfig" matTooltip="Configurações do Sistema">
         <mat-icon style="color: #666">settings</mat-icon>
       </button>
       <mat-menu #menuConfig="matMenu">
         <button mat-menu-item (click)="abrirConfigTurnos()">
           <mat-icon color="accent">tune</mat-icon> <span>Configurar Turnos</span>
         </button>
-        <button mat-menu-item (click)="gerar()">
+        <button mat-menu-item (click)="gerarAcessos()">
           <mat-icon color="accent">link</mat-icon> <span>Gerar Link Coordenação</span>
         </button>
       </mat-menu>
@@ -121,12 +112,8 @@
         </div>
 
         <div class="unified-controls mat-elevation-z2">
-          <mat-select
-            [(ngModel)]="filtroLocal"
-            (selectionChange)="atualizarListaDeTurnosPorLocal()"
-            class="minimal-select"
-            style="font-weight: 700; color: #2e7d32; flex: 0.6"
-          >
+          <mat-select [(ngModel)]="filtroLocal" (selectionChange)="atualizarListaDeTurnosPorLocal()"
+            class="minimal-select" style="font-weight: 700; color: #2e7d32; flex: 0.6">
             <mat-option value="quinta">Quinta da Escola</mat-option>
             <mat-option value="costaCaparica">Costa da Caparica</mat-option>
             <mat-option value="quiaios">Quiaios</mat-option>
@@ -136,32 +123,20 @@
 
           <div class="search-box">
             <mat-icon>search</mat-icon>
-            <input
-              [(ngModel)]="filtroTexto"
-              (keyup)="atualizarFiltros()"
-              placeholder="Nome, EE ou Empresa..."
-            />
+            <input [(ngModel)]="filtroTexto" (keyup)="atualizarFiltros()" placeholder="Nome, EE ou Empresa..." />
           </div>
 
           <div class="divider-vertical"></div>
 
-          <mat-select
-            [(ngModel)]="filtroTurno"
-            (selectionChange)="atualizarFiltros()"
-            placeholder="Turnos"
-            class="minimal-select"
-          >
+          <mat-select [(ngModel)]="filtroTurno" (selectionChange)="atualizarFiltros()" placeholder="Turnos"
+            class="minimal-select">
             <mat-option value="">Todos os Turnos</mat-option>
             <mat-option *ngFor="let t of listaTurnos" [value]="t">
               {{ t }}
             </mat-option>
           </mat-select>
 
-          <button
-            mat-icon-button
-            (click)="limparFiltros()"
-            *ngIf="filtroTexto || filtroTurno || filtroEstado"
-          >
+          <button mat-icon-button (click)="limparFiltros()" *ngIf="filtroTexto || filtroTurno || filtroEstado">
             <mat-icon>backspace</mat-icon>
           </button>
         </div>
@@ -178,11 +153,7 @@
               <span>{{ t.nome }}</span>
               <span>{{ t.count }}/{{ t.total }}</span>
             </div>
-            <mat-progress-bar
-              mode="determinate"
-              [value]="t.percent"
-              class="custom-progress"
-            ></mat-progress-bar>
+            <mat-progress-bar mode="determinate" [value]="t.percent" class="custom-progress"></mat-progress-bar>
           </div>
         </div>
       </div>
@@ -192,31 +163,21 @@
       <table mat-table [dataSource]="dataSource" matSort>
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef>
-            <mat-checkbox
-              (change)="$event ? masterToggle() : null"
-              [checked]="selection.hasValue() && isAllSelected()"
-              color="primary"
-            ></mat-checkbox>
+            <mat-checkbox (change)="$event ? masterToggle() : null" [checked]="selection.hasValue() && isAllSelected()"
+              color="primary"></mat-checkbox>
           </th>
           <td mat-cell *matCellDef="let row">
-            <mat-checkbox
-              (click)="$event.stopPropagation()"
-              (change)="$event ? selection.toggle(row) : null"
-              [checked]="selection.isSelected(row)"
-              color="primary"
-            ></mat-checkbox>
+            <mat-checkbox (click)="$event.stopPropagation()" (change)="$event ? selection.toggle(row) : null"
+              [checked]="selection.isSelected(row)" color="primary"></mat-checkbox>
           </td>
         </ng-container>
 
         <ng-container matColumnDef="estado">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>ESTADO</th>
           <td mat-cell *matCellDef="let row">
-            <span
-              class="status-pill"
-              [class.pago]="row.estado_pagamento === 'pago'"
+            <span class="status-pill" [class.pago]="row.estado_pagamento === 'pago'"
               [class.pendente]="row.estado_pagamento === 'pendente'"
-              (click)="togglePagamento(row); $event.stopPropagation()"
-            >
+              (click)="togglePagamento(row); $event.stopPropagation()">
               <span class="dot"></span> {{ row.estado_pagamento | uppercase }}
             </span>
           </td>
@@ -266,10 +227,7 @@
           <td mat-cell *matCellDef="let row">
             <div class="ee-cell">
               <span>{{ row.ee.telefone }}</span>
-              <button
-                class="icon-btn whatsapp"
-                (click)="abrirWhatsApp(row.ee.telefone); $event.stopPropagation()"
-              >
+              <button class="icon-btn whatsapp" (click)="abrirWhatsApp(row.ee.telefone); $event.stopPropagation()">
                 <mat-icon>chat</mat-icon>
               </button>
             </div>
@@ -286,30 +244,14 @@
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="colunasMostradas"></tr>
-        <tr
-          mat-row
-          *matRowDef="let row; columns: colunasMostradas"
-          class="hover-row"
-          (click)="abrirDetalhes(row)"
-        ></tr>
+        <tr mat-row *matRowDef="let row; columns: colunasMostradas" class="hover-row" (click)="abrirDetalhes(row)"></tr>
       </table>
       <mat-paginator [pageSizeOptions]="[10, 20, 50]" showFirstLastButtons></mat-paginator>
     </div>
   </div>
 </div>
-<app-inscricao-sidebar
-  [inscricao]="selectedInscricao"
-  [isOpen]="sidebarOpen"
-  [isEditing]="isEditing"
-  [isCreating]="isCreating"
-  [filtroLocal]="filtroLocal"
-  [listaTurnos]="listaTurnos"
-  [opcoesTransporte]="opcoesTransporte"
-  (fechado)="fecharDetalhes()"
-  (ativarEdicao)="ativarEdicao()"
-  (guardado)="guardarEdicao()"
-  (togglePagamento)="togglePagamento($event)"
-  (apagar)="apagarInscricao($event)"
-  (reenviarEmail)="reenviarEmail($event)"
-  (abrirWhatsApp)="abrirWhatsApp($event)"
-></app-inscricao-sidebar>
+<app-inscricao-sidebar [inscricao]="selectedInscricao" [isOpen]="sidebarOpen" [isEditing]="isEditing"
+  [isCreating]="isCreating" [filtroLocal]="filtroLocal" [listaTurnos]="listaTurnos"
+  [opcoesTransporte]="opcoesTransporte" (fechado)="fecharDetalhes()" (ativarEdicao)="ativarEdicao()"
+  (guardado)="guardarEdicao()" (togglePagamento)="togglePagamento($event)" (apagar)="apagarInscricao($event)"
+  (reenviarEmail)="reenviarEmail($event)" (abrirWhatsApp)="abrirWhatsApp($event)"></app-inscricao-sidebar>

@@ -34,8 +34,8 @@ import {
 import { ConfigTurnosComponent } from './config-turnos/config-turnos.component';
 import { DialogImportacaoComponent } from './dialog-importacao/dialog-importacao.component';
 import { DialogModoExcelComponent } from './dialog-modo-excel/dialog-modo-excel.component';
-import { DialogGerarAcessoComponent } from './gerar-acesso/gerar-acesso.component';
 import { InscricaoSidebarComponent } from './inscricao-sidebar/inscricao-sidebar.component';
+import { DialogGestaoAcessosComponent } from './gerar-acesso/dialog-gestao-acessos.component';
 
 @Component({
   selector: 'app-admin',
@@ -573,23 +573,13 @@ export class AdminComponent implements OnInit, AfterViewInit {
     });
   }
 
-  gerar() {
-    if (!this.filtroTurno) {
-      this.mostrarNotificacao('Por favor, selecione um turno primeiro.', 'error');
-      return;
-    }
-    let nomeFinal = '';
-    if (this.todosOsTurnosConfig?.[this.filtroLocal]) {
-      const turnoObj = this.todosOsTurnosConfig[this.filtroLocal].find(
-        (t: any) => t.nome === this.filtroTurno,
-      );
-      if (turnoObj?.coordenadores?.length) {
-        nomeFinal = turnoObj.coordenadores.filter((c: string) => c?.trim()).join(' & ');
-      }
-    }
-    this.dialog.open(DialogGerarAcessoComponent, {
-      width: '500px',
-      data: { local: this.filtroLocal, turno: this.filtroTurno, nomePredefinido: nomeFinal },
+  gerarAcessos() {
+    this.dialog.open(DialogGestaoAcessosComponent, {
+      width: '650px',
+      panelClass: 'custom-dialog-container',
+      data: {
+        configTurnos: this.todosOsTurnosConfig
+      },
     });
   }
 

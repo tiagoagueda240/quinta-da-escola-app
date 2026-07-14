@@ -76,7 +76,7 @@ export class InscricaoService {
   }
 
   async updateInscricaoBatch(
-    updates: { id: string | number; checkin?: any; [key: string]: any }[],
+    updates: { id: string | number; checkin?: any;[key: string]: any }[],
   ) {
     return await lastValueFrom(this.http.post(`${this.apiUrl}?acao=batch_update`, updates));
   }
@@ -98,6 +98,7 @@ export class InscricaoService {
   //     GERAR ACESSOS E LOGÍSTICA
   // ==========================================================
 
+  // 1. CRIAR
   async gerarLinkCoordenador(payload: any) {
     const url = this.apiUrl.replace('inscricoes.php', 'gerar_acesso.php');
     return await lastValueFrom(this.http.post<any>(url, payload));
@@ -135,6 +136,30 @@ export class InscricaoService {
         updates,
         { headers },
       ),
+    );
+  }
+
+
+
+  // 2. LISTAR
+  listarAcessos(local: string, turno: string): Observable<any[]> {
+    let url = `https://turnos.quintadaescola.com/api/gerar_acesso.php?acao=listar`;
+    if (local) url += `&local=${local}`;
+    if (turno) url += `&turno=${turno}`;
+    return this.http.get<any[]>(url);
+  }
+
+  // 3. APAGAR
+  async apagarAcesso(id: number): Promise<any> {
+    return await lastValueFrom(
+      this.http.post(`https://turnos.quintadaescola.com/api/gerar_acesso.php?acao=apagar`, { id })
+    );
+  }
+
+  // 4. EDITAR
+  async editarAcesso(dados: any): Promise<any> {
+    return await lastValueFrom(
+      this.http.post(`https://turnos.quintadaescola.com/api/gerar_acesso.php?acao=editar`, dados)
     );
   }
 }

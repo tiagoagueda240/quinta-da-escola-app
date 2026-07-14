@@ -1,0 +1,224 @@
+<div class="score-dashboard premium-light-theme">
+    <div class="global-loader-overlay" *ngIf="loading">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <p>A atualizar classificações...</p>
+        </div>
+    </div>
+
+    <header class="dashboard-header mat-elevation-z1">
+        <div class="header-left">
+            <div class="icon-badge">
+                <mat-icon>emoji_events</mat-icon>
+            </div>
+            <div class="header-title-group">
+                <h2>Painel de Pontuações</h2>
+                <p class="subtitle-route">{{ filtroLocal | titlecase }} &bull; {{ turnoSelecionado }}</p>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button mat-stroked-button class="btn-back" (click)="voltarAoCheckin()">
+                <mat-icon>arrow_back</mat-icon> Voltar
+            </button>
+            <button mat-flat-button class="btn-add" (click)="adicionarJogo()">
+                <mat-icon>add</mat-icon> Atividade
+            </button>
+            <button mat-flat-button class="btn-export" (click)="exportarPdfBonito()">
+                <mat-icon>picture_as_pdf</mat-icon> Poster (PDF)
+            </button>
+            <button mat-flat-button class="btn-excel" (click)="exportarParaExcel()">
+                <mat-icon>table_view</mat-icon> Excel
+            </button>
+            <button mat-flat-button class="btn-word" (click)="exportarParaWord()">
+                <mat-icon>description</mat-icon> Word
+            </button>
+        </div>
+    </header>
+
+    <div class="dashboard-layout">
+        <aside class="settings-sidebar">
+            <div class="sidebar-header">
+                <mat-icon>tune</mat-icon>
+                <h3>Personalização</h3>
+            </div>
+            <hr class="sidebar-divider">
+
+            <div class="control-group">
+                <label class="control-label">Subtítulo do Poster</label>
+                <div class="input-wrapper">
+                    <mat-icon class="input-icon">title</mat-icon>
+                    <input type="text" [(ngModel)]="subtituloCustomizado" (change)="calcularTotaisESalvar()"
+                        class="sidebar-input" placeholder="Escreva o cabeçalho..." />
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Paleta de Cores</label>
+                <div class="select-wrapper">
+                    <select [(ngModel)]="configEstilo.tema" (change)="calcularTotaisESalvar()" class="sidebar-select">
+                        <option value="ouro">🏆 Ouro de Turno</option>
+                        <option value="esmeralda">🌲 Verde Floresta</option>
+                        <option value="oceano">🌊 Azul Náutico</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Moldura do Poster</label>
+                <div class="select-wrapper">
+                    <select [(ngModel)]="configEstilo.estiloMoldura" (change)="calcularTotaisESalvar()"
+                        class="sidebar-select">
+                        <option value="dupla">Dupla Clássica</option>
+                        <option value="bold">Linha Grossa</option>
+                        <option value="simples">Fina Discreta</option>
+                        <option value="none">❌ Sem Moldura</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Tamanho do Texto</label>
+                <div class="select-wrapper">
+                    <select [(ngModel)]="configEstilo.tamanhoFonte" (change)="calcularTotaisESalvar()"
+                        class="sidebar-select">
+                        <option [ngValue]="11">Muito Pequeno (11px)</option>
+                        <option [ngValue]="13">Pequeno (13px)</option>
+                        <option [ngValue]="15">Normal (15px)</option>
+                        <option [ngValue]="17">Grande (17px)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Densidade de Células</label>
+                <div class="select-wrapper">
+                    <select [(ngModel)]="configEstilo.espacamento" (change)="calcularTotaisESalvar()"
+                        class="sidebar-select">
+                        <option value="compact">Compacto</option>
+                        <option value="cozy">Confortável</option>
+                        <option value="spacious">Espaçoso (Poster)</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <div class="toggle-group">
+                <label class="switch">
+                    <input type="checkbox" id="showZebra" [(ngModel)]="configEstilo.linhasAlternadas"
+                        (change)="calcularTotaisESalvar()" />
+                    <span class="slider round"></span>
+                </label>
+                <label for="showZebra" class="toggle-label">Zebra (Alternado)</label>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <div class="toggle-group">
+                <label class="switch">
+                    <input type="checkbox" id="showBonus" [(ngModel)]="configEstilo.mostrarBonus"
+                        (change)="calcularTotaisESalvar()" />
+                    <span class="slider round"></span>
+                </label>
+                <label for="showBonus" class="toggle-label">Mostrar Bónus</label>
+            </div>
+
+            <div class="toggle-group">
+                <label class="switch">
+                    <input type="checkbox" id="showPenalty" [(ngModel)]="configEstilo.mostrarPenalizacoes"
+                        (change)="calcularTotaisESalvar()" />
+                    <span class="slider round"></span>
+                </label>
+                <label for="showPenalty" class="toggle-label">Mostrar Penalizações</label>
+            </div>
+        </aside>
+
+        <main class="canvas-container">
+            <div class="poster-preview-card" [class]="configEstilo.tema"
+                [class.table-zebra]="configEstilo.linhasAlternadas"
+                [attr.data-border-style]="configEstilo.estiloMoldura" [attr.data-size]="configEstilo.espacamento"
+                [style.--user-font-size.px]="configEstilo.tamanhoFonte">
+
+                <div class="poster-decorations" *ngIf="configEstilo.estiloMoldura !== 'none'">
+                    <span class="corner-box top-left"></span>
+                    <span class="corner-box top-right"></span>
+                    <span class="corner-box bottom-left"></span>
+                    <span class="corner-box bottom-right"></span>
+                </div>
+
+                <div class="poster-header">
+                    <h1 class="poster-title">PONTUAÇÕES</h1>
+                    <p class="poster-subtitle">{{ subtituloCustomizado }}</p>
+                </div>
+
+                <div class="modern-table-container">
+                    <table class="modern-score-table">
+                        <thead>
+                            <tr>
+                                <th class="col-grupo">Grupo</th>
+                                <th *ngFor="let jogo of listaJogos; let idx = index" class="col-game">
+                                    <div class="game-header-item">
+                                        <span class="game-name" [title]="jogo">{{ jogo }}</span>
+                                        <button class="btn-remove-game" (click)="removerJogo(idx)" title="Remover Jogo">
+                                            <mat-icon>close</mat-icon>
+                                        </button>
+                                    </div>
+                                </th>
+                                <th *ngIf="configEstilo.mostrarBonus" class="col-bonus">Bónus</th>
+                                <th *ngIf="configEstilo.mostrarPenalizacoes" class="col-penalty">Penalizações</th>
+                                <th class="col-total">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let grupo of listaColunasGrupos; let idx = index" [class.rank-1]="idx === 0"
+                                [class.rank-2]="idx === 1" [class.rank-3]="idx === 2" class="table-row">
+
+                                <td class="col-grupo">
+                                    <div class="group-cell-wrapper">
+                                        <div class="podium-badge" *ngIf="idx < 3" [class]="'place-' + (idx + 1)">
+                                            {{ idx + 1 }}
+                                        </div>
+                                        <div class="group-identity">
+                                            <span class="group-name">{{ grupo.titulo }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td *ngFor="let jogo of listaJogos" class="col-game">
+                                    <input type="number" [(ngModel)]="grupo.pontos[jogo]"
+                                        (change)="calcularTotaisESalvar()" class="table-input" min="0" />
+                                </td>
+
+                                <td *ngIf="configEstilo.mostrarBonus" class="col-bonus">
+                                    <input type="number" [(ngModel)]="grupo.bonus" (change)="calcularTotaisESalvar()"
+                                        class="table-input bonus-input" />
+                                </td>
+
+                                <td *ngIf="configEstilo.mostrarPenalizacoes" class="col-penalty">
+                                    <input type="number" [(ngModel)]="grupo.penalizacoes"
+                                        (change)="calcularTotaisESalvar()" class="table-input penalty-input" />
+                                </td>
+
+                                <td class="col-total">
+                                    <div class="total-pill-wrapper">
+                                        <span class="total-pill" [class.leader]="idx === 0">{{ grupo.total || 0
+                                            }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr *ngIf="listaColunasGrupos.length === 0">
+                                <td [attr.colspan]="listaJogos.length + 2 + (configEstilo.mostrarBonus ? 1 : 0) + (configEstilo.mostrarPenalizacoes ? 1 : 0)"
+                                    class="empty-state-cell">
+                                    <mat-icon class="empty-icon">leaderboard</mat-icon>
+                                    <p>Nenhum grupo ativo detetado no turno.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>

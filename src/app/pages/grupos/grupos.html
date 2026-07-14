@@ -1,4 +1,11 @@
-<div class="grupos-layout">
+<div class="grupos-layout premium-light-theme">
+  <div class="global-loader-overlay" *ngIf="loading">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <p>A carregar dados do turno...</p>
+    </div>
+  </div>
+
   <header class="control-header mat-elevation-z2">
     <div class="header-left">
       <h2><mat-icon>dashboard</mat-icon> Logística do Turno</h2>
@@ -24,8 +31,7 @@
       </ng-container>
 
       <ng-container *ngIf="modoLink && turnoSelecionado">
-        <div
-          style="
+        <div style="
             display: flex;
             gap: 15px;
             align-items: center;
@@ -35,8 +41,7 @@
             padding: 10px 20px;
             border-radius: 8px;
             font-weight: 500;
-          "
-        >
+          ">
           <span>📍 {{ filtroLocal | titlecase }}</span>
           <span style="color: #ccc">|</span>
           <span>🗓️ {{ turnoSelecionado }}</span>
@@ -50,6 +55,10 @@
     </div>
 
     <div class="header-right">
+      <button mat-stroked-button color="accent" [disabled]="!turnoSelecionado" (click)="irParaPontuacoes()">
+        <mat-icon>emoji_events</mat-icon> Pontuações
+      </button>
+
       <button mat-stroked-button color="primary" (click)="irParaCheckin()">
         <mat-icon>how_to_reg</mat-icon> Check-in
       </button>
@@ -57,20 +66,22 @@
       <button mat-stroked-button [disabled]="!turnoSelecionado" (click)="abrirDialogEquipa()">
         <mat-icon>group_add</mat-icon> Equipa ({{ equipaMonitores.length }})
       </button>
-      <button
-        mat-raised-button
-        color="primary"
-        [disabled]="!turnoSelecionado"
-        (click)="guardarAlteracoes()"
-      >
+      <button mat-raised-button style="background-color: #15803d; color: white;" [disabled]="!turnoSelecionado"
+        (click)="exportarPdfDistribuicao()">
+        <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
+      </button>
+      <button mat-raised-button color="primary" [disabled]="!turnoSelecionado" (click)="guardarAlteracoes()">
         <mat-icon>save</mat-icon> Guardar Tudo
       </button>
     </div>
   </header>
 
   <div class="empty-state" *ngIf="!turnoSelecionado">
-    <mat-icon>event_available</mat-icon>
-    <h3>Selecione um turno para começar a organização</h3>
+    <div class="empty-state-content">
+      <mat-icon>event_available</mat-icon>
+      <h3>Comece a Organização</h3>
+      <p>Selecione um local e um turno no menu superior para carregar a logística das camaratas e atividades.</p>
+    </div>
   </div>
 
   <div class="workspace" *ngIf="turnoSelecionado">
@@ -84,19 +95,15 @@
             </button>
           </div>
 
-          <div
-            class="step-group"
-            *ngIf="colunasCamaratas.length === 0 && layoutAtualBD.length === 0"
-          >
+          <div class="step-group" *ngIf="colunasCamaratas.length === 0 && layoutAtualBD.length === 0">
             <span class="step-label">Estrutura Inicial</span>
             <div class="input-row">
-              <mat-form-field appearance="outline" class="tiny-input" subscriptSizing="dynamic"
-                ><mat-label>Masc.</mat-label
-                ><input matInput type="number" [(ngModel)]="qtdQuartosM"
-              /></mat-form-field>
-              <mat-form-field appearance="outline" class="tiny-input" subscriptSizing="dynamic"
-                ><mat-label>Fem.</mat-label><input matInput type="number" [(ngModel)]="qtdQuartosF"
-              /></mat-form-field>
+              <mat-form-field appearance="outline" class="tiny-input"
+                subscriptSizing="dynamic"><mat-label>Masc.</mat-label><input matInput type="number"
+                  [(ngModel)]="qtdQuartosM" /></mat-form-field>
+              <mat-form-field appearance="outline" class="tiny-input"
+                subscriptSizing="dynamic"><mat-label>Fem.</mat-label><input matInput type="number"
+                  [(ngModel)]="qtdQuartosF" /></mat-form-field>
               <button mat-stroked-button (click)="inicializarQuartos()">Criar</button>
             </div>
           </div>
@@ -110,24 +117,14 @@
                 + Rapariga
               </button>
 
-              <button
-                mat-stroked-button
-                color="accent"
-                *ngIf="layoutAtualBD.length > 0"
-                (click)="trocarLados()"
-              >
+              <button mat-stroked-button color="accent" *ngIf="layoutAtualBD.length > 0" (click)="trocarLados()">
                 <mat-icon>swap_horiz</mat-icon> Trocar Lados
               </button>
             </div>
           </div>
 
           <div class="divider-vertical" *ngIf="colunasCamaratas.length > 0"></div>
-          <button
-            mat-flat-button
-            color="accent"
-            *ngIf="colunasCamaratas.length > 0"
-            (click)="distribuirNasCamaratas()"
-          >
+          <button mat-flat-button color="accent" *ngIf="colunasCamaratas.length > 0" (click)="distribuirNasCamaratas()">
             Auto-Distribuir
           </button>
         </div>
@@ -138,10 +135,9 @@
           <div class="step-group" *ngIf="colunasAtividades.length === 0">
             <span class="step-label">Grupos Iniciais</span>
             <div class="input-row">
-              <mat-form-field appearance="outline" class="tiny-input" subscriptSizing="dynamic"
-                ><mat-label>Qtd.</mat-label
-                ><input matInput type="number" [(ngModel)]="qtdGruposAtiv"
-              /></mat-form-field>
+              <mat-form-field appearance="outline" class="tiny-input"
+                subscriptSizing="dynamic"><mat-label>Qtd.</mat-label><input matInput type="number"
+                  [(ngModel)]="qtdGruposAtiv" /></mat-form-field>
               <button mat-flat-button color="accent" (click)="gerarGruposAtividade()">
                 Gerar Grupos
               </button>
@@ -155,12 +151,8 @@
           </div>
 
           <div class="divider-vertical" *ngIf="colunasAtividades.length > 0"></div>
-          <button
-            mat-flat-button
-            color="accent"
-            *ngIf="colunasAtividades.length > 0"
-            (click)="distribuirNasAtividades()"
-          >
+          <button mat-flat-button color="accent" *ngIf="colunasAtividades.length > 0"
+            (click)="distribuirNasAtividades()">
             Auto-Distribuir
           </button>
         </div>
@@ -173,56 +165,26 @@
           <span>Por Atribuir</span>
           <span class="badge">{{ poolVisual.length }}</span>
         </div>
-        <div
-          class="dock-list"
-          cdkDropList
-          [cdkDropListData]="poolVisual"
-          (cdkDropListDropped)="drop($event)"
-        >
-          <div
-            class="student-chip"
-            *ngFor="let item of poolVisual"
-            cdkDrag
-            [class.highlight]="
+        <div class="dock-list" cdkDropList [cdkDropListData]="poolVisual" (cdkDropListDropped)="drop($event)">
+          <div class="student-chip" *ngFor="let item of poolVisual" cdkDrag [class.highlight]="
               item.participante.nomeCompleto.toLowerCase().includes(termoPesquisa.toLowerCase()) &&
               termoPesquisa
-            "
-          >
-            <div
-              class="avatar"
-              [class.boy]="getGenero(item) === 'M'"
-              [class.girl]="getGenero(item) === 'F'"
-            >
+            ">
+            <div class="avatar" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'">
               {{ item.participante.nomeCompleto.charAt(0) }}
             </div>
             <div class="info">
               <span class="name">{{ item.participante.nomeCompleto }}</span>
               <div class="badges">
                 <span class="age">{{ getIdade(item) }}a</span>
-                <mat-icon
-                  *ngIf="item.saude.temAlergiaAlimentar"
-                  class="alert-icon"
-                  [matTooltip]="'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')"
-                  >warning</mat-icon
-                >
-                <mat-icon
-                  *ngIf="item.saude.tomaMedicacao"
-                  class="med-icon"
-                  [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')"
-                  >medication</mat-icon
-                >
-                <mat-icon
-                  *ngIf="item.observacoes"
-                  class="obs-icon"
-                  [matTooltip]="'Obs: ' + item.observacoes"
-                  >notes</mat-icon
-                >
-                <mat-icon
-                  *ngIf="item.autorizaFotoVideo === false"
-                  class="nofoto-icon"
-                  matTooltip="Não autoriza foto/vídeo"
-                  >no_photography</mat-icon
-                >
+                <mat-icon *ngIf="item.saude.temAlergiaAlimentar" class="alert-icon"
+                  [matTooltip]="'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')">warning</mat-icon>
+                <mat-icon *ngIf="item.saude.tomaMedicacao" class="med-icon"
+                  [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')">medication</mat-icon>
+                <mat-icon *ngIf="item.observacoes" class="obs-icon"
+                  [matTooltip]="'Obs: ' + item.observacoes">notes</mat-icon>
+                <mat-icon *ngIf="item.autorizaFotoVideo === false" class="nofoto-icon"
+                  matTooltip="Não autoriza foto/vídeo">no_photography</mat-icon>
               </div>
             </div>
           </div>
@@ -231,42 +193,25 @@
       </div>
 
       <div class="columns-area">
-        <div
-          class="group-column"
-          *ngFor="let col of colunasAtivas"
-          [class.is-male]="col.genero === 'M'"
-          [class.is-female]="col.genero === 'F'"
-          [class.is-mixed]="col.genero === 'Misto'"
-        >
+        <div class="group-column" *ngFor="let col of colunasAtivas" [class.is-male]="col.genero === 'M'"
+          [class.is-female]="col.genero === 'F'" [class.is-mixed]="col.genero === 'Misto'">
           <div class="col-header">
             <div class="header-top">
               <input [(ngModel)]="col.titulo" class="title-input" />
               <div style="display: flex; gap: 5px">
-                <button
-                  class="icon-action-btn"
-                  (click)="imprimirFichaMonitor(col.monitor)"
-                  matTooltip="Imprimir"
-                >
+                <button class="icon-action-btn" (click)="imprimirFichaMonitor(col.monitor)" matTooltip="Imprimir">
                   <mat-icon>print</mat-icon>
                 </button>
-                <button
-                  class="icon-action-btn warn"
-                  (click)="removerColuna(col)"
-                  matTooltip="Apagar"
-                >
+                <button class="icon-action-btn warn" (click)="removerColuna(col)" matTooltip="Apagar">
                   <mat-icon>delete_outline</mat-icon>
                 </button>
               </div>
             </div>
 
-            <div
-              style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 5px; cursor: pointer"
-              [matMenuTriggerFor]="menuGenero"
-            >
+            <div style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 5px; cursor: pointer"
+              [matMenuTriggerFor]="menuGenero">
               {{ col.genero === 'M' ? 'Rapazes' : col.genero === 'F' ? 'Raparigas' : 'Misto' }}
-              <mat-icon style="font-size: 12px; height: 12px; width: 12px"
-                >arrow_drop_down</mat-icon
-              >
+              <mat-icon style="font-size: 12px; height: 12px; width: 12px">arrow_drop_down</mat-icon>
             </div>
             <mat-menu #menuGenero="matMenu">
               <button mat-menu-item (click)="col.genero = 'M'">Rapazes</button>
@@ -277,12 +222,8 @@
             <div class="col-meta">
               <mat-select [(ngModel)]="col.monitor" placeholder="Monitor" class="monitor-select">
                 <mat-option [value]="''">- Sem Monitor -</mat-option>
-                <mat-option
-                  *ngFor="let m of equipaMonitores"
-                  [value]="m"
-                  [disabled]="!isMonitorDisponivel(m, col)"
-                  >{{ m }}</mat-option
-                >
+                <mat-option *ngFor="let m of equipaMonitores" [value]="m" [disabled]="!isMonitorDisponivel(m, col)">{{ m
+                  }}</mat-option>
               </mat-select>
 
               <div class="cap-control">
@@ -293,70 +234,37 @@
             </div>
 
             <div class="capacity-bar">
-              <div
-                class="fill"
-                [style.width.%]="(col.lista.length / col.capacidade) * 100"
-                [class.full]="col.lista.length >= col.capacidade"
-              ></div>
+              <div class="fill" [style.width.%]="(col.lista.length / col.capacidade) * 100"
+                [class.full]="col.lista.length >= col.capacidade"></div>
             </div>
             <div class="count-text">{{ col.lista.length }} / {{ col.capacidade }}</div>
           </div>
 
-          <div
-            class="col-list"
-            cdkDropList
-            [cdkDropListData]="col.lista"
-            (cdkDropListDropped)="drop($event)"
-          >
-            <div
-              class="student-card"
-              *ngFor="let item of col.lista"
-              cdkDrag
-              [class.highlight]="
+          <div class="col-list" cdkDropList [cdkDropListData]="col.lista" (cdkDropListDropped)="drop($event)">
+            <div class="student-card" *ngFor="let item of col.lista" cdkDrag [class.highlight]="
                 item.participante.nomeCompleto
                   .toLowerCase()
                   .includes(termoPesquisa.toLowerCase()) && termoPesquisa
-              "
-            >
+              ">
               <div class="card-row">
                 <span class="s-name">{{ item.participante.nomeCompleto }}</span>
                 <div class="icons-row">
-                  <mat-icon
-                    *ngIf="item.saude.temAlergiaAlimentar"
-                    class="alert-icon tiny"
-                    [matTooltip]="
+                  <mat-icon *ngIf="item.saude.temAlergiaAlimentar" class="alert-icon tiny" [matTooltip]="
                       'Intolerâncias: ' + (item.saude.detalheAlergiaAlimentar || 'sim')
-                    "
-                    >warning</mat-icon
-                  >
-                  <mat-icon
-                    *ngIf="item.saude.tomaMedicacao"
-                    class="med-icon tiny"
-                    [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')"
-                    >medication</mat-icon
-                  >
-                  <mat-icon
-                    *ngIf="item.observacoes"
-                    class="obs-icon tiny"
-                    [matTooltip]="'Obs: ' + item.observacoes"
-                    >notes</mat-icon
-                  >
-                  <mat-icon
-                    *ngIf="item.autorizaFotoVideo === false"
-                    class="nofoto-icon tiny"
-                    matTooltip="Não autoriza foto/vídeo"
-                    >no_photography</mat-icon
-                  >
+                    ">warning</mat-icon>
+                  <mat-icon *ngIf="item.saude.tomaMedicacao" class="med-icon tiny"
+                    [matTooltip]="'Medicação: ' + (item.saude.detalheMedicacao || 'sim')">medication</mat-icon>
+                  <mat-icon *ngIf="item.observacoes" class="obs-icon tiny"
+                    [matTooltip]="'Obs: ' + item.observacoes">notes</mat-icon>
+                  <mat-icon *ngIf="item.autorizaFotoVideo === false" class="nofoto-icon tiny"
+                    matTooltip="Não autoriza foto/vídeo">no_photography</mat-icon>
                 </div>
               </div>
               <div class="card-row" style="margin-top: 4px">
                 <span class="s-age">{{ getIdade(item) }} anos</span>
               </div>
-              <div
-                class="gender-stripe"
-                [class.boy]="getGenero(item) === 'M'"
-                [class.girl]="getGenero(item) === 'F'"
-              ></div>
+              <div class="gender-stripe" [class.boy]="getGenero(item) === 'M'" [class.girl]="getGenero(item) === 'F'">
+              </div>
             </div>
           </div>
         </div>
@@ -378,44 +286,28 @@
       </div>
 
       <div class="legenda">
-        <span
-          class="dot"
-          [class.male]="getGeneroPorLado('Esq') === 'M'"
-          [class.female]="getGeneroPorLado('Esq') === 'F'"
-        ></span>
+        <span class="dot" [class.male]="getGeneroPorLado('Esq') === 'M'"
+          [class.female]="getGeneroPorLado('Esq') === 'F'"></span>
         Ala Esquerda
-        <span
-          class="dot"
-          [class.male]="getGeneroPorLado('Dir') === 'M'"
-          [class.female]="getGeneroPorLado('Dir') === 'F'"
-        ></span>
+        <span class="dot" [class.male]="getGeneroPorLado('Dir') === 'M'"
+          [class.female]="getGeneroPorLado('Dir') === 'F'"></span>
         Ala Direita
       </div>
     </div>
 
-    <div class="planta-grid">
+    <div class="planta-grid" [style.grid-template-columns]="'repeat(' + maxGridCols + ', 1fr)'">
       <ng-container *ngFor="let item of layoutAtualBD">
-        <div
-          *ngIf="item.tipo === 'room'"
-          class="room"
-          [ngStyle]="getGridStyle(item)"
-          [class.selected]="isRoomSelected(item.titulo)"
-          [class.is-male]="getRoomDisplayGender(item) === 'M'"
-          [class.is-female]="getRoomDisplayGender(item) === 'F'"
-          (click)="toggleRoom(item.titulo)"
-        >
+        <div *ngIf="item.tipo === 'room'" class="room" [ngStyle]="getGridStyle(item)"
+          [class.selected]="isRoomSelected(item.titulo)" [class.is-male]="getRoomDisplayGender(item) === 'M'"
+          [class.is-female]="getRoomDisplayGender(item) === 'F'" (click)="toggleRoom(item.titulo)">
           <span class="name">{{ item.titulo }}</span>
           <span class="cap">{{ item.capacidade }}</span>
           <mat-icon *ngIf="isRoomSelected(item.titulo)">check_circle</mat-icon>
         </div>
 
-        <div
-          *ngIf="item.tipo === 'static'"
-          class="static"
-          [ngStyle]="getGridStyle(item)"
+        <div *ngIf="item.tipo === 'static'" class="static" [ngStyle]="getGridStyle(item)"
           [class.recepcao]="item.cssClass && item.cssClass.includes('recepcao')"
-          [class.wc]="item.cssClass && item.cssClass.includes('wc')"
-        >
+          [class.wc]="item.cssClass && item.cssClass.includes('wc')">
           <mat-icon *ngIf="item.icon">{{ item.icon }}</mat-icon> {{ item.titulo }}
         </div>
       </ng-container>
@@ -428,12 +320,7 @@
         <small>Total Selecionado:</small>
         <strong>{{ capacidadeSelecionadaTotal }} camas</strong>
       </div>
-      <button
-        mat-flat-button
-        color="primary"
-        class="btn-confirmar"
-        (click)="confirmarSelecaoQuartos()"
-      >
+      <button mat-flat-button color="primary" class="btn-confirmar" (click)="confirmarSelecaoQuartos()">
         Confirmar Configuração
       </button>
     </div>
@@ -441,40 +328,32 @@
 </ng-template>
 
 <ng-template #dialogGerirEquipa>
-  <div
-    style="
+  <div style="
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 15px 15px 0 15px;
-    "
-  >
+    ">
     <h2 mat-dialog-title style="margin: 0">👥 Equipa do Turno</h2>
     <button mat-mini-fab color="primary" *ngIf="!exibirBusca" (click)="exibirBusca = true">
       <mat-icon>person_add</mat-icon>
     </button>
   </div>
   <mat-dialog-content>
-    <div
-      *ngIf="exibirBusca"
-      style="
+    <div *ngIf="exibirBusca" style="
         margin-top: 15px;
         border: 1px solid #eee;
         padding: 10px;
         border-radius: 8px;
         background: #fafafa;
-      "
-    >
+      ">
       <mat-form-field appearance="outline" style="width: 100%">
         <mat-label>Pesquisar Monitor...</mat-label>
         <input type="text" matInput [formControl]="controlMonitor" [matAutocomplete]="auto" />
-        <mat-autocomplete
-          #auto="matAutocomplete"
-          (optionSelected)="adicionarMonitorAEquipa($event.option.value)"
-        >
+        <mat-autocomplete #auto="matAutocomplete" (optionSelected)="adicionarMonitorAEquipa($event.option.value)">
           <mat-option *ngFor="let m of monitoresFiltrados | async" [value]="m">{{
             m.nomeMonitor
-          }}</mat-option>
+            }}</mat-option>
         </mat-autocomplete>
       </mat-form-field>
       <button mat-button color="warn" (click)="exibirBusca = false" style="width: 100%">
@@ -487,15 +366,11 @@
           {{ m }} <button matChipRemove><mat-icon>cancel</mat-icon></button>
         </mat-chip-row>
       </mat-chip-set>
-      <div
-        *ngIf="equipaMonitores.length === 0"
-        style="color: #999; text-align: center; padding: 20px"
-      >
+      <div *ngIf="equipaMonitores.length === 0" style="color: #999; text-align: center; padding: 20px">
         Nenhum monitor.
       </div>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions align="end"
-    ><button mat-button mat-dialog-close color="primary">Fechar</button></mat-dialog-actions
-  >
+  <mat-dialog-actions align="end"><button mat-button mat-dialog-close
+      color="primary">Fechar</button></mat-dialog-actions>
 </ng-template>

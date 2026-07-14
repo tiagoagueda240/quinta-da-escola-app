@@ -77,6 +77,8 @@ export class GruposComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
+  loading: boolean = false;
+
   @ViewChild('dialogGerirEquipa') dialogGerirEquipa!: TemplateRef<any>;
   @ViewChild('dialogSelecaoQuartos') dialogSelecaoQuartos!: TemplateRef<any>;
 
@@ -230,10 +232,10 @@ export class GruposComponent implements OnInit {
   }
 
   async mudarTurno() {
+    this.loading = true; // <-- Liga o loader
     this.vincularMonitoresAoTurno();
 
     try {
-      // DECIDE QUAL ENDPOINT USAR BASEADO NO ACESSO
       if (this.modoLink) {
         this.layoutAtualBD = await this.logisticaService.getLayoutTemplateComToken(this.filtroLocal, this.token!, this.pinSessao);
       } else {
@@ -274,7 +276,9 @@ export class GruposComponent implements OnInit {
       console.error('Erro ao carregar logística', e);
       this.snackBar.open('Erro ao carregar estrutura do turno', 'Fechar');
     }
+
     this.atualizarVista();
+    this.loading = false; // <-- Desliga o loader
   }
 
   getLadoPeloNome(nome: string): 'Esq' | 'Dir' | undefined {
@@ -516,6 +520,7 @@ export class GruposComponent implements OnInit {
   }
 
   async guardarAlteracoes() {
+    this.loading = true;
     this.snackBar.open('A guardar...', '');
 
     const itensLogistica = [...this.colunasCamaratas, ...this.colunasAtividades].map((c) => ({
@@ -601,6 +606,7 @@ export class GruposComponent implements OnInit {
       console.error(e);
       this.snackBar.open('Erro ao gravar.', 'Fechar');
     }
+    this.loading = false;
   }
 
   drop(event: CdkDragDrop<Inscricao[]>) {
@@ -826,9 +832,18 @@ export class GruposComponent implements OnInit {
   }
 
   getIdade(i: Inscricao): number {
-    if (!i.participante.dataNascimento) return 0;
+    if (!i.participante || !i.participante.dataNascimento) return 0;
+
     const born = new Date(i.participante.dataNascimento);
-    return Math.floor((Date.now() - born.getTime()) / 31557600000);
+    // Verifica se a data é inválida
+    if (isNaN(born.getTime())) {
+      return 0;
+    }
+
+    const diffMs = Date.now() - born.getTime();
+    const idade = Math.floor(diffMs / 31557600000);
+
+    return idade >= 0 ? idade : 0;
   }
 
   get colunasAtivas(): ColunaGrupo[] {
@@ -888,5 +903,221 @@ export class GruposComponent implements OnInit {
   // --- NAVEGAÇÃO DE VOLTA PARA O CHECKIN ---
   irParaCheckin() {
     this.router.navigate(['/checkin'], { queryParams: this.modoLink ? { token: this.token } : {} });
+  }
+
+  get maxGridCols(): number {
+    if (!this.layoutAtualBD || this.layoutAtualBD.length === 0) return 16;
+    // Procura o elemento que vai mais longe na grelha (gCol + gSpan)
+    return Math.max(...this.layoutAtualBD.map(item => item.gCol + (item.gSpan || 1) - 1), 16);
+  }
+
+  irParaPontuacoes() {
+    // Guarda os estados selecionados pelo coordenador para serem lidos no Leaderboard
+    sessionStorage.setItem('filtroLocal', this.filtroLocal);
+    sessionStorage.setItem('turnoSelecionado', this.turnoSelecionado);
+
+    this.router.navigate(['/pontuacoes']);
+  }
+
+  // Dentro da classe GruposComponent em grupos.component.ts
+
+  exportarPdfDistribuicao() {
+    if (!this.turnoSelecionado) return;
+
+    // 1. FILTRAR CRIANÇAS DO TURNO ATIVO
+    const mapaLocais: any = {
+      quinta: 'Quinta',
+      costaCaparica: 'Costa da Caparica',
+      quiaios: 'Quiaios',
+    };
+    const localDbFiltro = (mapaLocais[this.filtroLocal] || 'Quinta').toLowerCase();
+
+    const criancasTurno = this.todosRegistos.filter((i) => {
+      const localRegisto = (i.local || '').toLowerCase();
+      const matchLocal =
+        localRegisto === localDbFiltro || localRegisto === this.filtroLocal.toLowerCase();
+      return matchLocal && i.turnoEscolhido === this.turnoSelecionado;
+    });
+
+    // 2. CRIAR E POPULAR ESTRUTURAS
+    const camaratasPDF = this.colunasCamaratas.map(col => ({
+      titulo: col.titulo,
+      monitor: col.monitor,
+      dbId: col.dbId,
+      genero: col.genero, // Preserva o género para a estilização dinâmica
+      lista: [] as Inscricao[]
+    }));
+
+    const atividadesPDF = this.colunasAtividades.map(col => ({
+      titulo: col.titulo,
+      monitor: col.monitor,
+      dbId: col.dbId,
+      genero: col.genero,
+      lista: [] as Inscricao[]
+    }));
+
+    criancasTurno.forEach((crianca) => {
+      if (crianca.camarata_id) {
+        const col = camaratasPDF.find((c) => c.dbId == crianca.camarata_id);
+        if (col) col.lista.push(crianca);
+      }
+      if (crianca.grupo_id) {
+        const col = atividadesPDF.find((c) => c.dbId == crianca.grupo_id);
+        if (col) col.lista.push(crianca);
+      }
+    });
+
+    // 3. INICIALIZAR DOC LANDSCAPE
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // --- CABEÇALHO DO DOCUMENTO ---
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(21, 128, 61); // Verde Quinta da Escola
+    doc.text('QUINTA DA ESCOLA', 14, 15);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    const localTxt = mapaLocais[this.filtroLocal] || 'Quinta da Escola';
+    doc.text(`Local: ${localTxt}  |  Turno: ${this.turnoSelecionado}`, pageWidth - 14, 14, { align: 'right' });
+
+    // Linha verde divisória
+    doc.setDrawColor(21, 128, 61);
+    doc.setLineWidth(0.8);
+    doc.line(14, 17, pageWidth - 14, 17);
+
+    let currentY = 24;
+
+    // --- 4. FUNÇÃO AUXILIAR COM PINTURA DINÂMICA DE CABEÇALHOS ---
+    const renderGrelhaTabelas = (
+      dadosOriginais: any[],
+      tituloSeccao: string,
+      corHeaderPadrao: number[],
+      tituloCor: number[],
+      isCamarata: boolean = false
+    ) => {
+      if (dadosOriginais.length === 0) return;
+
+      const maxColunasPorLinha = 6;
+
+      for (let offset = 0; offset < dadosOriginais.length; offset += maxColunasPorLinha) {
+        const blocoAtivo = dadosOriginais.slice(offset, offset + maxColunasPorLinha);
+
+        const headers = blocoAtivo.map(col => `${col.titulo.toUpperCase()}\n ${col.monitor || 'Sem Monitor'}`);
+        const rows: string[][] = [];
+        const maxCriancasNoBloco = Math.max(...blocoAtivo.map(c => c.lista.length), 0);
+
+        for (let i = 0; i < maxCriancasNoBloco; i++) {
+          const row: string[] = [];
+          blocoAtivo.forEach(col => {
+            const item = col.lista[i];
+            if (item) {
+              const primeiroUltimo = item.participante.nomeCompleto.trim().split(/\s+/);
+              const nomeCompacto = primeiroUltimo.length > 1
+                ? `${primeiroUltimo[0]} ${primeiroUltimo[primeiroUltimo.length - 1]}`
+                : primeiroUltimo[0];
+              row.push(`• ${nomeCompacto} (${this.getIdade(item)}a)`);
+            } else {
+              row.push('');
+            }
+          });
+          rows.push(row);
+        }
+
+        // Cálculo de quebra de página preventiva
+        const alturaEstimadaTabela = 10 + (maxCriancasNoBloco * 5.5) + 10;
+        const espacoNecessarioTotal = alturaEstimadaTabela + (offset === 0 ? 8 : 0);
+
+        if (currentY + espacoNecessarioTotal > (pageHeight - 15)) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        if (offset === 0) {
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(tituloCor[0], tituloCor[1], tituloCor[2]);
+          doc.text(tituloSeccao, 14, currentY);
+          currentY += 5;
+        }
+
+        autoTable(doc, {
+          head: [headers],
+          body: rows,
+          startY: currentY,
+          margin: { left: 14, right: 14 },
+          theme: 'grid',
+          pageBreak: 'avoid',
+          styles: { fontSize: 7.5, cellPadding: 1.8, font: 'Helvetica' },
+          headStyles: {
+            fillColor: corHeaderPadrao as any, // Cor de fallback
+            textColor: [255, 255, 255],
+            halign: 'center',
+            fontSize: 8,
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            ...blocoAtivo.reduce((acc: any, _, idx) => {
+              acc[idx] = { cellWidth: 'auto' };
+              return acc;
+            }, {})
+          },
+          // PINTURA COLUNA A COLUNA SEGUNDO O GÉNERO
+          didParseCell: (data) => {
+            if (data.section === 'head' && isCamarata) {
+              const colInfo = blocoAtivo[data.column.index];
+              if (colInfo) {
+                if (colInfo.genero === 'F') {
+                  data.cell.styles.fillColor = [219, 39, 119]; // Rosa (#db2777) - Raparigas
+                } else if (colInfo.genero === 'M') {
+                  data.cell.styles.fillColor = [30, 58, 138];  // Azul (#1e3a8a) - Rapazes
+                } else if (colInfo.genero === 'Misto') {
+                  data.cell.styles.fillColor = [217, 119, 6];   // Laranja (#d97706) - Mistos
+                }
+              }
+            }
+          }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 8;
+      }
+    };
+
+    // 5. DESENHAR CAMARATAS (Com pintura dinâmica ativa)
+    renderGrelhaTabelas(
+      camaratasPDF,
+      'DISTRIBUICAO DAS CAMARATAS',
+      [30, 58, 138], // Fallback Azul
+      [30, 58, 138],
+      true // Ativa a verificação de género das camaratas
+    );
+
+    // Separador ou quebra de página
+    if (currentY + 45 < (pageHeight - 15)) {
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.line(14, currentY, pageWidth - 14, currentY);
+      doc.setLineDashPattern([], 0);
+      currentY += 8;
+    } else {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    // 6. DESENHAR ATIVIDADES (Castanho/Laranja Padrão)
+    renderGrelhaTabelas(
+      atividadesPDF,
+      'GRUPOS DE ATIVIDADES',
+      [180, 83, 9],
+      [180, 83, 9],
+      false // Sem género dinâmico para os grupos gerais
+    );
+
+    // Guardar o documento final
+    doc.save(`Distribuicao_Logistica_${this.turnoSelecionado.replace(/\s+/g, '_')}.pdf`);
+    this.snackBar.open('PDF gerado com sucesso!', 'OK', { duration: 3000 });
   }
 }

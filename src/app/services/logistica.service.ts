@@ -44,4 +44,19 @@ export class LogisticaService {
     const headers = new HttpHeaders().set('X-Access-Pin', pin);
     return firstValueFrom(this.http.post<any>(`${this.apiUrl}/logistica.php?token=${token}`, data, { headers }));
   }
+
+
+  async getPontuacoes(turno: string, local: string): Promise<{ jogos: string[], pontuacoes: any[], subtitulo?: string }> {
+    return await lastValueFrom(
+      this.http.get<{ jogos: string[], pontuacoes: any[], subtitulo?: string }>(
+        `${this.apiUrl}?acao=obter_pontuacoes&turno=${encodeURIComponent(turno)}&local=${encodeURIComponent(local)}`,
+      ),
+    );
+  }
+
+  async savePontuacoes(payload: { turno: string, local: string, jogos: string[], pontuacoes: any[] }): Promise<any> {
+    return await lastValueFrom(
+      this.http.post<any>(`${this.apiUrl}?acao=salvar_pontuacoes`, payload)
+    );
+  }
 }

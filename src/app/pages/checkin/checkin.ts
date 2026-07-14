@@ -93,11 +93,12 @@ export class CheckinComponent implements OnInit {
 
     if (this.token) {
       this.modoLink = true;
-      this.loading = false;
       const pinSalvo = sessionStorage.getItem('access_pin_' + this.token);
       if (pinSalvo) {
         this.pinInput = pinSalvo;
         this.validarPin();
+      } else {
+        this.loading = false;
       }
     } else {
       if (this.authService.getToken()) {
@@ -117,11 +118,11 @@ export class CheckinComponent implements OnInit {
 
     this.inscricaoService.getInscricoesComTokenEPin(this.token!, this.pinInput).subscribe({
       next: (dados) => {
-        this.loading = false;
         this.pinValidado = true;
         this.pinSessao = this.pinInput;
         sessionStorage.setItem('access_pin_' + this.token, this.pinSessao);
         this.processarDadosRecebidos(dados);
+        this.loading = false;
       },
       error: (err) => {
         this.loading = false;
@@ -203,6 +204,7 @@ export class CheckinComponent implements OnInit {
       this.filtrar();
     } else {
       this.inscricoesFiltradas = this.inscricoes;
+      this.atualizarContador();
     }
   }
 
@@ -221,10 +223,18 @@ export class CheckinComponent implements OnInit {
   filtrar() {
     const texto = this.pesquisa.toLowerCase().trim();
 
-    this.inscricoesFiltradas = this.inscricoes.filter((i) => {
+    // 1. Filtra por turno e por nome
+    let filtradas = this.inscricoes.filter((i) => {
       const matchTurno = this.turnoSelecionado ? i.turnoEscolhido === this.turnoSelecionado : true;
       const matchNome = i.participante.nomeCompleto.toLowerCase().includes(texto);
       return matchTurno && matchNome;
+    });
+
+    // 2. Ordena: "A aguardar" (fora) no topo, "Dentro" em baixo
+    this.inscricoesFiltradas = filtradas.sort((a, b) => {
+      const statusA = a.checkin?.status === 'dentro' ? 1 : 0;
+      const statusB = b.checkin?.status === 'dentro' ? 1 : 0;
+      return statusA - statusB; // 0 vem antes de 1 (fora primeiro, dentro depois)
     });
 
     this.atualizarContador();
@@ -388,4 +398,14 @@ export class CheckinComponent implements OnInit {
     if (i.observacoes) parts.push('Obs: ' + i.observacoes);
     return parts.join('\n');
   }
+
+  irParaPontuacoes() {
+    // Guarda os estados selecionados pelo coordenador para serem lidos no Leaderboard
+    sessionStorage.setItem('filtroLocal', this.filtroLocal);
+    sessionStorage.setItem('turnoSelecionado', this.turnoSelecionado);
+
+    this.router.navigate(['/pontuacoes']);
+  }
+
+
 }
